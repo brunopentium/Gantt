@@ -187,7 +187,10 @@ function fdi(d){if(!d)return'';return d.getFullYear()+'-'+String(d.getMonth()+1)
 function isWE(d){let w=d.getDay();return w===0||w===6}
 function addBD(s,n){if(n<=0)return new Date(s);let d=new Date(s),c=0;while(c<n-1){d.setDate(d.getDate()+1);if(!isWE(d))c++}return d}
 function addCD(s,n){let d=new Date(s);d.setDate(d.getDate()+Math.max(0,n-1));return d}
+function subBD(e,n){let d=skipWE(e),c=0;while(c<n-1){d.setDate(d.getDate()-1);if(!isWE(d))c++}return d}
+function subCD(e,n){let d=new Date(e);d.setDate(d.getDate()-Math.max(0,n-1));return d}
 function endD(s,dur,u){if(!s||dur<1)return s?new Date(s):null;return u==='cd'?addCD(s,dur):addBD(s,dur)}
+function startD(e,dur,u){if(!e||dur<1)return e?new Date(e):null;return u==='cd'?subCD(e,dur):subBD(e,dur)}
 function durBtw(s,e,u){if(!s||!e)return 1;if(u==='cd')return Math.max(1,Math.round((e-s)/864e5)+1);let c=0,d=new Date(s);while(d<=e){if(!isWE(d))c++;d.setDate(d.getDate()+1)}return Math.max(1,c)}
 function skipWE(d){let dd=new Date(d);while(isWE(dd))dd.setDate(dd.getDate()+1);return dd}
 function daysBtw(a,b){return Math.round((b-a)/864e5)}
@@ -206,7 +209,55 @@ function visible(){let r=[],stk=[];for(let t of T){while(stk.length&&stk[stk.len
 function compWBS(){let c=[];for(let t of T){while(c.length>t.indent)c.pop();while(c.length<=t.indent)c.push(0);c[t.indent]++;while(c.length>t.indent+1)c.pop();t.wbs=c.join('.')}}
 function summaryDates(){for(let i=T.length-1;i>=0;i--){let t=T[i];if(!isSummary(t))continue;let ds=descendants(t),mn=null,mx=null,tp=0,cn=0;for(let c of ds){if(c.start&&(!mn||c.start<mn))mn=new Date(c.start);if(c.end&&(!mx||c.end>mx))mx=new Date(c.end);tp+=c.pct||0;cn++}if(mn)t.start=mn;if(mx)t.end=mx;if(cn)t.pct=Math.round(tp/cn);if(t.start&&t.end)t.dur=durBtw(t.start,t.end,t.unit)}}
 function parsePred(s){if(!s||!s.trim())return[];return s.split(/[;,]/).map(p=>{let m=p.trim().match(/^(\d+)\s*(FS|SS|FF|SF)?\s*([+-]\d+)?d?\s*$/i);if(!m)return null;return{n:+m[1],ty:(m[2]||'FS').toUpperCase(),lag:m[3]?+m[3]:0}}).filter(Boolean)}
-function schedule(){let done=new Set(),mx=T.length*4,it=0;function one(i){if(done.has(i))return;let t=T[i];if(isSummary(t)){done.add(i);return}let ps=parsePred(t.pred);if(!ps.length){if(t.start){if(t.unit==='bd')t.start=skipWE(t.start);t.end=t.mile?new Date(t.start):endD(t.start,t.dur||1,t.unit)}done.add(i);return}let md=null;for(let p of ps){let pt=T[p.n-1];if(!pt)continue;if(!done.has(p.n-1))one(p.n-1);let ref;switch(p.ty){case'FS':ref=pt.end?new Date(pt.end):null;if(ref)ref.setDate(ref.getDate()+1);break;case'SS':ref=pt.start?new Date(pt.start):null;break;case'FF':ref=pt.end?new Date(pt.end):null;break;case'SF':ref=pt.start?new Date(pt.start):null;break}if(ref&&p.lag)ref.setDate(ref.getDate()+p.lag);if(ref){if(t.unit==='bd')ref=skipWE(ref);if(!md||ref>md)md=ref}}if(md){t.start=md;t.end=t.mile?new Date(t.start):endD(t.start,t.dur||1,t.unit)}done.add(i)}while(done.size<T.length&&it<mx){for(let i=0;i<T.length;i++)if(!done.has(i))one(i);it++}summaryDates()}
+function schedule(){
+  let done=new Set(),mx=T.length*4,it=0;
+  function maxD(a,b){return !a||b>a?b:a}
+  function one(i){
+    if(done.has(i))return;
+    let t=T[i];
+    if(isSummary(t)){done.add(i);return}
+    let ps=parsePred(t.pred);
+    if(!ps.length){
+      if(t.start){
+        if(t.unit==='bd')t.start=skipWE(t.start);
+        t.end=t.mile?new Date(t.start):endD(t.start,t.dur||1,t.unit);
+      }
+      done.add(i);return;
+    }
+    let startReq=null,endReq=null;
+    for(let p of ps){
+      let pt=T[p.n-1];if(!pt)continue;
+      if(!done.has(p.n-1))one(p.n-1);
+      let ref=null,isEnd=false;
+      switch(p.ty){
+        case'FS':ref=pt.end?new Date(pt.end):null;if(ref)ref.setDate(ref.getDate()+1);break;
+        case'SS':ref=pt.start?new Date(pt.start):null;break;
+        case'FF':ref=pt.end?new Date(pt.end):null;isEnd=true;break;
+        case'SF':ref=pt.start?new Date(pt.start):null;isEnd=true;break;
+      }
+      if(ref&&p.lag)ref.setDate(ref.getDate()+p.lag);
+      if(ref&&t.unit==='bd')ref=skipWE(ref);
+      if(ref){if(isEnd)endReq=maxD(endReq,ref);else startReq=maxD(startReq,ref)}
+    }
+    if(t.mile){
+      let d=maxD(startReq,endReq);
+      if(d){t.start=new Date(d);t.end=new Date(d)}
+    }else if(startReq){
+      t.start=startReq;
+      t.end=endD(t.start,t.dur||1,t.unit);
+      if(endReq&&t.end<endReq){
+        t.end=endReq;
+        t.start=startD(t.end,t.dur||1,t.unit);
+      }
+    }else if(endReq){
+      t.end=endReq;
+      t.start=startD(t.end,t.dur||1,t.unit);
+    }
+    done.add(i);
+  }
+  while(done.size<T.length&&it<mx){for(let i=0;i<T.length;i++)if(!done.has(i))one(i);it++}
+  summaryDates();
+}
 
 function criticalPath(){let cp=new Set();if(!cpOn||!T.length)return cp;let pe=T.reduce((m,t)=>t.end&&t.end>m?t.end:m,new Date(0));function trace(t){cp.add(t.id);let ps=parsePred(t.pred);for(let p of ps){let pt=T[p.n-1];if(pt&&!cp.has(pt.id))trace(pt)}}for(let t of T){if(!isSummary(t)&&t.end&&t.end.getTime()===pe.getTime())trace(t)}return cp}
 
