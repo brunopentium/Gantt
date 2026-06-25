@@ -965,6 +965,10 @@ function xlPeriods(rng){
   }
   return out;
 }
+function xlPeriodGroup(p){
+  if(res==='days'||res==='weeks')return MN[p.s.getMonth()]+' '+p.s.getFullYear();
+  return String(p.s.getFullYear());
+}
 function buildXLSXBlob(){
   let vis=visible(), rng=dateRange(), periods=xlPeriods(rng);
   if(periods.length>16000)throw new Error('Timeline too wide for Excel. Change the view to Weeks, Months, or Quarters and export again.');
@@ -1000,8 +1004,18 @@ function buildXLSXBlob(){
   }
   let totalCols=9+periods.length, title=cleanTitle(document.getElementById('ptitle').value), exported=new Date().toISOString().slice(0,10);
   merges.push(`A1:${xlCol(totalCols)}1`);
+  merges.push('A2:I2');
   rows.push(`<row r="1" ht="24" customHeight="1">${c(1,1,title,sTitle)}</row>`);
-  rows.push(`<row r="2" ht="18" customHeight="1">${c(2,1,'Scale: '+res+' | Exported: '+exported+' | Range: '+fdi(rng.mn)+' to '+fdi(rng.mx),sSub)}</row>`);
+  let r2=c(2,1,'Scale: '+res+' | Exported: '+exported+' | Range: '+fdi(rng.mn)+' to '+fdi(rng.mx),sSub);
+  for(let i=0;i<periods.length;){
+    let g=xlPeriodGroup(periods[i]),j=i+1;
+    while(j<periods.length&&xlPeriodGroup(periods[j])===g)j++;
+    let c1=10+i,c2=9+j;
+    r2+=c(2,c1,g,sSub);
+    if(c2>c1)merges.push(`${xlCol(c1)}2:${xlCol(c2)}2`);
+    i=j;
+  }
+  rows.push(`<row r="2" ht="20" customHeight="1">${r2}</row>`);
   let heads=['#','WBS','Task Name','Dur','Unit','Start','End','Pred','%'];
   let rh=heads.map((h,i)=>c(3,i+1,h,sHead)).join('');
   for(let i=0;i<periods.length;i++)rh+=c(3,10+i,periods[i].label,sHead);
