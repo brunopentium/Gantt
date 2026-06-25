@@ -28,6 +28,7 @@ input{font-family:inherit}
 #ptitle{background:transparent;border:1px solid transparent;color:var(--text);font-size:14px;font-weight:600;padding:2px 6px;border-radius:3px;width:200px}
 #ptitle:hover{border-color:var(--border)}
 #ptitle:focus{border-color:var(--accent);background:var(--bg2);outline:none}
+#selProject{width:180px;max-width:28vw}
 
 #main{display:flex;flex:1;overflow:hidden}
 #tpanel{display:flex;flex-direction:column;overflow:hidden;background:var(--bg1);min-width:200px;width:580px}
@@ -96,6 +97,12 @@ input{font-family:inherit}
 .ctx-item:hover{background:var(--bg4)}
 .ctx-item.red{color:var(--red)}
 .ctx-sep{height:1px;background:var(--border);margin:3px 0}
+.modal{position:fixed;z-index:1100;background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:12px;width:320px;left:50%;top:50%;transform:translate(-50%,-50%);box-shadow:0 10px 30px rgba(0,0,0,.55)}
+.modal h3{font-size:13px;margin-bottom:9px;font-weight:600}
+.modal p{font-size:12px;color:var(--text2);line-height:1.4;margin-bottom:10px}
+.modal input{width:100%;background:var(--bg0);border:1px solid var(--border);color:var(--text);padding:6px 7px;border-radius:4px;font-size:13px;outline:none;margin-bottom:10px}
+.modal input:focus{border-color:var(--accent)}
+.modal-actions{display:flex;justify-content:flex-end;gap:6px}
 
 .dpicker{position:fixed;z-index:1000;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px;width:234px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .dp-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
@@ -129,6 +136,14 @@ input{font-family:inherit}
 <div id="app">
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
+  <div class="tsep"></div>
+  <label>Schedule:</label>
+  <select id="selProject"></select>
+  <button id="btnNewProj">＋</button>
+  <button id="btnDupProj">⧉</button>
+  <button id="btnRenProj">✎</button>
+  <button id="btnDelProj" class="del">✕</button>
+  <button id="btnBackupAll">💾 All</button>
   <div class="tsep"></div>
   <button id="btnAdd">＋ Task</button>
   <button id="btnMile">◆ Mile</button>
@@ -165,6 +180,8 @@ input{font-family:inherit}
 <script>
 // ========== STATE ==========
 let T=[], sel=new Set(), lastSel=null, undo=[], fmt={}, cpOn=false, res='weeks', cw=36;
+let projects=[], activeProjectId=null;
+const STORE_KEY='pf_projects_v1', LEGACY_KEY='pf2';
 const RH=30;
 const COLS=[
   {id:'id',label:'#',w:30,min:24,ed:false},
@@ -198,6 +215,7 @@ function isoWk(d){let t=new Date(d.getTime());t.setHours(0,0,0,0);t.setDate(t.ge
 function monday(d){let dd=new Date(d);let day=dd.getDay();dd.setDate(dd.getDate()-day+(day===0?-6:1));return dd}
 function today(){let d=new Date();d.setHours(0,0,0,0);return d}
 function esc(s){if(!s)return'';let d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function escA(s){return esc(s).replace(/"/g,'&quot;')}
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MNF=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -662,7 +680,31 @@ function setFmt(tid,field,mode,val){
   if(!fmt[k].bg&&!fmt[k].fc&&!fmt[k].b)delete fmt[k];
 }
 
-function closePopups(){document.querySelectorAll('.popup-overlay,.ctx-menu,.dpicker,.cpicker').forEach(e=>e.remove())}
+function closePopups(){document.querySelectorAll('.popup-overlay,.ctx-menu,.dpicker,.cpicker,.modal').forEach(e=>e.remove())}
+function showTextModal(title,value,onOk){
+  closePopups();closeEditor();
+  let ov=document.createElement('div');ov.className='popup-overlay';document.body.appendChild(ov);
+  let m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<h3>${esc(title)}</h3><input type="text" value="${escA(value||'')}" spellcheck="false"><div class="modal-actions"><button data-a="cancel">Cancel</button><button class="act" data-a="ok">OK</button></div>`;
+  document.body.appendChild(m);
+  let inp=m.querySelector('input');
+  function ok(){let v=inp.value.trim();closePopups();if(v)onOk(v)}
+  m.querySelector('[data-a="ok"]').addEventListener('click',ok);
+  m.querySelector('[data-a="cancel"]').addEventListener('click',closePopups);
+  ov.addEventListener('click',closePopups);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();ok()}else if(e.key==='Escape'){e.preventDefault();closePopups()}});
+  setTimeout(()=>{inp.focus();inp.select()},20);
+}
+function showConfirmModal(title,msg,onOk,okLabel='Delete'){
+  closePopups();closeEditor();
+  let ov=document.createElement('div');ov.className='popup-overlay';document.body.appendChild(ov);
+  let m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<h3>${esc(title)}</h3><p>${esc(msg)}</p><div class="modal-actions"><button data-a="cancel">Cancel</button><button class="del" data-a="ok">${esc(okLabel)}</button></div>`;
+  document.body.appendChild(m);
+  m.querySelector('[data-a="ok"]').addEventListener('click',function(){closePopups();onOk()});
+  m.querySelector('[data-a="cancel"]').addEventListener('click',closePopups);
+  ov.addEventListener('click',closePopups);
+}
 
 // ========== TASK ACTIONS ==========
 function addTask(afterId){
@@ -712,6 +754,12 @@ function indentSelected(){for(let id of sel)doIndent(id)}
 function outdentSelected(){for(let id of sel)doOutdent(id)}
 
 // ========== TOOLBAR ==========
+document.getElementById('selProject').addEventListener('change',function(){switchProject(this.value)});
+document.getElementById('btnNewProj').addEventListener('click',newProject);
+document.getElementById('btnDupProj').addEventListener('click',duplicateProject);
+document.getElementById('btnRenProj').addEventListener('click',renameProject);
+document.getElementById('btnDelProj').addEventListener('click',deleteProject);
+document.getElementById('btnBackupAll').addEventListener('click',downloadAllProjects);
 document.getElementById('btnAdd').addEventListener('click',()=>addTask());
 document.getElementById('btnMile').addEventListener('click',()=>addMile());
 document.getElementById('btnDel').addEventListener('click',deleteSelected);
@@ -727,14 +775,13 @@ document.getElementById('selRes').addEventListener('change',function(){
 });
 document.getElementById('btnCP').addEventListener('click',function(){cpOn=!cpOn;this.textContent=cpOn?'CP On':'CP Off';if(cpOn)this.classList.add('act');else this.classList.remove('act');render()});
 document.getElementById('btnExp').addEventListener('click',function(){
-  let d={title:document.getElementById('ptitle').value,tasks:T.map(t=>({...t,start:fdi(t.start),end:fdi(t.end)})),fmt};
-  let b=new Blob([JSON.stringify(d,null,2)],{type:'application/json'});
-  let a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(d.title||'project')+'.json';a.click();
+  let d=currentProjectData();
+  downloadJSON(d,(d.title||'project')+'.json');
 });
 document.getElementById('btnImp').addEventListener('click',function(){
   let inp=document.createElement('input');inp.type='file';inp.accept='.json';
   inp.addEventListener('change',function(){let f=this.files[0];if(!f)return;let r=new FileReader();
-    r.onload=function(e){try{let d=JSON.parse(e.target.result);if(d.title)document.getElementById('ptitle').value=d.title;if(d.tasks)T=d.tasks.map(t=>{t.start=pd(t.start);t.end=pd(t.end);return t});if(d.fmt)fmt=d.fmt;recalc();render()}catch(er){alert('Error: '+er.message)}};
+    r.onload=function(e){try{importProjectFile(JSON.parse(e.target.result))}catch(er){alert('Error: '+er.message)}};
     r.readAsText(f)});
   inp.click();
 });
@@ -771,7 +818,7 @@ document.getElementById('thead').addEventListener('mousedown',function(e){
 // ========== KEYBOARD ==========
 document.addEventListener('keydown',function(e){
   if(editing)return;
-  let ae=document.activeElement;if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA')&&ae.id!=='ptitle')return;
+  let ae=document.activeElement;if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT')&&ae.id!=='ptitle')return;
   if(e.key==='Delete'&&sel.size>0){e.preventDefault();deleteSelected()}
   else if(e.key==='Enter'&&ae.tagName!=='INPUT'){e.preventDefault();addTask()}
   else if(e.key==='Tab'){e.preventDefault();if(e.shiftKey)outdentSelected();else indentSelected()}
@@ -788,16 +835,139 @@ function navRow(dir){
 }
 
 // ========== PERSISTENCE ==========
+function cleanTitle(s){return(String(s||'').trim()||'Untitled Project')}
+function taskOut(t){return{...t,start:fdi(t.start),end:fdi(t.end)}}
+function taskIn(t){t.start=pd(t.start);t.end=pd(t.end);return t}
+function downloadJSON(data,name){
+  let url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+  let a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function currentProjectData(){
+  return{
+    id:activeProjectId||uid(),
+    title:cleanTitle(document.getElementById('ptitle').value),
+    updatedAt:new Date().toISOString(),
+    tasks:T.map(taskOut),
+    fmt:JSON.parse(JSON.stringify(fmt||{})),
+    view:{res,cw}
+  };
+}
+function normalizeProject(p){
+  let view=p.view||{};
+  return{
+    id:p.id||uid(),
+    title:cleanTitle(p.title),
+    updatedAt:p.updatedAt||new Date().toISOString(),
+    tasks:Array.isArray(p.tasks)?p.tasks.map(t=>({...t})):[],
+    fmt:p.fmt||{},
+    view:{res:view.res||p.res||'weeks',cw:view.cw||p.cw||36}
+  };
+}
+function saveStore(){
+  try{localStorage.setItem(STORE_KEY,JSON.stringify({version:1,activeProjectId,projects}))}catch(e){}
+}
 function save(){
-  try{localStorage.setItem('pf2',JSON.stringify({title:document.getElementById('ptitle').value,tasks:T.map(t=>({...t,start:fdi(t.start),end:fdi(t.end)})),fmt,res,cw}))}catch(e){}
+  if(!activeProjectId)return;
+  let p=projects.find(x=>x.id===activeProjectId);
+  if(!p){p={id:activeProjectId,title:'Untitled Project',tasks:[],fmt:{},view:{res,cw}};projects.push(p)}
+  Object.assign(p,currentProjectData());
+  saveStore();renderProjectSelect();
 }
 function load(){
-  try{let s=localStorage.getItem('pf2');if(!s)return false;let d=JSON.parse(s);
-    if(d.title)document.getElementById('ptitle').value=d.title;
-    if(d.tasks&&d.tasks.length){T=d.tasks.map(t=>{t.start=pd(t.start);t.end=pd(t.end);return t});if(d.fmt)fmt=d.fmt;if(d.res){res=d.res;document.getElementById('selRes').value=res}if(d.cw)cw=d.cw;return true}
-  }catch(e){}return false;
+  try{
+    let s=localStorage.getItem(STORE_KEY);
+    if(s){
+      let d=JSON.parse(s);
+      projects=(d.projects||[]).map(normalizeProject);
+      activeProjectId=d.activeProjectId&&projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:(projects[0]&&projects[0].id);
+      if(activeProjectId){loadProject(activeProjectId,false);return true}
+    }
+    let old=localStorage.getItem(LEGACY_KEY);
+    if(old){
+      let d=JSON.parse(old);
+      if(d.tasks&&d.tasks.length){
+        let p=normalizeProject({title:d.title||'Imported Project',tasks:d.tasks,fmt:d.fmt,res:d.res,cw:d.cw});
+        projects=[p];activeProjectId=p.id;loadProject(p.id,false);saveStore();return true;
+      }
+    }
+  }catch(e){}
+  return false;
 }
-document.getElementById('ptitle').addEventListener('change',save);
+function loadProject(id,doRender=true){
+  let p=projects.find(x=>x.id===id);if(!p)return;
+  activeProjectId=p.id;
+  document.getElementById('ptitle').value=p.title;
+  T=(p.tasks||[]).map(t=>taskIn({...t}));
+  fmt=JSON.parse(JSON.stringify(p.fmt||{}));
+  res=(p.view&&p.view.res)||'weeks';cw=(p.view&&p.view.cw)||36;
+  document.getElementById('selRes').value=res;
+  sel.clear();lastSel=null;undo=[];
+  renderProjectSelect();
+  if(doRender){recalc();render()}
+}
+function renderProjectSelect(){
+  let s=document.getElementById('selProject');if(!s)return;
+  let cur=s.value,html='';
+  for(let p of projects){html+=`<option value="${p.id}">${esc(p.title)}</option>`}
+  s.innerHTML=html;
+  s.value=activeProjectId||cur||'';
+}
+function switchProject(id){
+  if(!id||id===activeProjectId)return;
+  save();loadProject(id,true);
+}
+function newProject(){
+  showTextModal('New schedule','New Schedule',function(title){
+    save();
+    let p=normalizeProject({title,tasks:[],fmt:{},view:{res:'weeks',cw:36}});
+    projects.push(p);loadProject(p.id,true);save();
+  });
+}
+function duplicateProject(){
+  save();
+  let src=projects.find(p=>p.id===activeProjectId);if(!src)return;
+  let p=normalizeProject(JSON.parse(JSON.stringify(src)));
+  p.id=uid();p.title=cleanTitle(src.title+' Copy');p.updatedAt=new Date().toISOString();
+  projects.push(p);loadProject(p.id,true);save();
+}
+function renameProject(){
+  let p=projects.find(x=>x.id===activeProjectId);if(!p)return;
+  showTextModal('Rename schedule',p.title,function(title){
+    document.getElementById('ptitle').value=cleanTitle(title);save();renderStatus();
+  });
+}
+function deleteProject(){
+  let p=projects.find(x=>x.id===activeProjectId);if(!p)return;
+  showConfirmModal('Delete schedule','Delete "'+p.title+'"? This only removes it from this browser.',function(){
+    projects=projects.filter(x=>x.id!==activeProjectId);
+    if(!projects.length)projects.push(normalizeProject({title:'New Schedule',tasks:[],fmt:{},view:{res:'weeks',cw:36}}));
+    activeProjectId=projects[0].id;loadProject(activeProjectId,true);saveStore();
+  });
+}
+function downloadAllProjects(){
+  save();
+  let data={version:1,exportedAt:new Date().toISOString(),activeProjectId,projects};
+  downloadJSON(data,'gantt-backup-all-'+fdi(today())+'.json');
+}
+function importProjectFile(d){
+  if(d.projects&&Array.isArray(d.projects)){
+    showConfirmModal('Import backup','Replace all saved schedules with this backup?',function(){
+      projects=d.projects.map(normalizeProject);
+      activeProjectId=d.activeProjectId&&projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:(projects[0]&&projects[0].id);
+      if(!activeProjectId){projects=[normalizeProject({title:'New Schedule',tasks:[],fmt:{},view:{res:'weeks',cw:36}})];activeProjectId=projects[0].id}
+      loadProject(activeProjectId,true);saveStore();
+    },'Import');return;
+  }
+  if(d.tasks&&Array.isArray(d.tasks)){
+    document.getElementById('ptitle').value=cleanTitle(d.title||document.getElementById('ptitle').value);
+    T=d.tasks.map(t=>taskIn({...t}));fmt=d.fmt||{};
+    if(d.view){res=d.view.res||res;cw=d.view.cw||cw}else{if(d.res)res=d.res;if(d.cw)cw=d.cw}
+    document.getElementById('selRes').value=res;recalc();render();return;
+  }
+  alert('Invalid project file');
+}
+document.getElementById('ptitle').addEventListener('change',function(){save();renderStatus()});
 
 // ========== SAMPLE PROJECT ==========
 function loadSample(){
@@ -829,7 +999,11 @@ function loadSample(){
 
 // ========== INIT ==========
 function init(){
-  if(!load())loadSample();
+  if(!load()){
+    loadSample();
+    let p=normalizeProject({title:document.getElementById('ptitle').value,tasks:T.map(taskOut),fmt,res,cw});
+    projects=[p];activeProjectId=p.id;loadProject(p.id,false);
+  }
   recalc();render();
 }
 init();
