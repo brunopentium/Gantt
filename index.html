@@ -90,7 +90,7 @@ input{font-family:inherit}
 #gbody::-webkit-scrollbar-track{background:var(--bg0)}
 #gcontent{position:relative}
 .grow{position:absolute;left:0;right:0;height:var(--row-h);border-bottom:1px solid var(--row-border)}
-.gbar{position:absolute;height:16px;top:7px;border-radius:3px;cursor:pointer;z-index:4;transition:filter .12s}
+.gbar{position:absolute;height:20px;top:5px;border-radius:4px;cursor:pointer;z-index:4;transition:filter .12s}
 .gbar:hover{filter:brightness(1.25)}
 .gbar .gprog{position:absolute;left:0;top:0;bottom:0;background:rgba(0,0,0,.25);border-radius:3px;pointer-events:none}
 .gbar .glbl{position:absolute;left:calc(100% + 4px);font-size:9px;color:var(--text3);white-space:nowrap;pointer-events:none;top:50%;transform:translateY(-50%)}
@@ -402,11 +402,11 @@ function renderGantt(){
       let w=barW(t.start,t.end,rng),pw=t.pct/100*w;
       if(statusOn){
         let tx=d2x(today(),rng),due=Math.max(0,Math.min(w,tx-x)),done=Math.max(0,Math.min(w,pw));
-        h+=`<div class="gbar ${cc}" data-id="${t.id}" style="left:${x}px;width:${w}px;top:${y+7}px;background:#303843">`;
+        h+=`<div class="gbar ${cc}" data-id="${t.id}" style="left:${x}px;width:${w}px;top:${y+5}px;background:#303843">`;
         if(done>0)h+=`<div style="position:absolute;left:0;top:0;bottom:0;width:${done}px;background:#40b080;border-radius:3px 0 0 3px"></div>`;
         if(due>done)h+=`<div style="position:absolute;left:${done}px;top:0;bottom:0;width:${due-done}px;background:#e05050"></div>`;
       }else{
-        h+=`<div class="gbar ${cc}" data-id="${t.id}" style="left:${x}px;width:${w}px;top:${y+7}px;background:${t.color}">`;
+        h+=`<div class="gbar ${cc}" data-id="${t.id}" style="left:${x}px;width:${w}px;top:${y+5}px;background:${t.color}">`;
         if(t.pct>0)h+=`<div class="gprog" style="width:${pw}px"></div>`;
       }
       if(labelsOn)h+=`<span class="glbl">${esc(t.name)}</span>`;
