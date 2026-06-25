@@ -22,7 +22,7 @@ input{font-family:inherit}
 
 /* === LAYOUT === */
 #app{display:flex;flex-direction:column;height:100vh}
-#toolbar{display:flex;align-items:center;gap:4px;padding:4px 8px;background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;min-height:36px}
+#toolbar{display:flex;align-items:center;gap:4px;padding:4px 8px;background:#161b23;border-bottom:1px solid #4a5262;flex-shrink:0;flex-wrap:wrap;min-height:36px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
 .tsep{width:1px;height:20px;background:var(--border);margin:0 3px;flex-shrink:0}
 #toolbar label{font-size:10px;color:var(--text2)}
 #ptitle{background:transparent;border:1px solid transparent;color:var(--text);font-size:14px;font-weight:600;padding:2px 6px;border-radius:3px;width:200px}
@@ -37,8 +37,8 @@ input{font-family:inherit}
 #gpanel{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg0);min-width:100px}
 
 /* === TABLE === */
-#thead{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;overflow:hidden}
-.thc{display:flex;align-items:center;justify-content:center;height:32px;font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;border-right:1px solid var(--border);position:relative;flex-shrink:0;overflow:hidden}
+#thead{display:flex;background:#262d38;border-bottom:1px solid #596274;flex-shrink:0;position:relative;overflow:hidden}
+.thc{display:flex;align-items:center;justify-content:center;height:32px;font-size:10px;font-weight:700;color:#eef2f8;text-transform:uppercase;letter-spacing:.4px;border-right:1px solid #4a5262;position:relative;flex-shrink:0;overflow:hidden;background:linear-gradient(180deg,#313946,#252c36)}
 .thc .resize-handle{position:absolute;right:-2px;top:0;width:5px;height:100%;cursor:col-resize;z-index:5}
 .thc .resize-handle:hover{background:var(--accent)}
 #tbody{flex:1;overflow:auto}
@@ -162,6 +162,7 @@ input{font-family:inherit}
   <div class="tsep"></div>
   <button id="btnExp">📤 Export</button>
   <button id="btnImp">📥 Import</button>
+  <button id="btnPDF">🖨 PDF</button>
 </div>
 <div id="main">
   <div id="tpanel">
@@ -299,11 +300,13 @@ function renderTable(){
   let vis=visible(), html='';
   for(let vi=0;vi<vis.length;vi++){
     let t=vis[vi], idx=T.indexOf(t), s=sel.has(t.id), sm=isSummary(t);
+    let rf=fmt[t.id+'_row']||{};
     html+=`<div class="tr${s?' sel':''}" data-id="${t.id}" data-idx="${idx}">`;
     for(let c of COLS){
       let cls='tc'+(c.ed?' ed':''), st=`width:${c.w}px;`, val='';
       // Cell formatting
       let fk=t.id+'_'+c.id, f=fmt[fk];
+      if(rf){if(rf.bg)st+=`background:${rf.bg};`;if(rf.fc)st+=`color:${rf.fc};`;if(rf.b)st+=`font-weight:bold;`}
       if(f){if(f.bg)st+=`background:${f.bg};`;if(f.fc)st+=`color:${f.fc};`;if(f.b)st+=`font-weight:bold;`}
       
       switch(c.id){
@@ -597,11 +600,14 @@ function showTaskCtx(x,y,tid){
   closePopups();
   let ov=document.createElement('div');ov.className='popup-overlay';document.body.appendChild(ov);
   let m=document.createElement('div');m.className='ctx-menu';
-  m.innerHTML=`<div class="ctx-item" data-a="add">＋ Add Task</div><div class="ctx-item" data-a="mile">◆ Add Milestone</div><div class="ctx-sep"></div><div class="ctx-item" data-a="in">→ Indent</div><div class="ctx-item" data-a="out">← Outdent</div><div class="ctx-sep"></div><div class="ctx-item red" data-a="del">✕ Delete</div>`;
-  m.style.left=Math.min(x,window.innerWidth-190)+'px';m.style.top=Math.min(y,window.innerHeight-200)+'px';
+  m.innerHTML=`<div class="ctx-item" data-a="rbg">🎨 Row Background</div><div class="ctx-item" data-a="rfc">🖊 Row Font Color</div><div class="ctx-item" data-a="rbold">𝐁 Toggle Row Bold</div><div class="ctx-sep"></div><div class="ctx-item" data-a="add">＋ Add Task</div><div class="ctx-item" data-a="mile">◆ Add Milestone</div><div class="ctx-sep"></div><div class="ctx-item" data-a="in">→ Indent</div><div class="ctx-item" data-a="out">← Outdent</div><div class="ctx-sep"></div><div class="ctx-item red" data-a="del">✕ Delete</div>`;
+  m.style.left=Math.min(x,window.innerWidth-210)+'px';m.style.top=Math.min(y,window.innerHeight-300)+'px';
   document.body.appendChild(m);
   m.addEventListener('click',function(e2){let it=e2.target.closest('.ctx-item');if(!it)return;let a=it.dataset.a;
-    if(a==='add')addTask(tid);else if(a==='mile')addMile(tid);else if(a==='in')doIndent(tid);else if(a==='out')doOutdent(tid);else if(a==='del')doDel(tid);
+    if(a==='rbg'){closePopups();showRowColorPick(x,y,'bg',tid);return}
+    else if(a==='rfc'){closePopups();showRowColorPick(x,y,'fc',tid);return}
+    else if(a==='rbold'){toggleRowBold(tid);render();save()}
+    else if(a==='add')addTask(tid);else if(a==='mile')addMile(tid);else if(a==='in')doIndent(tid);else if(a==='out')doOutdent(tid);else if(a==='del')doDel(tid);
     closePopups()});
   ov.addEventListener('click',()=>closePopups());
 }
@@ -610,14 +616,17 @@ function showCellCtx(x,y,tid,field){
   closePopups();
   let ov=document.createElement('div');ov.className='popup-overlay';document.body.appendChild(ov);
   let m=document.createElement('div');m.className='ctx-menu';
-  m.innerHTML=`<div class="ctx-item" data-a="bg">🎨 Background Color</div><div class="ctx-item" data-a="fc">🖊 Font Color</div><div class="ctx-item" data-a="bold">𝐁 Toggle Bold</div><div class="ctx-sep"></div><div class="ctx-item" data-a="add">＋ Add Task</div><div class="ctx-item" data-a="in">→ Indent</div><div class="ctx-item" data-a="out">← Outdent</div><div class="ctx-sep"></div><div class="ctx-item red" data-a="del">✕ Delete</div>`;
-  m.style.left=Math.min(x,window.innerWidth-190)+'px';m.style.top=Math.min(y,window.innerHeight-280)+'px';
+  m.innerHTML=`<div class="ctx-item" data-a="bg">🎨 Cell Background</div><div class="ctx-item" data-a="fc">🖊 Cell Font Color</div><div class="ctx-item" data-a="bold">𝐁 Toggle Cell Bold</div><div class="ctx-sep"></div><div class="ctx-item" data-a="rbg">🎨 Row Background</div><div class="ctx-item" data-a="rfc">🖊 Row Font Color</div><div class="ctx-item" data-a="rbold">𝐁 Toggle Row Bold</div><div class="ctx-sep"></div><div class="ctx-item" data-a="add">＋ Add Task</div><div class="ctx-item" data-a="in">→ Indent</div><div class="ctx-item" data-a="out">← Outdent</div><div class="ctx-sep"></div><div class="ctx-item red" data-a="del">✕ Delete</div>`;
+  m.style.left=Math.min(x,window.innerWidth-210)+'px';m.style.top=Math.min(y,window.innerHeight-360)+'px';
   document.body.appendChild(m);
   m.addEventListener('click',function(e2){let it=e2.target.closest('.ctx-item');if(!it)return;let a=it.dataset.a;
     switch(a){
       case'bg':closePopups();showColorPick(x,y,'bg',tid,field);return;
       case'fc':closePopups();showColorPick(x,y,'fc',tid,field);return;
       case'bold':let k=tid+'_'+field;if(!fmt[k])fmt[k]={};fmt[k].b=!fmt[k].b;render();save();break;
+      case'rbg':closePopups();showRowColorPick(x,y,'bg',tid);return;
+      case'rfc':closePopups();showRowColorPick(x,y,'fc',tid);return;
+      case'rbold':toggleRowBold(tid);render();save();break;
       case'add':addTask(tid);break;case'in':doIndent(tid);break;case'out':doOutdent(tid);break;case'del':doDel(tid);break;
     }closePopups()});
   ov.addEventListener('click',()=>closePopups());
@@ -656,6 +665,26 @@ function showColorPick(x,y,mode,tid,field){
   ov.addEventListener('click',()=>closePopups());
 }
 
+function rowTargets(tid){return sel.has(tid)&&sel.size?[...sel]:[tid]}
+function showRowColorPick(x,y,mode,tid){
+  closePopups();
+  let ov=document.createElement('div');ov.className='popup-overlay';document.body.appendChild(ov);
+  let pk=document.createElement('div');pk.className='cpicker';
+  let ids=rowTargets(tid), cur=null;
+  for(let id of ids){let f=fmt[id+'_row'];if(f&&f[mode]){cur=f[mode];break}}
+  let title=mode==='bg'?'Row Background':'Row Font Color';
+  let h=`<h4>${title}</h4><div class="cp-grid">`;
+  for(let c of COLORS){h+=`<div class="cp-sw${cur===c?' on':''}" style="background:${c}" data-c="${c}"></div>`}
+  h+=`</div><div class="cp-hex"><input placeholder="#hex" value="${cur||''}"><button data-a="ok">OK</button></div><div class="cp-reset" data-a="clr">✕ Remove</div>`;
+  pk.innerHTML=h;
+  pk.style.left=Math.min(x,window.innerWidth-220)+'px';pk.style.top=Math.min(y,window.innerHeight-300)+'px';
+  document.body.appendChild(pk);
+  pk.querySelectorAll('.cp-sw').forEach(sw=>{sw.addEventListener('click',function(e){e.stopPropagation();setRowFmt(ids,mode,this.dataset.c);closePopups();render();save()})});
+  pk.querySelector('[data-a="ok"]').addEventListener('click',function(e){e.stopPropagation();let v=pk.querySelector('.cp-hex input').value.trim();if(v){setRowFmt(ids,mode,v);closePopups();render();save()}});
+  pk.querySelector('[data-a="clr"]').addEventListener('click',function(e){e.stopPropagation();setRowFmt(ids,mode,null);closePopups();render();save()});
+  ov.addEventListener('click',()=>closePopups());
+}
+
 function showBarColorPick(x,y,tid){
   closePopups();
   let t=T.find(x2=>x2.id===tid);if(!t)return;
@@ -678,6 +707,22 @@ function setFmt(tid,field,mode,val){
   if(!fmt[k])fmt[k]={};
   if(val)fmt[k][mode]=val;else delete fmt[k][mode];
   if(!fmt[k].bg&&!fmt[k].fc&&!fmt[k].b)delete fmt[k];
+}
+function setRowFmt(ids,mode,val){
+  for(let id of ids){
+    let k=id+'_row';
+    if(!fmt[k])fmt[k]={};
+    if(val)fmt[k][mode]=val;else delete fmt[k][mode];
+    if(!fmt[k].bg&&!fmt[k].fc&&!fmt[k].b)delete fmt[k];
+  }
+}
+function toggleRowBold(tid){
+  let ids=rowTargets(tid);
+  for(let id of ids){
+    let k=id+'_row';if(!fmt[k])fmt[k]={};
+    fmt[k].b=!fmt[k].b;
+    if(!fmt[k].bg&&!fmt[k].fc&&!fmt[k].b)delete fmt[k];
+  }
 }
 
 function closePopups(){document.querySelectorAll('.popup-overlay,.ctx-menu,.dpicker,.cpicker,.modal').forEach(e=>e.remove())}
@@ -704,6 +749,20 @@ function showConfirmModal(title,msg,onOk,okLabel='Delete'){
   m.querySelector('[data-a="ok"]').addEventListener('click',function(){closePopups();onOk()});
   m.querySelector('[data-a="cancel"]').addEventListener('click',closePopups);
   ov.addEventListener('click',closePopups);
+}
+function showPdfModal(){
+  closePopups();closeEditor();
+  let ov=document.createElement('div');ov.className='popup-overlay';document.body.appendChild(ov);
+  let m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<h3>Export PDF</h3><p>Fit the visible schedule into this many pages. Use 1 for a single-page overview.</p><input type="number" min="1" max="50" value="1"><div class="modal-actions"><button data-a="cancel">Cancel</button><button class="act" data-a="ok">Print PDF</button></div>`;
+  document.body.appendChild(m);
+  let inp=m.querySelector('input');
+  function ok(){let n=Math.max(1,Math.min(50,parseInt(inp.value)||1));closePopups();exportPDF(n)}
+  m.querySelector('[data-a="ok"]').addEventListener('click',ok);
+  m.querySelector('[data-a="cancel"]').addEventListener('click',closePopups);
+  ov.addEventListener('click',closePopups);
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();ok()}else if(e.key==='Escape'){e.preventDefault();closePopups()}});
+  setTimeout(()=>{inp.focus();inp.select()},20);
 }
 
 // ========== TASK ACTIONS ==========
@@ -760,6 +819,7 @@ document.getElementById('btnDupProj').addEventListener('click',duplicateProject)
 document.getElementById('btnRenProj').addEventListener('click',renameProject);
 document.getElementById('btnDelProj').addEventListener('click',deleteProject);
 document.getElementById('btnBackupAll').addEventListener('click',downloadAllProjects);
+document.getElementById('btnPDF').addEventListener('click',showPdfModal);
 document.getElementById('btnAdd').addEventListener('click',()=>addTask());
 document.getElementById('btnMile').addEventListener('click',()=>addMile());
 document.getElementById('btnDel').addEventListener('click',deleteSelected);
@@ -842,6 +902,59 @@ function downloadJSON(data,name){
   let url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
   let a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function fmtStyle(f){
+  if(!f)return'';
+  let s='';
+  if(f.bg)s+='background:'+f.bg+';';
+  if(f.fc)s+='color:'+f.fc+';';
+  if(f.b)s+='font-weight:700;';
+  return s;
+}
+function printCellStyle(t,cid){
+  return fmtStyle(fmt[t.id+'_row'])+fmtStyle(fmt[t.id+'_'+cid]);
+}
+function pdfGrid(rng,tw,h){
+  let out='',d;
+  function line(x,lbl){out+=`<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="#d7dce5" stroke-width="1"/><text x="${x+3}" y="13" font-size="10" fill="#455060">${esc(lbl)}</text>`}
+  if(res==='days'){d=new Date(rng.mn);while(d<=rng.mx){line(d2x(d,rng),d.getDate());d.setDate(d.getDate()+1)}}
+  else if(res==='weeks'){d=new Date(rng.mn);while(d<=rng.mx){line(d2x(d,rng),'W'+isoWk(d));d.setDate(d.getDate()+7)}}
+  else if(res==='months'){d=new Date(rng.mn.getFullYear(),rng.mn.getMonth(),1);while(d<=rng.mx){line(d2x(d,rng),MN[d.getMonth()]+' '+d.getFullYear());d.setMonth(d.getMonth()+1)}}
+  else{d=new Date(rng.mn);while(d<=rng.mx){line(d2x(d,rng),'Q'+(Math.floor(d.getMonth()/3)+1)+' '+d.getFullYear());d.setMonth(d.getMonth()+3)}}
+  let td=today();if(td>=rng.mn&&td<=rng.mx){let x=d2x(td,rng);out+=`<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="#e05050" stroke-width="2"/>`}
+  return out;
+}
+function buildPDFHTML(pageCount){
+  let vis=visible(), rng=dateRange(), tw=Math.max(totalW(rng),1), pages=Math.max(1,pageCount||1);
+  let per=Math.max(1,Math.ceil(vis.length/pages)), actual=Math.max(1,Math.ceil(vis.length/per));
+  let title=cleanTitle(document.getElementById('ptitle').value), sheets='';
+  for(let pg=0;pg<actual;pg++){
+    let rows=vis.slice(pg*per,(pg+1)*per), rowH=Math.max(9,Math.min(24,Math.floor(610/Math.max(1,rows.length)))), chartH=34+rows.length*rowH;
+    let table=`<table><thead><tr><th>#</th><th>WBS</th><th>Task</th><th>Dur</th><th>Unit</th><th>Start</th><th>End</th><th>Pred</th><th>%</th></tr></thead><tbody>`;
+    let svg=`<svg viewBox="0 0 ${tw} ${chartH}" preserveAspectRatio="none">${pdfGrid(rng,tw,chartH)}<rect x="0" y="0" width="${tw}" height="24" fill="rgba(38,45,56,.08)"/>`;
+    for(let i=0;i<rows.length;i++){
+      let t=rows[i], idx=T.indexOf(t), y=34+i*rowH, sm=isSummary(t), st=printCellStyle(t,'name'), indent=t.indent*10;
+      table+=`<tr style="${fmtStyle(fmt[t.id+'_row'])}"><td style="${printCellStyle(t,'id')}">${idx+1}</td><td style="${printCellStyle(t,'wbs')}">${esc(t.wbs||'')}</td><td style="${st}"><span style="display:inline-block;padding-left:${indent}px">${esc(t.name)}</span></td><td style="${printCellStyle(t,'dur')}">${sm?t.dur:(t.mile?0:t.dur)}</td><td style="${printCellStyle(t,'unit')}">${t.unit==='cd'?'CD':'BD'}</td><td style="${printCellStyle(t,'start')}">${fd(t.start)}</td><td style="${printCellStyle(t,'end')}">${fd(t.end)}</td><td style="${printCellStyle(t,'pred')}">${esc(t.pred||'')}</td><td style="${printCellStyle(t,'pct')}">${t.pct}%</td></tr>`;
+      svg+=`<line x1="0" y1="${y+rowH}" x2="${tw}" y2="${y+rowH}" stroke="#edf0f4" stroke-width="1"/>`;
+      if(!t.start)continue;
+      let x=d2x(t.start,rng), w=barW(t.start,t.end,rng);
+      if(t.mile||t.dur===0)svg+=`<rect x="${x-4}" y="${y+rowH/2-4}" width="8" height="8" fill="${t.color}" transform="rotate(45 ${x} ${y+rowH/2})"/>`;
+      else if(sm)svg+=`<rect x="${x}" y="${y+rowH/2-3}" width="${w}" height="6" fill="#687386"/>`;
+      else svg+=`<rect x="${x}" y="${y+rowH/2-5}" width="${w}" height="10" rx="2" fill="${t.color}"/><text x="${x+w+4}" y="${y+rowH/2+3}" font-size="${Math.max(7,rowH*.42)}" fill="#4b5565">${esc(t.name)}</text>`;
+    }
+    table+='</tbody></table>';svg+='</svg>';
+    sheets+=`<section class="page"><div class="ph"><strong>${esc(title)}</strong><span>Page ${pg+1} of ${actual} | ${fdi(rng.mn)} to ${fdi(rng.mx)}</span></div><div class="wrap"><div class="pt">${table}</div><div class="pg">${svg}</div></div></section>`;
+  }
+  return`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} PDF</title><style>@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{font-family:Segoe UI,Arial,sans-serif;margin:0;color:#20242b}.page{page-break-after:always;height:190mm;overflow:hidden}.page:last-child{page-break-after:auto}.ph{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #c8ced8;padding:0 0 5px;margin-bottom:6px;font-size:11px}.ph strong{font-size:14px}.wrap{display:flex;gap:6px;height:174mm}.pt{width:42%;overflow:hidden}.pg{flex:1;overflow:hidden;border-left:1px solid #d5dae2;padding-left:5px}table{width:100%;border-collapse:collapse;font-size:8px;table-layout:fixed}th{background:#2d3541;color:#fff;border:1px solid #596274;padding:3px 2px;text-align:left}td{border:1px solid #d8dde6;padding:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:14px}th:nth-child(1),td:nth-child(1){width:20px}th:nth-child(2),td:nth-child(2){width:32px}th:nth-child(3),td:nth-child(3){width:120px}th:nth-child(4),td:nth-child(4){width:26px}th:nth-child(5),td:nth-child(5){width:28px}th:nth-child(6),td:nth-child(6),th:nth-child(7),td:nth-child(7){width:48px}th:nth-child(8),td:nth-child(8){width:38px}th:nth-child(9),td:nth-child(9){width:28px}svg{width:100%;height:100%;display:block}</style></head><body>${sheets}</body></html>`;
+}
+function exportPDF(pageCount){
+  save();
+  let fr=document.createElement('iframe');
+  fr.style.position='fixed';fr.style.right='0';fr.style.bottom='0';fr.style.width='0';fr.style.height='0';fr.style.border='0';
+  document.body.appendChild(fr);
+  let doc=fr.contentWindow.document;
+  doc.open();doc.write(buildPDFHTML(pageCount));doc.close();
+  setTimeout(()=>{fr.contentWindow.focus();fr.contentWindow.print();setTimeout(()=>fr.remove(),2000)},300);
 }
 function currentProjectData(){
   return{
