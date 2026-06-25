@@ -181,6 +181,7 @@ input{font-family:inherit}
   <div class="tsep"></div>
   <button id="btnExp">📤 Export</button>
   <button id="btnImp">📥 Import</button>
+  <button id="btnXLSX">Excel</button>
   <button id="btnPDF">🖨 PDF</button>
 </div>
 <div id="main">
@@ -858,6 +859,7 @@ document.getElementById('btnRenProj').addEventListener('click',renameProject);
 document.getElementById('btnDelProj').addEventListener('click',deleteProject);
 document.getElementById('btnBackupAll').addEventListener('click',downloadAllProjects);
 document.getElementById('btnPDF').addEventListener('click',showPdfModal);
+document.getElementById('btnXLSX').addEventListener('click',exportXLSX);
 document.getElementById('btnAdd').addEventListener('click',()=>addTask());
 document.getElementById('btnMile').addEventListener('click',()=>addMile());
 document.getElementById('btnDel').addEventListener('click',deleteSelected);
@@ -943,6 +945,132 @@ function downloadJSON(data,name){
   let url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
   let a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ========== EXCEL EXPORT ==========
+function xlEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function xlCol(n){let s='';while(n>0){let m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26)}return s}
+function hex6(c,fb='FFFFFF'){c=String(c||'').trim();let m=c.match(/^#?([0-9a-f]{6})$/i);return(m?m[1]:fb).toUpperCase()}
+function cleanFileName(s){return cleanTitle(s).replace(/[\\/:*?"<>|]+/g,'_').slice(0,80)}
+function xlPeriods(rng){
+  let out=[],d;
+  if(res==='days'){
+    d=new Date(rng.mn);while(d<=rng.mx){let e=new Date(d);out.push({s:new Date(d),e,label:fd(d)});d.setDate(d.getDate()+1)}
+  }else if(res==='weeks'){
+    d=new Date(rng.mn);while(d<=rng.mx){let e=new Date(d);e.setDate(e.getDate()+6);out.push({s:new Date(d),e,label:'CW'+String(isoWk(d)).padStart(2,'0')});d.setDate(d.getDate()+7)}
+  }else if(res==='months'){
+    d=new Date(rng.mn.getFullYear(),rng.mn.getMonth(),1);while(d<=rng.mx){let e=new Date(d.getFullYear(),d.getMonth()+1,0);out.push({s:new Date(d),e,label:MN[d.getMonth()]+' '+String(d.getFullYear()).slice(-2)});d.setMonth(d.getMonth()+1)}
+  }else{
+    d=new Date(rng.mn);while(d<=rng.mx){let e=new Date(d.getFullYear(),d.getMonth()+3,0);out.push({s:new Date(d),e,label:'Q'+(Math.floor(d.getMonth()/3)+1)+' '+d.getFullYear()});d.setMonth(d.getMonth()+3)}
+  }
+  return out;
+}
+function buildXLSXBlob(){
+  let vis=visible(), rng=dateRange(), periods=xlPeriods(rng);
+  if(periods.length>16000)throw new Error('Timeline too wide for Excel. Change the view to Weeks, Months, or Quarters and export again.');
+  let rows=[], merges=[], styles=[], styleMap=new Map(), fills=['FFFFFF'], fillMap=new Map([['FFFFFF',0]]), fonts=[], fontMap=new Map(), borderId=1;
+  function fillId(color){let h=hex6(color);if(!fillMap.has(h)){fillMap.set(h,fills.length);fills.push(h)}return fillMap.get(h)}
+  function fontId(color,bold){let h=hex6(color,'1F2937'),k=h+'|'+(bold?1:0);if(!fontMap.has(k)){fontMap.set(k,fonts.length);fonts.push({color:h,bold:!!bold})}return fontMap.get(k)}
+  function style(o={}){
+    let k=[hex6(o.bg||'FFFFFF'),hex6(o.fc||'1F2937'),o.b?1:0,o.align||'',o.wrap?1:0].join('|');
+    if(!styleMap.has(k)){
+      styleMap.set(k,styles.length);
+      styles.push({fill:fillId(o.bg||'FFFFFF'),font:fontId(o.fc||'1F2937',o.b),align:o.align||'',wrap:!!o.wrap,border:borderId});
+    }
+    return styleMap.get(k);
+  }
+  let sTitle=style({bg:theme==='light'?'D9EAFA':'0D1E31',fc:theme==='light'?'18344D':'EEF8FF',b:true});
+  let sHead=style({bg:theme==='light'?'C4DBEF':'174A76',fc:theme==='light'?'18344D':'FFFFFF',b:true,align:'center'});
+  let sSub=style({bg:theme==='light'?'E8EEF6':'10263E',fc:theme==='light'?'4B647C':'A8C6DF',b:true,align:'center'});
+  let sCenter=style({align:'center'});
+  let sText=style({});
+  let sSummary=style({bg:'687386',fc:'FFFFFF',b:true});
+  let sMilestone=style({bg:'E0A030',fc:'FFFFFF',b:true,align:'center'});
+  let sDone=style({bg:'40B080'});
+  let sLate=style({bg:'E05050'});
+  let sRemain=style({bg:'303843'});
+  function fmtStyleId(t,cid){
+    let rf=fmt[t.id+'_row']||{},cf=fmt[t.id+'_'+cid]||{};
+    return style({bg:cf.bg||rf.bg||'FFFFFF',fc:cf.fc||rf.fc||'1F2937',b:!!(cf.b||rf.b),align:(cid==='id'||cid==='dur'||cid==='unit'||cid==='pct')?'center':''});
+  }
+  function c(r,col,val,st,typ){
+    let ref=xlCol(col)+r;
+    if(typ==='n')return`<c r="${ref}" s="${st||0}"><v>${Number(val)||0}</v></c>`;
+    return`<c r="${ref}" t="inlineStr" s="${st||0}"><is><t>${xlEsc(val)}</t></is></c>`;
+  }
+  let totalCols=9+periods.length, title=cleanTitle(document.getElementById('ptitle').value), exported=new Date().toISOString().slice(0,10);
+  merges.push(`A1:${xlCol(totalCols)}1`);
+  rows.push(`<row r="1" ht="24" customHeight="1">${c(1,1,title,sTitle)}</row>`);
+  rows.push(`<row r="2" ht="18" customHeight="1">${c(2,1,'Scale: '+res+' | Exported: '+exported+' | Range: '+fdi(rng.mn)+' to '+fdi(rng.mx),sSub)}</row>`);
+  let heads=['#','WBS','Task Name','Dur','Unit','Start','End','Pred','%'];
+  let rh=heads.map((h,i)=>c(3,i+1,h,sHead)).join('');
+  for(let i=0;i<periods.length;i++)rh+=c(3,10+i,periods[i].label,sHead);
+  rows.push(`<row r="3" ht="28" customHeight="1">${rh}</row>`);
+  let td=today();
+  for(let i=0;i<vis.length;i++){
+    let t=vis[i],idx=T.indexOf(t),r=4+i,sm=isSummary(t),cells='';
+    cells+=c(r,1,idx+1,fmtStyleId(t,'id'),'n');
+    cells+=c(r,2,t.wbs||'',fmtStyleId(t,'wbs'));
+    cells+=c(r,3,' '.repeat(t.indent*2)+(sm?'+ ':'')+(t.name||''),fmtStyleId(t,'name'));
+    cells+=c(r,4,sm?t.dur:(t.mile?0:t.dur),fmtStyleId(t,'dur'),'n');
+    cells+=c(r,5,t.unit==='cd'?'CD':'BD',fmtStyleId(t,'unit'));
+    cells+=c(r,6,fd(t.start),fmtStyleId(t,'start'));
+    cells+=c(r,7,fd(t.end),fmtStyleId(t,'end'));
+    cells+=c(r,8,t.pred||'',fmtStyleId(t,'pred'));
+    cells+=c(r,9,(t.pct||0)+'%',fmtStyleId(t,'pct'));
+    for(let p=0;p<periods.length;p++){
+      let pr=periods[p],barStyle=null,txt='';
+      if(t.start&&t.end&&t.start<=pr.e&&t.end>=pr.s){
+        if(t.mile||t.dur===0){barStyle=style({bg:t.color||'#e0a030',fc:'FFFFFF',b:true,align:'center'});txt='M'}
+        else if(sm){barStyle=sSummary}
+        else if(statusOn){
+          let dur=Math.max(1,daysBtw(t.start,t.end)+1),doneDays=Math.floor(dur*(t.pct||0)/100),doneEnd=new Date(t.start);doneEnd.setDate(doneEnd.getDate()+doneDays-1);
+          barStyle=pr.e<=doneEnd?sDone:(pr.s<td?sLate:sRemain);
+        }else barStyle=style({bg:t.color||'#4a9eff'});
+      }
+      cells+=barStyle!=null?c(r,10+p,txt,barStyle):c(r,10+p,'',sText);
+    }
+    rows.push(`<row r="${r}" ht="18" customHeight="1">${cells}</row>`);
+  }
+  let cols='<cols>';
+  [8,10,32,8,8,11,11,12,8].forEach((w,i)=>cols+=`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`);
+  if(periods.length)cols+=`<col min="10" max="${totalCols}" width="${res==='days'?4:res==='weeks'?7:10}" customWidth="1"/>`;
+  cols+='</cols>';
+  let sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="3" xSplit="9" topLeftCell="J4" activePane="bottomRight" state="frozen"/></sheetView></sheetViews>${cols}<sheetData>${rows.join('')}</sheetData><mergeCells count="${merges.length}">${merges.map(m=>`<mergeCell ref="${m}"/>`).join('')}</mergeCells><autoFilter ref="A3:${xlCol(totalCols)}${3+vis.length}"/></worksheet>`;
+  let fillsXml='<fills count="'+(fills.length+2)+'"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'+fills.map(f=>`<fill><patternFill patternType="solid"><fgColor rgb="FF${f}"/><bgColor indexed="64"/></patternFill></fill>`).join('')+'</fills>';
+  let fontsXml='<fonts count="'+fonts.length+'">'+fonts.map(f=>`<font>${f.bold?'<b/>':''}<sz val="10"/><color rgb="FF${f.color}"/><name val="Segoe UI"/></font>`).join('')+'</fonts>';
+  let xfs='<cellXfs count="'+styles.length+'">'+styles.map(s=>`<xf numFmtId="0" fontId="${s.font}" fillId="${s.fill+2}" borderId="${s.border}" xfId="0" applyFill="1" applyBorder="1" applyFont="1"${s.align||s.wrap?' applyAlignment="1"':''}>${s.align||s.wrap?`<alignment${s.align?' horizontal="'+s.align+'"':''}${s.wrap?' wrapText="1"':''}/>`:''}</xf>`).join('')+'</cellXfs>';
+  let styleXml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${fontsXml}${fillsXml}<borders count="2"><border/><border><left style="thin"><color rgb="FFD8DDE6"/></left><right style="thin"><color rgb="FFD8DDE6"/></right><top style="thin"><color rgb="FFD8DDE6"/></top><bottom style="thin"><color rgb="FFD8DDE6"/></bottom></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>${xfs}<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+  let files={
+    '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+    '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+    'xl/workbook.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Schedule" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+    'xl/worksheets/sheet1.xml':sheet,
+    'xl/styles.xml':styleXml
+  };
+  return zipBlob(files);
+}
+function crc32(bytes){let c=~0;for(let b of bytes){c^=b;for(let k=0;k<8;k++)c=(c>>>1)^(0xEDB88320&-(c&1))}return~c>>>0}
+function zipBlob(files){
+  let enc=new TextEncoder(),parts=[],central=[],offset=0,dt=new Date(),time=(dt.getHours()<<11)|(dt.getMinutes()<<5)|(dt.getSeconds()/2),date=((dt.getFullYear()-1980)<<9)|((dt.getMonth()+1)<<5)|dt.getDate();
+  function u16(n){return new Uint8Array([n&255,n>>8&255])}function u32(n){return new Uint8Array([n&255,n>>8&255,n>>16&255,n>>24&255])}
+  for(let name in files){
+    let nb=enc.encode(name),db=enc.encode(files[name]),crc=crc32(db),head=[u32(0x04034b50),u16(20),u16(0),u16(0),u16(time),u16(date),u32(crc),u32(db.length),u32(db.length),u16(nb.length),u16(0),nb],localLen=head.reduce((a,b)=>a+b.length,0);
+    parts.push(...head,db);
+    central.push(u32(0x02014b50),u16(20),u16(20),u16(0),u16(0),u16(time),u16(date),u32(crc),u32(db.length),u32(db.length),u16(nb.length),u16(0),u16(0),u16(0),u16(0),u32(0),u32(offset),nb);
+    offset+=localLen+db.length;
+  }
+  let centralSize=central.reduce((a,b)=>a+b.length,0),end=[u32(0x06054b50),u16(0),u16(0),u16(Object.keys(files).length),u16(Object.keys(files).length),u32(centralSize),u32(offset),u16(0)];
+  return new Blob([...parts,...central,...end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+function exportXLSX(){
+  try{
+    save();
+    let blob=buildXLSXBlob(),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=cleanFileName(document.getElementById('ptitle').value)+'.xlsx';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){alert('Excel export error: '+e.message)}
 }
 function fmtStyle(f){
   if(!f)return'';
