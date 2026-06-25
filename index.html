@@ -53,8 +53,8 @@ input{font-family:inherit}
 #gpanel{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg0);min-width:100px}
 
 /* === TABLE === */
-#thead{display:flex;background:var(--head-bg);border-bottom:1px solid var(--head-border);flex-shrink:0;position:relative;overflow:hidden}
-.thc{display:flex;align-items:center;justify-content:center;height:44px;font-size:10px;font-weight:700;color:var(--head-text);text-transform:uppercase;letter-spacing:.4px;border-right:1px solid var(--head-border);position:relative;flex-shrink:0;overflow:hidden;background:linear-gradient(180deg,var(--head-grad1),var(--head-grad2))}
+#thead{display:flex;background:var(--head-bg);border-bottom:1px solid var(--head-border);flex-shrink:0;position:relative;overflow:hidden;height:44px}
+.thc{display:flex;align-items:center;justify-content:center;height:100%;font-size:10px;font-weight:700;color:var(--head-text);text-transform:uppercase;letter-spacing:.4px;border-right:1px solid var(--head-border);position:relative;flex-shrink:0;overflow:hidden;background:linear-gradient(180deg,var(--head-grad1),var(--head-grad2))}
 .thc .resize-handle{position:absolute;right:-2px;top:0;width:5px;height:100%;cursor:col-resize;z-index:5}
 .thc .resize-handle:hover{background:var(--accent)}
 #tbody{flex:1;overflow:auto}
@@ -62,10 +62,10 @@ input{font-family:inherit}
 #tbody::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px}
 #tbody::-webkit-scrollbar-track{background:var(--bg0)}
 
-.tr{display:flex;border-bottom:1px solid var(--row-border);cursor:pointer;min-height:var(--row-h);align-items:stretch}
+.tr{display:flex;border-bottom:1px solid var(--row-border);cursor:pointer;height:var(--row-h);min-height:var(--row-h);align-items:stretch}
 .tr:hover{background:var(--bg3)}
 .tr.sel{background:var(--row-sel)}
-.tc{display:flex;align-items:center;padding:0 4px;border-right:1px solid var(--cell-border);flex-shrink:0;min-height:var(--row-h);overflow:hidden;font-size:12px;position:relative}
+.tc{display:flex;align-items:center;padding:0 4px;border-right:1px solid var(--cell-border);flex-shrink:0;height:100%;min-height:0;overflow:hidden;font-size:12px;position:relative}
 .tc.ed:hover{background:var(--edit-hover)}
 
 .tc .cv{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;pointer-events:none}
