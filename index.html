@@ -298,7 +298,44 @@ function schedule(){
   summaryDates();
 }
 
-function criticalPath(){let cp=new Set();if(!cpOn||!T.length)return cp;let pe=T.reduce((m,t)=>t.end&&t.end>m?t.end:m,new Date(0));function trace(t){cp.add(t.id);let ps=parsePred(t.pred);for(let p of ps){let pt=T[p.n-1];if(pt&&!cp.has(pt.id))trace(pt)}}for(let t of T){if(!isSummary(t)&&t.end&&t.end.getTime()===pe.getTime())trace(t)}return cp}
+function criticalPath(){
+  let cp=new Set();if(!cpOn||!T.length)return cp;
+  let work=T.map((t,i)=>({t,i,ls:null,le:null,succ:[]})).filter(x=>!isSummary(x.t)&&x.t.start&&x.t.end);
+  if(!work.length)return cp;
+  let byIdx=new Map(work.map(x=>[x.i,x]));
+  function addDays(d,n){let x=new Date(d);x.setDate(x.getDate()+n);return x}
+  function latestWork(d,t){let x=new Date(d);if(t.unit==='bd')while(isWE(x))x.setDate(x.getDate()-1);return x}
+  function minD(a,b){return !a||b<a?new Date(b):a}
+  function setLS(n,d){if(!d)return false;d=latestWork(d,n.t);let od=n.ls?+n.ls:null;n.ls=minD(n.ls,d);let e=n.t.mile||n.t.dur===0?new Date(n.ls):endD(n.ls,n.t.dur||1,n.t.unit);n.le=minD(n.le,e);return od!==+n.ls}
+  function setLE(n,d){if(!d)return false;d=latestWork(d,n.t);let od=n.le?+n.le:null;n.le=minD(n.le,d);let s=n.t.mile||n.t.dur===0?new Date(n.le):startD(n.le,n.t.dur||1,n.t.unit);n.ls=minD(n.ls,s);return od!==+n.le}
+  for(let si=0;si<T.length;si++){
+    for(let p of parsePred(T[si].pred)){
+      let pr=byIdx.get(p.n-1),su=byIdx.get(si);
+      if(pr&&su)pr.succ.push({su,ty:p.ty,lag:p.lag||0});
+    }
+  }
+  let pe=work.reduce((m,n)=>n.t.end&&n.t.end>m?n.t.end:m,new Date(0));
+  for(let n of work)setLE(n,pe);
+  for(let pass=0;pass<work.length*3;pass++){
+    let changed=false;
+    for(let n of work){
+      for(let e of n.succ){
+        let su=e.su;
+        if(e.ty==='FS'&&su.ls)changed=setLE(n,addDays(su.ls,-1-e.lag))||changed;
+        else if(e.ty==='SS'&&su.ls)changed=setLS(n,addDays(su.ls,-e.lag))||changed;
+        else if(e.ty==='FF'&&su.le)changed=setLE(n,addDays(su.le,-e.lag))||changed;
+        else if(e.ty==='SF'&&su.le)changed=setLS(n,addDays(su.le,-e.lag))||changed;
+      }
+    }
+    if(!changed)break;
+  }
+  for(let n of work){
+    let slack=Math.max(daysBtw(n.t.start,n.ls||n.t.start),daysBtw(n.t.end,n.le||n.t.end));
+    if(slack<=0)cp.add(n.t.id);
+  }
+  for(let t of T)if(isSummary(t)&&descendants(t).some(d=>cp.has(d.id)))cp.add(t.id);
+  return cp;
+}
 
 // ========== UNDO ==========
 function snap(){undo.push(JSON.stringify(T.map(t=>({...t,start:fdi(t.start),end:fdi(t.end)}))));if(undo.length>40)undo.shift()}
