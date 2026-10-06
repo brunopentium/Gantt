@@ -47,6 +47,43 @@ window.ActionPlans=(()=>{
   function linkedHTML(link){const t=task(link);return t?`<button class="ap-link" data-open-project="${esc(link.projectId)}" data-open-task="${esc(link.taskId)}">↗ ${esc(t.projectTitle)} · ${esc(t.taskName)}</button>`:link?'<span class="ap-orphan">Vínculo indisponível — datas locais preservadas</span>':''}
   function late(a){const now=new Date(),day=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');return a.end&&a.end<day&&a.status!=='done'}
   function badge(a){return `<span class="ap-badge ${a.status}">${statuses[a.status]}</span>${late(a)?' <span class="ap-late">Atrasada</span>':''}`}
+  function field(a,name,label){return `<button class="ap-inline" data-field="${name}" data-action="${esc(a.id)}" aria-label="Alterar ${name==='owner'?'responsável':name==='end'?'término':'status'} de ${esc(a.title)}" title="Clique para alterar">${label}</button>`}
+  function inlineEdit(a,name){
+    api.flush();sync();const t=task(a.link);
+    if(name==='end'&&t&&(t.summary||(t.mile&&t.pred))){notice=t.summary?'O término desta linha é calculado pelas subtarefas.':'A data deste marco segue as dependências do cronograma.';refresh();return}
+    const title={owner:'Responsável',end:'Término',status:'Status'}[name];
+    const m=modal(title,'<div id="apInlineOptions"></div>');m.classList.add('ap-inline-dialog');
+    const options=m.querySelector('#apInlineOptions'),error=m.querySelector('#apError');
+    function apply(value){
+      try{
+        if(name==='end'&&(!date(value)||(t&&!value)))throw new Error('Selecione uma data válida.');
+        const start=t?.mile?value:a.start;
+        if(name==='end'&&start&&value&&value<start)throw new Error('O término deve ser igual ou posterior ao início.');
+        if(a[name]===value){closePopups();return}
+        const changed=name==='end'&&t;
+        // Update the scheduler first: a rejected date must not create an undo entry.
+        const previous=changed?{link:a.link,dates:{start:t.start,end:t.end}}:null;
+        if(changed)api.updateTask(a.link.projectId,a.link.taskId,{start,end:value});
+        checkpoint(previous);a[name]=value;const actual=task(a.link);
+        notice=changed&&actual.end!==value?'Data ajustada pelas regras do cronograma.':'';
+        if(changed){a.start=actual.start;a.end=actual.end}
+        closePopups();save();document.querySelector(`[data-action="${a.id}"][data-field="${name}"]`)?.focus();
+      }catch(e){error.textContent=e.message}
+    }
+    function choice(label,value){const b=document.createElement('button');b.type='button';b.className='ap-choice';b.textContent=label;b.setAttribute('aria-pressed',String(a[name]===value));b.onclick=()=>apply(value);options.append(b)}
+    if(name==='status'){for(const [key,label]of Object.entries(statuses))choice(label,key);m.querySelector('button[type=submit]').hidden=true}
+    if(name==='owner'){
+      choice('Sem responsável','');
+      for(const owner of [...new Set(current().actions.map(x=>x.owner.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')))choice(owner,owner);
+      options.insertAdjacentHTML('beforeend','<label>Adicionar novo responsável<input id="apInlineOwner" maxlength="200" placeholder="Nome do responsável" autocomplete="off"></label>');
+      m.querySelector('form').onsubmit=e=>{e.preventDefault();const value=m.querySelector('input').value.trim();if(!value){error.textContent='Informe o nome ou escolha um responsável acima.';return}apply(value)};
+    }
+    if(name==='end'){
+      options.insertAdjacentHTML('beforeend',`<label>Selecione a data<input id="apInlineEnd" type="date" value="${esc(a.end)}" ${t?'required':''} ${a.start&&!t?.mile?`min="${esc(a.start)}"`:''}></label>`);
+      const input=m.querySelector('input');input.onchange=()=>apply(input.value);m.querySelector('form').onsubmit=e=>{e.preventDefault();apply(input.value)};input.focus();try{input.showPicker()}catch(e){/* The date input remains available in unsupported browsers. */}
+    }else m.querySelector('input, .ap-choice')?.focus();
+    m.onkeydown=e=>{if(e.key==='Escape'){e.preventDefault();closePopups()}};
+  }
   function buttons(a){return `<button data-edit="${esc(a.id)}">Editar</button> <button data-copy="${esc(a.id)}">Duplicar</button> <button class="del" data-delete="${esc(a.id)}">Excluir</button>`}
   function refresh(){
     if(!api||!shown)return;document.documentElement.dataset.theme=planTheme||api.getTheme();document.getElementById('apUndo').disabled=!undo.length;sync();const panel=document.getElementById('actionPanel'),p=current();
@@ -59,8 +96,9 @@ window.ActionPlans=(()=>{
     panel.querySelector('#apAddAction').onclick=()=>editAction();
     panel.querySelector('#apTable').onclick=()=>{view='table';refresh()};panel.querySelector('#apCards').onclick=()=>{view='cards';refresh()};
     if(!p.actions.length)panel.insertAdjacentHTML('beforeend','<div class="ap-empty">Este plano ainda não tem ações. Clique em <strong>＋ Nova ação</strong> para começar.</div>');
-    else if(view==='table')panel.insertAdjacentHTML('beforeend',`<div class="ap-table-wrap"><table class="ap-table"><thead><tr><th>Ação / vínculo</th><th>Responsável</th><th>Início</th><th>Término</th><th>Status</th><th>Opções</th></tr></thead><tbody>${p.actions.map(a=>`<tr data-action-id="${esc(a.id)}"><td><div class="ap-title">${esc(a.title)}</div>${linkedHTML(a.link)}${a.notes?`<div class="ap-note">${esc(a.notes)}</div>`:''}</td><td>${esc(a.owner)||'—'}</td><td>${format(a.start)}</td><td>${format(a.end)}</td><td>${badge(a)}</td><td>${buttons(a)}</td></tr>`).join('')}</tbody></table></div>`);
-    else panel.insertAdjacentHTML('beforeend',`<div class="ap-cards">${p.actions.map(a=>`<article class="ap-card" data-action-id="${esc(a.id)}"><div>${badge(a)}</div><div class="ap-title">${esc(a.title)}</div>${linkedHTML(a.link)}<div class="ap-meta"><span>Responsável: ${esc(a.owner)||'—'}</span></div><div class="ap-meta"><span>Início: ${format(a.start)}</span><span>Término: ${format(a.end)}</span></div>${a.notes?`<div class="ap-note">${esc(a.notes)}</div>`:''}<div class="ap-card-footer">${buttons(a)}</div></article>`).join('')}</div>`);
+    else if(view==='table')panel.insertAdjacentHTML('beforeend',`<div class="ap-table-wrap"><table class="ap-table"><thead><tr><th>Ação / vínculo</th><th>Responsável</th><th>Início</th><th>Término</th><th>Status</th><th>Opções</th></tr></thead><tbody>${p.actions.map(a=>`<tr data-action-id="${esc(a.id)}"><td><div class="ap-title">${esc(a.title)}</div>${linkedHTML(a.link)}${a.notes?`<div class="ap-note">${esc(a.notes)}</div>`:''}</td><td>${field(a,'owner',esc(a.owner)||'—')}</td><td>${format(a.start)}</td><td>${field(a,'end',format(a.end))}</td><td>${field(a,'status',badge(a))}</td><td>${buttons(a)}</td></tr>`).join('')}</tbody></table></div>`);
+    else panel.insertAdjacentHTML('beforeend',`<div class="ap-cards">${p.actions.map(a=>`<article class="ap-card" data-action-id="${esc(a.id)}"><div>${field(a,'status',badge(a))}</div><div class="ap-title">${esc(a.title)}</div>${linkedHTML(a.link)}<div class="ap-meta"><span>Responsável: ${field(a,'owner',esc(a.owner)||'—')}</span></div><div class="ap-meta"><span>Início: ${format(a.start)}</span><span>Término: ${field(a,'end',format(a.end))}</span></div>${a.notes?`<div class="ap-note">${esc(a.notes)}</div>`:''}<div class="ap-card-footer">${buttons(a)}</div></article>`).join('')}</div>`);
+    panel.querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>inlineEdit(p.actions.find(a=>a.id===b.dataset.action),b.dataset.field));
     panel.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editAction(p.actions.find(a=>a.id===b.dataset.edit)));
     panel.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{const a=p.actions.find(a=>a.id===b.dataset.copy);checkpoint();p.actions.push({...JSON.parse(JSON.stringify(a)),id:id(),title:a.title+' — cópia'});save()});
     panel.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{if(confirm('Excluir esta ação? A tarefa vinculada no cronograma será mantida.')){checkpoint();p.actions=p.actions.filter(a=>a.id!==b.dataset.delete);save()}});

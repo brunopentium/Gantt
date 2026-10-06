@@ -40,3 +40,10 @@
 #actionPanel .ap-title{font-size:calc(13px * var(--ap-zoom,1))}
 #actionPanel .ap-table td,#actionPanel .ap-meta{font-size:calc(12px * var(--ap-zoom,1))}
 [data-ap-notes="hidden"] .ap-note{display:none}
+
+#actionPanel .ap-inline{background:transparent;border:1px solid transparent;color:inherit;font:inherit;padding:5px 7px;border-radius:5px;cursor:pointer;text-align:left;min-height:32px}
+#actionPanel .ap-inline:hover,#actionPanel .ap-inline:focus-visible{background:var(--bg0);border-color:var(--border)}
+.ap-inline-dialog{width:min(360px,94vw)}
+#apInlineOptions{display:grid;gap:7px;max-height:55vh;overflow:auto}
+.ap-choice{text-align:left;padding:10px;white-space:normal;overflow-wrap:anywhere}
+.ap-choice[aria-pressed="true"]{border-color:var(--accent);font-weight:700}
