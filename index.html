@@ -160,6 +160,8 @@ input{font-family:inherit}
   <button id="btnRenProj">✎</button>
   <button id="btnDelProj" class="del">✕</button>
   <button id="btnBackupAll">💾 All</button>
+  <button id="btnCloudBackup">☁ GitHub</button>
+  <span id="cloudBackupStatus" role="status" aria-live="polite" style="font-size:10px;max-width:260px"></span>
   <div class="tsep"></div>
   <button id="btnAdd">＋ Task</button>
   <button id="btnMile">◆ Mile</button>
@@ -198,6 +200,7 @@ input{font-family:inherit}
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
+<script src="github-backup.js"></script>
 <script>
 // ========== STATE ==========
 let T=[], sel=new Set(), lastSel=null, undo=[], fmt={}, cpOn=false, labelsOn=true, statusOn=false, theme='dark', res='weeks', cw=36;
@@ -1210,6 +1213,7 @@ function normalizeProject(p){
 }
 function saveStore(){
   try{localStorage.setItem(STORE_KEY,JSON.stringify({version:1,activeProjectId,projects}))}catch(e){}
+  window.GanttBackup?.changed();
 }
 function save(){
   if(!activeProjectId)return;
@@ -1352,6 +1356,15 @@ function init(){
   recalc();render();
 }
 init();
+window.GanttBackup.init({
+  snapshot:()=>({version:1,activeProjectId,projects:JSON.parse(JSON.stringify(projects))}),
+  restore:d=>{
+    projects=d.projects.map(normalizeProject);
+    activeProjectId=projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:projects[0].id;
+    loadProject(activeProjectId,true);saveStore();
+  },
+  localBackup:downloadAllProjects
+});
 </script>
 </body>
 </html>

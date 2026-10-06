@@ -1,0 +1,6 @@
+{
+  "name": "projectflow-gantt",
+  "private": true,
+  "scripts": { "test": "node tests/github-backup.cjs" },
+  "devDependencies": { "playwright": "1.62.1" }
+}
