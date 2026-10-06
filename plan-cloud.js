@@ -2,7 +2,7 @@
 window.PlanCloud=(()=>{
   'use strict';
   const ROOT='pf_github_backup_v1',TOKEN=ROOT+'_token',KEY='pf_github_action_plans_v1',PATH='backups/planos-de-acao.json';
-  let api,meta={},busy=false,ready=false,last='',startup='';
+  let api,meta={},busy=false,ready=false,last='',startup='',legacyDirty=false;
   const read=(store,key,fallback)=>{try{return JSON.parse(store.getItem(key))||fallback}catch{return fallback}};
   const connection=()=>({...read(localStorage,ROOT,{}),token:read(localStorage,TOKEN,'')||read(sessionStorage,TOKEN,'')});
   const status=text=>document.getElementById('apCloudStatus').textContent=text;
@@ -35,7 +35,7 @@ window.PlanCloud=(()=>{
     try{
       await repository();const remote=await request(path(),{allowMissing:true});
       if(!remote){if(meta.sha)throw new Error('O arquivo remoto foi removido; os planos locais foram mantidos.');ready=true;status('Conectado — clique em 💾 Salvar para criar a primeira versão dos planos');return}
-      const d=decode(remote);validate(d);const dirty=meta.fingerprint&&(initial?startup:fingerprint())!==meta.fingerprint;
+      const d=decode(remote);validate(d);const dirty=meta.fingerprint?(initial?startup:fingerprint())!==meta.fingerprint:(initial&&legacyDirty);
       if((prompt||dirty)&&!confirm('Abrir a última versão dos planos e substituir os planos locais? Uma cópia local será baixada antes. As datas das ações vinculadas serão aplicadas às tarefas correspondentes.')){status('Planos locais mantidos; abra a última versão para conectar');return}
       if(prompt||dirty)api.localBackup();api.restore(d,!window.GanttBackup.remoteTime()||!d.exportedAt||d.exportedAt>=window.GanttBackup.remoteTime());window.GanttBackup.acknowledgePlans();meta.sha=remote.sha;last=fingerprint();meta.fingerprint=last;persist();ready=true;status('Última versão dos planos aberta');
     }catch(e){status('Planos locais mantidos: '+e.message)}finally{busy=false;lock(false)}
@@ -79,7 +79,7 @@ window.PlanCloud=(()=>{
     f('apConnect').onclick=()=>{const repo=f('apRepo').value.trim(),token=f('apToken').value.trim();if(!/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9_.-]+$/.test(repo)||!token){status('Informe repositório e token válidos');return}const old=read(localStorage,ROOT,{});localStorage.setItem(ROOT,JSON.stringify({...old,...(old.repo===repo?{}:{sha:null,branch:null,fingerprint:null,coveredFingerprint:null,remoteTime:null}),repo,enabled:true}));localStorage.removeItem(TOKEN);sessionStorage.removeItem(TOKEN);(f('apRemember').checked?localStorage:sessionStorage).setItem(TOKEN,JSON.stringify(token));if(meta.repo!==repo)meta={repo};meta.enabled=true;ready=false;persist();closePopups();latest(true)};
     f('apDisconnect').onclick=()=>{meta.enabled=false;ready=false;persist();closePopups();status('Planos desconectados do GitHub')};f('apCancelCloud').onclick=closePopups;ov.onclick=closePopups;
   }
-  function init(adapter){api=adapter;meta=read(localStorage,KEY,{});last=meta.fingerprint||(adapter.snapshot().actionPlans.length?'':fingerprint());startup=fingerprint();document.getElementById('apCloudSave').onclick=()=>save();document.getElementById('apCloudHistory').onclick=()=>history();document.getElementById('apCloudSettings').onclick=settings;status('GitHub dos planos aguardando conexão');window.addEventListener('beforeunload',e=>{if(connection().token&&meta.enabled!==false&&fingerprint()!==last){e.preventDefault();e.returnValue=''}})}
+  function init(adapter){api=adapter;meta=read(localStorage,KEY,{});last=meta.fingerprint||(adapter.snapshot().actionPlans.length?'':fingerprint());startup=fingerprint();try{const old=connection().fingerprint?JSON.parse(connection().fingerprint):null;legacyDirty=Array.isArray(old?.actionPlans)?JSON.stringify(old.actionPlans)!==JSON.stringify(adapter.snapshot().actionPlans):adapter.snapshot().actionPlans.length>0}catch{legacyDirty=true}document.getElementById('apCloudSave').onclick=()=>save();document.getElementById('apCloudHistory').onclick=()=>history();document.getElementById('apCloudSettings').onclick=settings;status('GitHub dos planos aguardando conexão');window.addEventListener('beforeunload',e=>{if(connection().token&&meta.enabled!==false&&fingerprint()!==last){e.preventDefault();e.returnValue=''}})}
   function start(){const c=connection();if(c.repo&&c.token&&c.enabled&&meta.enabled!==false)return latest(false,true);status('GitHub dos planos desconectado')}
   return {init,start,changed};
 })();

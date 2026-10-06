@@ -219,7 +219,7 @@ input{font-family:inherit}
 <script>
 // ========== STATE ==========
 let T=[], sel=new Set(), lastSel=null, undo=[], fmt={}, cpOn=false, labelsOn=true, statusOn=false, theme='dark', res='weeks', cw=36;
-let projects=[], activeProjectId=null;
+let projects=[], activeProjectId=null,hasLocalPlanState=false;
 const STORE_KEY='pf_projects_v1', LEGACY_KEY='pf2';
 const RH=30;
 const COLS=[
@@ -1248,6 +1248,7 @@ function load(){
     let s=localStorage.getItem(STORE_KEY);
     if(s){
       let d=JSON.parse(s);
+      hasLocalPlanState=Object.hasOwn(d,'actionPlans');
       window.ActionPlans?.load(d.actionPlans||[]);
       projects=(d.projects||[]).map(normalizeProject);
       activeProjectId=d.activeProjectId&&projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:(projects[0]&&projects[0].id);
@@ -1411,13 +1412,17 @@ window.ActionPlans.init({
   selectedTask:()=>{const id=[...sel][0]||lastSel;return id?{projectId:activeProjectId,taskId:id}:null},
   openTask:(projectId,taskId)=>{switchProject(projectId);sel.clear();sel.add(taskId);lastSel=taskId;render();setTimeout(()=>document.querySelector('.tr.sel')?.scrollIntoView({block:'center'}),0)}
 });
-let planScopeInitialized=false;
+let planScopeInitialized=false,legacyPlansMayLoad=!hasLocalPlanState;
+try{const stored=JSON.parse(localStorage.getItem('pf_github_backup_v1')||'{}'),prior=stored.fingerprint?JSON.parse(stored.fingerprint):null;
+  if(hasLocalPlanState&&prior&&Array.isArray(prior.actionPlans))legacyPlansMayLoad=JSON.stringify(prior.actionPlans)===JSON.stringify(window.ActionPlans.exportData());
+  if(JSON.parse(localStorage.getItem('pf_github_action_plans_v1')||'{}').repo)legacyPlansMayLoad=false;
+}catch{}
 window.PlanCloud.init({snapshot:()=>({version:1,type:'action-plans',actionPlans:window.ActionPlans.exportData()}),restore:(d,applyDates)=>window.ActionPlans.restoreData(d.actionPlans,applyDates),flush:()=>{commitEdit();save()},localBackup:()=>window.ActionPlans.backup()});
 Promise.resolve(window.GanttBackup.init({
   flush:()=>{commitEdit();save()},
   snapshot:()=>JSON.parse(JSON.stringify({version:1,activeProjectId,projects})),
   restore:d=>{
-    if(!planScopeInitialized&&d.actionPlans?.length&&!window.ActionPlans.exportData().length)window.ActionPlans.load(d.actionPlans);
+    if(!planScopeInitialized&&legacyPlansMayLoad&&Array.isArray(d.actionPlans))window.ActionPlans.load(d.actionPlans);
     projects=d.projects.map(normalizeProject);
     activeProjectId=projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:projects[0].id;
     loadProject(activeProjectId,true);saveStore();

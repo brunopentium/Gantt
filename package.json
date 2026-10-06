@@ -1,6 +1,6 @@
 {
   "name": "projectflow-gantt",
   "private": true,
-  "scripts": { "test": "node tests/github-backup.cjs && node tests/action-plans.cjs && node tests/plan-controls.cjs" },
+  "scripts": { "test": "node tests/github-backup.cjs && node tests/action-plans.cjs && node tests/plan-controls.cjs && node tests/plan-migration.cjs" },
   "devDependencies": { "playwright": "1.62.1" }
 }

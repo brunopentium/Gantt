@@ -22,7 +22,7 @@ A barra da guia tem **💾 Salvar**, **Histórico**, **☁ GitHub**, **Backup do
 - **Histórico dos planos:** restaura somente os planos como uma nova versão e baixa uma cópia local antes. Tarefas vinculadas podem receber as datas restauradas; nomes, hierarquia e tarefas sem vínculo são mantidos. **Histórico anterior** permite recuperar apenas os planos de versões antigas que eram salvas junto com os cronogramas.
 - **Desfazer:** mantém até 50 alterações dos planos na sessão, incluindo as datas vinculadas alteradas por uma edição de ação. Importações e duplicações também podem ser desfeitas.
 
-Na reabertura, o app carrega as duas versões separadamente. Para datas compartilhadas, o salvamento mais recente entre cronogramas e planos prevalece, respeitando dependências, resumos e dias úteis. Datas de tarefas já salvas pelos planos não geram um aviso falso de alterações pendentes no Gantt; alterações não relacionadas continuam protegidas. Excluir ou importar planos não substitui os cronogramas, e importar/restaurar cronogramas mantém os planos.
+Na migração do formato anterior, planos locais não salvos (inclusive exclusões) são preservados; a versão anterior remota é adotada automaticamente apenas quando a cópia local estava salva. Na reabertura, o app carrega as duas versões separadamente. Para datas compartilhadas, o salvamento mais recente entre cronogramas e planos prevalece, respeitando dependências, resumos e dias úteis. Datas de tarefas já salvas pelos planos não geram um aviso falso de alterações pendentes no Gantt; alterações não relacionadas continuam protegidas. Excluir ou importar planos não substitui os cronogramas, e importar/restaurar cronogramas mantém os planos.
 
 ### Excel e PDF dos planos
 
