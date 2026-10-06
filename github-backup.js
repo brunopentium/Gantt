@@ -2,15 +2,16 @@
 window.GanttBackup = (() => {
   'use strict';
   const KEY='pf_github_backup_v1', TOKEN_KEY=KEY+'_token', PATH='backups/cronogramas.json';
-  let api, config={}, token='', busy=false, ready=false, restoring=false, lastContent='';
+  let api, config={}, token='', busy=false, ready=false, restoring=false, lastContent='',covered='',pendingCover='';
   function read(store,key,fallback){try{return JSON.parse(store.getItem(key))||fallback}catch{return fallback}}
   function persist(){localStorage.setItem(KEY,JSON.stringify(config))}
   function status(message){document.getElementById('cloudBackupStatus').textContent=message}
   function content(){return JSON.stringify(api.snapshot(),(k,v)=>k==='updatedAt'?undefined:v)}
-  function credentials(){return config.repo&&token&&config.enabled}
+  function syncConnection(){const stored=read(localStorage,KEY,{});if(stored.repo!==config.repo){config=stored;ready=false;lastContent=config.fingerprint||'';covered=config.coveredFingerprint||'';pendingCover=''}else config.enabled=stored.enabled}
+  function credentials(){syncConnection();token=read(localStorage,TOKEN_KEY,'')||read(sessionStorage,TOKEN_KEY,'');return config.repo&&token&&config.enabled}
   function changed(){
     if(!api||restoring)return;
-    if(credentials()&&content()!==lastContent)status('Alterações locais — clique em 💾 Salvar');
+    if(credentials()&&content()!==lastContent)status(content()===covered?'Datas vinculadas salvas nos planos':'Alterações locais — clique em 💾 Salvar');
   }
   function guard(){
     if(busy){status('Aguarde a operação em andamento');return false}
@@ -64,7 +65,7 @@ window.GanttBackup = (() => {
         content:encode(JSON.stringify({...snapshot,exportedAt:new Date().toISOString()},null,2)),
         ...(remote?{sha:remote.sha}:{})
       })});
-      config.sha=result.content.sha;config.lastSaved=new Date().toISOString();
+      config.sha=result.content.sha;config.lastSaved=new Date().toISOString();config.remoteTime=config.lastSaved;covered='';pendingCover='';delete config.coveredFingerprint;
       lastContent=fingerprint;config.fingerprint=lastContent;persist();
       status(content()===lastContent?'Salvo no GitHub às '+new Date(config.lastSaved).toLocaleTimeString():'Versão salva; há novas alterações locais — clique em 💾 Salvar');
     }catch(error){status('Não salvo no GitHub: '+(error.name==='AbortError'?'tempo de conexão esgotado.':error.message))}
@@ -103,12 +104,12 @@ window.GanttBackup = (() => {
         ready=true;status('Repositório conectado — clique em 💾 Salvar para criar a primeira versão');return;
       }
       const data=JSON.parse(decode(remote.content));validate(data);
-      const dirty=config.fingerprint&&content()!==config.fingerprint;
+      const dirty=config.fingerprint&&content()!==config.fingerprint&&content()!==covered;
       if((prompt||dirty)&&!window.confirm('Abrir a última versão salva no GitHub e substituir os cronogramas locais? Uma cópia local será baixada antes.')){
         status('Dados locais mantidos; abra a última versão para conectar');return;
       }
       if(prompt||dirty)api.localBackup();
-      apply(data);config.sha=remote.sha;lastContent=content();config.fingerprint=lastContent;persist();
+      apply(data);config.sha=remote.sha;config.remoteTime=data.exportedAt||null;covered='';pendingCover='';delete config.coveredFingerprint;lastContent=content();config.fingerprint=lastContent;persist();
       ready=true;status('Última versão do GitHub aberta');
     }catch(error){status('Não foi possível abrir o GitHub; dados locais mantidos: '+error.message)}
     finally{busy=false;lock(false)}
@@ -191,15 +192,19 @@ window.GanttBackup = (() => {
   function init(adapter){
     api=adapter;config=read(localStorage,KEY,{});token=read(localStorage,TOKEN_KEY,'')||read(sessionStorage,TOKEN_KEY,'');
     if(config.fingerprint&&window.ActionPlans){
-      try{const previous=JSON.parse(config.fingerprint);if(!Object.hasOwn(previous,'actionPlans')){previous.actionPlans=[];config.fingerprint=JSON.stringify(previous);persist()}}catch{}
+      try{const previous=JSON.parse(config.fingerprint);if(Object.hasOwn(previous,'actionPlans')){delete previous.actionPlans;config.fingerprint=JSON.stringify(previous);persist()}}catch{}
     }
-    lastContent=config.fingerprint||'';
+    lastContent=config.fingerprint||'';covered=config.coveredFingerprint||'';
     document.getElementById('btnCloudBackup').onclick=settings;
     document.getElementById('btnCloudSave').onclick=()=>backup();
     document.getElementById('btnCloudHistory').onclick=history;
     status(config.enabled?(token?'Abrindo GitHub…':'Informe o token para abrir a última versão'):'GitHub desconectado');
-    if(credentials())latest();
-    window.addEventListener('beforeunload',event=>{if(credentials()&&content()!==lastContent){event.preventDefault();event.returnValue=''}});
+    const started=credentials()?latest():Promise.resolve();
+    window.addEventListener('beforeunload',event=>{if(credentials()&&content()!==lastContent&&content()!==covered){event.preventDefault();event.returnValue=''}});
+    return started;
   }
-  return {init,changed};
+  function planEditStart(){syncConnection();const c=content();return c===lastContent||c===covered||c===pendingCover}
+  function planEditComplete(eligible){if(eligible)pendingCover=content()}
+  function acknowledgePlans(){if(pendingCover&&pendingCover===content()){covered=pendingCover;config.coveredFingerprint=covered;pendingCover='';persist();changed()}}
+  return {init,changed,planEditStart,planEditComplete,acknowledgePlans,remoteTime:()=>read(localStorage,KEY,{}).remoteTime};
 })();

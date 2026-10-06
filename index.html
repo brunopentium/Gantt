@@ -202,11 +202,19 @@ input{font-family:inherit}
     <div id="gbody"><div id="gcontent"></div></div>
   </div>
 </div>
+<div id="actionToolbar" hidden>
+  <button id="apCloudSave">💾 Salvar</button><button id="apCloudHistory">Histórico</button><button id="apCloudSettings">☁ GitHub</button><button id="apBackup">📥 Backup dos planos</button>
+  <span class="tsep"></span><button id="apExport">📤 Exportar JSON</button><button id="apImport">📥 Importar JSON</button><button id="apExcel">Excel</button><button id="apPDF">🖨 PDF</button>
+  <span class="tsep"></span><button id="apUndo">↩ Desfazer</button><button id="apTheme">Tema</button><button id="apToggleNotes">Observações: sim</button><button id="apZoomIn">＋Z</button><button id="apZoomOut">－Z</button>
+  <span id="apCloudStatus" role="status" aria-live="polite"></span>
+</div>
 <section id="actionPanel" hidden aria-label="Planos de ação"></section>
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
 <script src="action-plans.js"></script>
+<script src="plan-exports.js"></script>
+<script src="plan-cloud.js"></script>
 <script src="github-backup.js"></script>
 <script>
 // ========== STATE ==========
@@ -1226,6 +1234,7 @@ function saveStore(){
   window.ActionPlans?.sync();
   try{localStorage.setItem(STORE_KEY,JSON.stringify(allProjectData()))}catch(e){}
   window.GanttBackup?.changed();
+  window.PlanCloud?.changed();
 }
 function save(){
   if(!activeProjectId)return;
@@ -1309,14 +1318,12 @@ function deleteProject(){
 }
 function downloadAllProjects(){
   save();
-  let data={...allProjectData(),exportedAt:new Date().toISOString()};
+  let data={version:1,activeProjectId,projects,exportedAt:new Date().toISOString()};
   downloadJSON(data,'gantt-backup-all-'+fdi(today())+'.json');
 }
 function importProjectFile(d){
   if(d.projects&&Array.isArray(d.projects)){
     showConfirmModal('Import backup','Replace all saved schedules with this backup?',function(){
-      window.ActionPlans?.validate(d.actionPlans||[]);
-      window.ActionPlans?.load(d.actionPlans||[]);
       projects=d.projects.map(normalizeProject);
       activeProjectId=d.activeProjectId&&projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:(projects[0]&&projects[0].id);
       if(!activeProjectId){projects=[normalizeProject({title:'New Schedule',tasks:[],fmt:{},view:{res:'weeks',cw:36,labelsOn:true,statusOn:false,cpOn:false,theme}})];activeProjectId=projects[0].id}
@@ -1380,6 +1387,7 @@ function actionTask(projectId,taskId){
 }
 function updateActionTask(projectId,taskId,dates){
   const p=projects.find(p=>p.id===projectId);if(!p)throw new Error('Cronograma não encontrado');
+  const coveredTicket=window.GanttBackup?.planEditStart();
   const previous=T,active=projectId===activeProjectId;
   if(!active)T=p.tasks.map(t=>taskIn({...t}));
   try{
@@ -1391,6 +1399,7 @@ function updateActionTask(projectId,taskId,dates){
     t.start=pd(dates.start);t.end=pd(dates.end);
     t.dur=t.mile?0:durBtw(t.start,t.end,t.unit);
     compWBS();schedule();p.tasks=T.map(taskOut);p.updatedAt=new Date().toISOString();
+    window.GanttBackup?.planEditComplete(coveredTicket);
   }finally{if(!active)T=previous}
 }
 window.ActionPlans.init({
@@ -1398,20 +1407,23 @@ window.ActionPlans.init({
   flush:()=>{commitEdit();save()},
   projects:()=>projects.map(p=>({id:p.id,title:p.title,tasks:(p.id===activeProjectId?T:p.tasks).map(t=>({id:t.id,name:t.name}))})),
   task:actionTask,updateTask:updateActionTask,
+  getTheme:()=>theme,
   selectedTask:()=>{const id=[...sel][0]||lastSel;return id?{projectId:activeProjectId,taskId:id}:null},
   openTask:(projectId,taskId)=>{switchProject(projectId);sel.clear();sel.add(taskId);lastSel=taskId;render();setTimeout(()=>document.querySelector('.tr.sel')?.scrollIntoView({block:'center'}),0)}
 });
-window.GanttBackup.init({
+let planScopeInitialized=false;
+window.PlanCloud.init({snapshot:()=>({version:1,type:'action-plans',actionPlans:window.ActionPlans.exportData()}),restore:(d,applyDates)=>window.ActionPlans.restoreData(d.actionPlans,applyDates),flush:()=>{commitEdit();save()},localBackup:()=>window.ActionPlans.backup()});
+Promise.resolve(window.GanttBackup.init({
   flush:()=>{commitEdit();save()},
-  snapshot:()=>JSON.parse(JSON.stringify(allProjectData())),
+  snapshot:()=>JSON.parse(JSON.stringify({version:1,activeProjectId,projects})),
   restore:d=>{
-    window.ActionPlans.load(d.actionPlans||[]);
+    if(!planScopeInitialized&&d.actionPlans?.length&&!window.ActionPlans.exportData().length)window.ActionPlans.load(d.actionPlans);
     projects=d.projects.map(normalizeProject);
     activeProjectId=projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:projects[0].id;
     loadProject(activeProjectId,true);saveStore();
   },
   localBackup:downloadAllProjects
-});
+})).then(()=>{planScopeInitialized=true;window.PlanCloud.start()});
 </script>
 </body>
 </html>
