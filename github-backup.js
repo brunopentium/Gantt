@@ -71,6 +71,7 @@ window.GanttBackup = (() => {
     finally{busy=false}
   }
   function validate(data){
+    window.ActionPlans?.validate(data.actionPlans||[]);
     if(data.version!==1||!Array.isArray(data.projects)||!data.projects.length)throw new Error('Backup inválido.');
     const ids=new Set();
     for(const p of data.projects){
@@ -189,6 +190,9 @@ window.GanttBackup = (() => {
   }
   function init(adapter){
     api=adapter;config=read(localStorage,KEY,{});token=read(localStorage,TOKEN_KEY,'')||read(sessionStorage,TOKEN_KEY,'');
+    if(config.fingerprint&&window.ActionPlans){
+      try{const previous=JSON.parse(config.fingerprint);if(!Object.hasOwn(previous,'actionPlans')){previous.actionPlans=[];config.fingerprint=JSON.stringify(previous);persist()}}catch{}
+    }
     lastContent=config.fingerprint||'';
     document.getElementById('btnCloudBackup').onclick=settings;
     document.getElementById('btnCloudSave').onclick=()=>backup();

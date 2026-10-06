@@ -2,6 +2,18 @@
 
 Aplicativo estático de cronogramas hospedado no GitHub Pages. Os cronogramas são mantidos no navegador enquanto você edita. A integração opcional com GitHub oferece salvamento manual, abertura da última versão e histórico de versões.
 
+## Planos de ação
+
+A guia **Planos de ação** permite criar vários planos, com ações, responsáveis, início, término, status e observações. **Tabela** e **Cards** mostram os mesmos dados. Ações independentes podem ter suas próprias datas, sem criar tarefas no Gantt.
+
+Para partir de uma linha do cronograma, selecione-a e clique em **＋ Plano / ação vinculada**, ou use essa opção no menu da linha. Escolha um plano existente ou crie um novo: a primeira ação fica vinculada à linha selecionada. Acrescente outras ações independentes ou vinculadas pelo botão **＋ Nova ação**. No formulário da ação, é possível escolher uma linha de qualquer cronograma.
+
+As ações vinculadas compartilham as datas da tarefa, identificada pelo ID do cronograma e da tarefa. Alterar as datas da ação atualiza a tarefa e recalcula o cronograma; alterar a tarefa atualiza a ação. O início de tarefas com dependências e as datas de linhas de resumo continuam calculados pelo Gantt. Marcos têm início e término iguais, e dias úteis seguem a configuração da tarefa. Responsável, status e observações pertencem à ação.
+
+Para desvincular uma ação, edite-a e escolha **Ação independente**: as últimas datas são preservadas e podem ser editadas livremente. Excluir uma ação ou um plano não exclui tarefas. Se uma tarefa ou cronograma for removido, a ação mantém seus dados e mostra o vínculo indisponível; você pode desvincular ou escolher outra tarefa.
+
+Os planos são incluídos em **💾 Salvar**, **Histórico** e **📥 Backup local**. Ao restaurar uma versão, cronogramas e planos são restaurados juntos. Versões antigas criadas antes deste recurso continuam compatíveis; restaurá-las traz apenas os cronogramas, sem planos de ação. Antes da restauração, o app baixa uma cópia local do estado atual.
+
 ## Conectar ao GitHub
 
 1. Crie um repositório **privado** (por exemplo, `gantt-backups`), marque **Add a README file** e deixe o GitHub Pages desativado.
@@ -44,3 +56,5 @@ npm test
 ```
 
 Os testes usam Chromium e respostas simuladas da API do GitHub; não acessam cronogramas reais. Cobrem salvamento exclusivamente manual, histórico com paginação, restauração como novo commit, reabertura da última versão, preservação de alterações locais e proteção contra conflitos e falhas de autenticação.
+
+Os testes de planos de ação cobrem ações independentes e vinculadas, sincronização de datas com cronogramas ativos e inativos, dependências, resumos, marcos, tabela/cards, desvinculação, exclusões, persistência e layout em celular. Os testes de GitHub verificam também salvamento e restauração dos planos e rejeição de planos inválidos.

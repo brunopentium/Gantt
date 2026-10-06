@@ -147,9 +147,11 @@ input{font-family:inherit}
 
 #statusbar{display:flex;align-items:center;justify-content:space-between;padding:1px 10px;background:var(--bg1);border-top:1px solid var(--border);font-size:10px;color:var(--text3);height:20px;flex-shrink:0}
 </style>
+<link rel="stylesheet" href="action-plans.css">
 </head>
 <body>
 <div id="app">
+<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabGantt" aria-controls="main" class="act" role="tab" aria-selected="true">Cronogramas</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button></nav>
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
   <div class="tsep"></div>
@@ -165,6 +167,7 @@ input{font-family:inherit}
   <button id="btnCloudBackup">☁ GitHub</button>
   <span id="cloudBackupStatus" role="status" aria-live="polite" style="font-size:10px;max-width:260px"></span>
   <div class="tsep"></div>
+  <button id="btnActionFromTask">＋ Plano / ação vinculada</button>
   <button id="btnAdd">＋ Task</button>
   <button id="btnMile">◆ Mile</button>
   <button id="btnDel" class="del">✕ Del</button>
@@ -199,9 +202,11 @@ input{font-family:inherit}
     <div id="gbody"><div id="gcontent"></div></div>
   </div>
 </div>
+<section id="actionPanel" hidden aria-label="Planos de ação"></section>
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
+<script src="action-plans.js"></script>
 <script src="github-backup.js"></script>
 <script>
 // ========== STATE ==========
@@ -348,7 +353,7 @@ function doUndo(){if(!undo.length)return;T=JSON.parse(undo.pop()).map(t=>{t.star
 
 // ========== RECALC & RENDER ==========
 function recalc(){compWBS();schedule();save()}
-function render(){renderTable();renderGantt();renderStatus()}
+function render(){renderTable();renderGantt();renderStatus();window.ActionPlans?.refresh()}
 
 function renderTable(){
   // Header
@@ -681,13 +686,14 @@ function showTaskCtx(x,y,tid){
   closePopups();
   let ov=document.createElement('div');ov.className='popup-overlay';document.body.appendChild(ov);
   let m=document.createElement('div');m.className='ctx-menu';
-  m.innerHTML=`<div class="ctx-item" data-a="rbg">🎨 Row Background</div><div class="ctx-item" data-a="rfc">🖊 Row Font Color</div><div class="ctx-item" data-a="rbold">𝐁 Toggle Row Bold</div><div class="ctx-sep"></div><div class="ctx-item" data-a="add">＋ Add Task</div><div class="ctx-item" data-a="mile">◆ Add Milestone</div><div class="ctx-sep"></div><div class="ctx-item" data-a="in">→ Indent</div><div class="ctx-item" data-a="out">← Outdent</div><div class="ctx-sep"></div><div class="ctx-item red" data-a="del">✕ Delete</div>`;
+  m.innerHTML=`<div class="ctx-item" data-a="rbg">🎨 Row Background</div><div class="ctx-item" data-a="rfc">🖊 Row Font Color</div><div class="ctx-item" data-a="rbold">𝐁 Toggle Row Bold</div><div class="ctx-sep"></div><div class="ctx-item" data-a="action">＋ Plano / ação vinculada</div><div class="ctx-item" data-a="add">＋ Add Task</div><div class="ctx-item" data-a="mile">◆ Add Milestone</div><div class="ctx-sep"></div><div class="ctx-item" data-a="in">→ Indent</div><div class="ctx-item" data-a="out">← Outdent</div><div class="ctx-sep"></div><div class="ctx-item red" data-a="del">✕ Delete</div>`;
   m.style.left=Math.min(x,window.innerWidth-210)+'px';m.style.top=Math.min(y,window.innerHeight-300)+'px';
   document.body.appendChild(m);
   m.addEventListener('click',function(e2){let it=e2.target.closest('.ctx-item');if(!it)return;let a=it.dataset.a;
     if(a==='rbg'){closePopups();showRowColorPick(x,y,'bg',tid);return}
     else if(a==='rfc'){closePopups();showRowColorPick(x,y,'fc',tid);return}
     else if(a==='rbold'){toggleRowBold(tid);render();save()}
+    else if(a==='action'){closePopups();window.ActionPlans.fromTask(activeProjectId,tid);return}
     else if(a==='add')addTask(tid);else if(a==='mile')addMile(tid);else if(a==='in')doIndent(tid);else if(a==='out')doOutdent(tid);else if(a==='del')doDel(tid);
     closePopups()});
   ov.addEventListener('click',()=>closePopups());
@@ -962,6 +968,8 @@ document.getElementById('thead').addEventListener('mousedown',function(e){
 
 // ========== KEYBOARD ==========
 document.addEventListener('keydown',function(e){
+  if(e.target.closest?.('#appTabs'))return;
+  if(window.ActionPlans?.isVisible()||document.querySelector('.ap-modal'))return;
   if(editing)return;
   let ae=document.activeElement;if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT')&&ae.id!=='ptitle')return;
   if(e.key==='Delete'&&sel.size>0){e.preventDefault();deleteSelected()}
@@ -1213,8 +1221,10 @@ function normalizeProject(p){
     view:{res:view.res||p.res||'weeks',cw:view.cw||p.cw||36,cpOn:!!view.cpOn,labelsOn:view.labelsOn!==false,statusOn:!!view.statusOn,theme:view.theme==='light'?'light':'dark'}
   };
 }
+function allProjectData(){return {version:1,activeProjectId,projects,actionPlans:window.ActionPlans?.exportData()||[]}}
 function saveStore(){
-  try{localStorage.setItem(STORE_KEY,JSON.stringify({version:1,activeProjectId,projects}))}catch(e){}
+  window.ActionPlans?.sync();
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(allProjectData()))}catch(e){}
   window.GanttBackup?.changed();
 }
 function save(){
@@ -1229,6 +1239,7 @@ function load(){
     let s=localStorage.getItem(STORE_KEY);
     if(s){
       let d=JSON.parse(s);
+      window.ActionPlans?.load(d.actionPlans||[]);
       projects=(d.projects||[]).map(normalizeProject);
       activeProjectId=d.activeProjectId&&projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:(projects[0]&&projects[0].id);
       if(activeProjectId){loadProject(activeProjectId,false);return true}
@@ -1298,12 +1309,14 @@ function deleteProject(){
 }
 function downloadAllProjects(){
   save();
-  let data={version:1,exportedAt:new Date().toISOString(),activeProjectId,projects};
+  let data={...allProjectData(),exportedAt:new Date().toISOString()};
   downloadJSON(data,'gantt-backup-all-'+fdi(today())+'.json');
 }
 function importProjectFile(d){
   if(d.projects&&Array.isArray(d.projects)){
     showConfirmModal('Import backup','Replace all saved schedules with this backup?',function(){
+      window.ActionPlans?.validate(d.actionPlans||[]);
+      window.ActionPlans?.load(d.actionPlans||[]);
       projects=d.projects.map(normalizeProject);
       activeProjectId=d.activeProjectId&&projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:(projects[0]&&projects[0].id);
       if(!activeProjectId){projects=[normalizeProject({title:'New Schedule',tasks:[],fmt:{},view:{res:'weeks',cw:36,labelsOn:true,statusOn:false,cpOn:false,theme}})];activeProjectId=projects[0].id}
@@ -1358,10 +1371,41 @@ function init(){
   recalc();render();
 }
 init();
+function actionTask(projectId,taskId){
+  const p=projects.find(p=>p.id===projectId);if(!p)return null;
+  const tasks=projectId===activeProjectId?T:p.tasks;
+  const i=tasks.findIndex(t=>t.id===taskId);if(i<0)return null;
+  const t=tasks[i],summary=i<tasks.length-1&&tasks[i+1].indent>t.indent;
+  return {projectTitle:p.title,taskName:t.name,start:fdi(pd(t.start)),end:fdi(pd(t.end)),summary,pred:t.pred||'',mile:!!t.mile};
+}
+function updateActionTask(projectId,taskId,dates){
+  const p=projects.find(p=>p.id===projectId);if(!p)throw new Error('Cronograma não encontrado');
+  const previous=T,active=projectId===activeProjectId;
+  if(!active)T=p.tasks.map(t=>taskIn({...t}));
+  try{
+    const t=T.find(t=>t.id===taskId);if(!t)throw new Error('Tarefa não encontrada');
+    if(isSummary(t))throw new Error('As datas desta linha são calculadas a partir das subtarefas.');
+    if(t.pred&&dates.start!==fdi(t.start))throw new Error('O início desta tarefa é calculado pelas dependências.');
+    if(!dates.start||!dates.end||dates.end<dates.start)throw new Error('Informe início e término válidos.');
+    if(active)snap();
+    t.start=pd(dates.start);t.end=pd(dates.end);
+    t.dur=t.mile?0:durBtw(t.start,t.end,t.unit);
+    compWBS();schedule();p.tasks=T.map(taskOut);p.updatedAt=new Date().toISOString();
+  }finally{if(!active)T=previous}
+}
+window.ActionPlans.init({
+  save:()=>{save();render()},
+  flush:()=>{commitEdit();save()},
+  projects:()=>projects.map(p=>({id:p.id,title:p.title,tasks:(p.id===activeProjectId?T:p.tasks).map(t=>({id:t.id,name:t.name}))})),
+  task:actionTask,updateTask:updateActionTask,
+  selectedTask:()=>{const id=[...sel][0]||lastSel;return id?{projectId:activeProjectId,taskId:id}:null},
+  openTask:(projectId,taskId)=>{switchProject(projectId);sel.clear();sel.add(taskId);lastSel=taskId;render();setTimeout(()=>document.querySelector('.tr.sel')?.scrollIntoView({block:'center'}),0)}
+});
 window.GanttBackup.init({
-  flush:save,
-  snapshot:()=>({version:1,activeProjectId,projects:JSON.parse(JSON.stringify(projects))}),
+  flush:()=>{commitEdit();save()},
+  snapshot:()=>JSON.parse(JSON.stringify(allProjectData())),
   restore:d=>{
+    window.ActionPlans.load(d.actionPlans||[]);
     projects=d.projects.map(normalizeProject);
     activeProjectId=projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:projects[0].id;
     loadProject(activeProjectId,true);saveStore();

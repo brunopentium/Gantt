@@ -4,8 +4,8 @@ const assert=require('node:assert/strict');
  const browser=await chromium.launch({headless:true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}:{})});
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  let remote=null,puts=0,isPrivate=true,hasPages=false,fail=false,payload,commits=[];
- const versions=new Map(),answers=[];
- page.on('dialog',d=>answers.shift()===false?d.dismiss():d.accept());
+ const versions=new Map(),answers=[];let dialogs=0;
+ page.on('dialog',d=>{dialogs++;return answers.shift()===false?d.dismiss():d.accept()});
  await page.route('https://api.github.com/repos/**',async route=>{
   const req=route.request(),url=new URL(req.url());assert.equal(req.headers().authorization,'Bearer test-token');
   if(fail)return route.fulfill({status:401,json:{}});
@@ -30,22 +30,26 @@ const assert=require('node:assert/strict');
  }
  await page.goto('http://127.0.0.1:8765');assert.equal(await page.locator('.tr').count(),20);
  await configure();await waitStatus('primeira versão');assert.equal(puts,0);
+ await page.evaluate(()=>{ActionPlans.load([{id:'plan1',title:'Plano de entrega',description:'',source:null,actions:[{id:'action1',title:'Verificar entregas',owner:'Bruno',start:'2026-10-05',end:'2026-10-09',status:'pending',notes:'',link:null}]}]);saveStore()});
  await page.clock.install();await page.clock.fastForward(120000);assert.equal(puts,0);
  await page.click('#btnCloudSave');await waitStatus('Salvo no GitHub');assert.equal(puts,1);
  assert.equal(payload.branch,'main');assert.equal(payload.message,'Salvar cronogramas');
  const exported=JSON.parse(Buffer.from(payload.content,'base64').toString());assert.equal(exported.projects[0].tasks.length,20);
- assert(!JSON.stringify(exported).includes('test-token'));assert.equal(await page.evaluate(()=>localStorage.getItem('pf_github_backup_v1_token')),null);
+ assert.equal(exported.actionPlans[0].actions[0].title,'Verificar entregas');assert(!JSON.stringify(exported).includes('test-token'));assert.equal(await page.evaluate(()=>localStorage.getItem('pf_github_backup_v1_token')),null);
  await page.click('#btnAdd');await page.clock.fastForward(120000);assert.equal(puts,1);await waitStatus('Alterações locais');
  await page.click('#btnCloudSave');await waitStatus('Salvo no GitHub');assert.equal(puts,2);assert.equal(payload.sha,'blob1');
- await page.evaluate(()=>{T[0].name='Projeto café 🗓';recalc();render()});await page.click('#btnCloudSave');await waitStatus('Salvo no GitHub');assert.equal(puts,3);
+ await page.evaluate(()=>{const plans=ActionPlans.exportData();plans[0].actions[0].title='Conferência revisada';ActionPlans.load(plans);T[0].name='Projeto café 🗓';recalc();render()});await page.click('#btnCloudSave');await waitStatus('Salvo no GitHub');assert.equal(puts,3);
  assert.equal(JSON.parse(Buffer.from(remote.content,'base64').toString()).projects[0].tasks[0].name,'Projeto café 🗓');
  await page.click('#btnCloudSave');await waitStatus('Nenhuma alteração');assert.equal(puts,3);
  await page.click('#btnCloudHistory');await waitStatus('Histórico carregado');assert.equal(await page.locator('#gbVersions button').count(),3);
  await page.locator('#gbVersions button').nth(2).click();await waitStatus('Salvo no GitHub');assert.equal(puts,4);assert.equal(await page.locator('.tr').count(),20);
- assert.equal(payload.message,'Restaurar cronogramas da versão commit1');assert.equal(payload.sha,'blob3');assert.equal(commits.length,4);
+ assert.equal(payload.message,'Restaurar cronogramas da versão commit1');assert.equal(payload.sha,'blob3');assert.equal(commits.length,4);assert.equal(await page.evaluate(()=>ActionPlans.exportData()[0].actions[0].title),'Verificar entregas');
  // Invalid historical data is rejected before local replacement or a remote write.
  versions.set('commit1',{sha:'bad',content:Buffer.from('{"version":1,"projects":[{"id":"x","title":"Bad","tasks":[{}]}]}').toString('base64')});
  await page.click('#btnCloudHistory');await waitStatus('Histórico carregado');await page.locator('#gbVersions button').last().click();await waitStatus('Falha ao restaurar');assert.equal(puts,4);assert.equal(await page.locator('.tr').count(),20);
+ // A malformed action plan is also rejected without replacing current data.
+ versions.set('commit1',{sha:'bad-plan',content:Buffer.from(JSON.stringify({...exported,actionPlans:[{id:'bad',title:'Bad',actions:[{}]}]})).toString('base64')});
+ await page.click('#btnCloudHistory');await waitStatus('Histórico carregado');await page.locator('#gbVersions button').last().click();await waitStatus('Falha ao restaurar');assert.equal(puts,4);assert.equal(await page.evaluate(()=>ActionPlans.exportData()[0].id),'plan1');
  // Clean reopens load a newer remote version without a write.
  let newer=JSON.parse(Buffer.from(remote.content,'base64').toString());newer.projects[0].tasks[0].name='Versão de outro dispositivo';
  remote={sha:'other-device',content:Buffer.from(JSON.stringify(newer)).toString('base64')};
@@ -67,5 +71,10 @@ const assert=require('node:assert/strict');
  await page.click('#gbMore');await page.waitForFunction(()=>document.querySelectorAll('#gbVersions button').length===32);assert(await page.locator('#gbMore').isHidden());
  await page.click('#gbHistoryClose');await page.click('#btnCloudBackup');await page.click('#gbDisconnect');
  assert.equal(await page.evaluate(()=>localStorage.getItem('pf_github_backup_v1_token')),null);assert.equal(await page.evaluate(()=>sessionStorage.getItem('pf_github_backup_v1_token')),null);
+ // Existing installations migrate the fingerprint and open backups without action plans.
+ const legacy={version:exported.version,activeProjectId:exported.activeProjectId,projects:exported.projects};
+ remote={sha:'legacy',content:Buffer.from(JSON.stringify(legacy)).toString('base64')};
+ await page.evaluate(legacy=>{localStorage.setItem('pf_projects_v1',JSON.stringify(legacy));localStorage.setItem('pf_github_backup_v1',JSON.stringify({repo:'brunopentium/gantt-backups',branch:'main',sha:'legacy',enabled:true,fingerprint:JSON.stringify(legacy,(k,v)=>k==='updatedAt'?undefined:v)}));sessionStorage.setItem('pf_github_backup_v1_token',JSON.stringify('test-token'))},legacy);
+ const priorDialogs=dialogs;await page.reload();await waitStatus('Última versão do GitHub aberta');assert.equal(dialogs,priorDialogs);assert.deepEqual(await page.evaluate(()=>ActionPlans.exportData()),[]);assert.equal(puts,4);
  assert.deepEqual(errors,[]);await browser.close();console.log('PASS: manual-only saves, Unicode, history and pagination, restore as new commit, invalid restore, latest-version startup, unsaved draft protection, concurrency, auth failures, private/no-Pages checks, token persistence and disconnect');
 })().catch(e=>{console.error(e);process.exit(1)});
