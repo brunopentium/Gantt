@@ -159,7 +159,9 @@ input{font-family:inherit}
   <button id="btnDupProj">⧉</button>
   <button id="btnRenProj">✎</button>
   <button id="btnDelProj" class="del">✕</button>
-  <button id="btnBackupAll">💾 All</button>
+  <button id="btnCloudSave">💾 Salvar</button>
+  <button id="btnCloudHistory">Histórico</button>
+  <button id="btnBackupAll">📥 Backup local</button>
   <button id="btnCloudBackup">☁ GitHub</button>
   <span id="cloudBackupStatus" role="status" aria-live="polite" style="font-size:10px;max-width:260px"></span>
   <div class="tsep"></div>
@@ -1357,6 +1359,7 @@ function init(){
 }
 init();
 window.GanttBackup.init({
+  flush:save,
   snapshot:()=>({version:1,activeProjectId,projects:JSON.parse(JSON.stringify(projects))}),
   restore:d=>{
     projects=d.projects.map(normalizeProject);

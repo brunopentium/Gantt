@@ -2,22 +2,27 @@
 window.GanttBackup = (() => {
   'use strict';
   const KEY='pf_github_backup_v1', TOKEN_KEY=KEY+'_token', PATH='backups/cronogramas.json';
-  let api, config={}, token='', timer, busy=false, blocked=false, restoring=false, lastContent='';
+  let api, config={}, token='', busy=false, ready=false, restoring=false, lastContent='';
   function read(store,key,fallback){try{return JSON.parse(store.getItem(key))||fallback}catch{return fallback}}
   function persist(){localStorage.setItem(KEY,JSON.stringify(config))}
   function status(message){document.getElementById('cloudBackupStatus').textContent=message}
   function content(){return JSON.stringify(api.snapshot(),(k,v)=>k==='updatedAt'?undefined:v)}
   function credentials(){return config.repo&&token&&config.enabled}
   function changed(){
-    if(!api||restoring||!credentials()||blocked||content()===lastContent)return;
-    status('Alterações aguardando backup');
-    if(!timer)timer=setTimeout(()=>{timer=null;backup()},60000);
+    if(!api||restoring)return;
+    if(credentials()&&content()!==lastContent)status('Alterações locais — clique em 💾 Salvar');
   }
+  function guard(){
+    if(busy){status('Aguarde a operação em andamento');return false}
+    if(!credentials()){settings();return false}
+    return true;
+  }
+  function lock(value){document.getElementById('app').inert=value}
   async function request(path,options={}){
     const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),20000);
     try{
       const response=await fetch('https://api.github.com/repos/'+config.repo+path,{
-        ...options,redirect:'error',signal:controller.signal,
+        ...options,cache:'no-store',redirect:'error',signal:controller.signal,
         headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+token,
           'X-GitHub-Api-Version':'2022-11-28',...(options.body?{'Content-Type':'application/json'}:{})}
       });
@@ -39,28 +44,31 @@ window.GanttBackup = (() => {
     if(!config.branch){config.branch=repo.default_branch;persist()}
     return repo;
   }
-  function filePath(){return '/contents/'+PATH+'?ref='+encodeURIComponent(config.branch)}
+  function filePath(ref=config.branch){return '/contents/'+PATH+'?ref='+encodeURIComponent(ref)}
   function encode(text){return btoa(Array.from(new TextEncoder().encode(text),b=>String.fromCharCode(b)).join(''))}
   function decode(text){return new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(text.replace(/\s/g,'')),c=>c.charCodeAt(0)))}
-  async function backup(){
-    if(busy||!credentials()||restoring)return;
-    clearTimeout(timer);timer=null;busy=true;blocked=false;status('Salvando backup…');
+  async function backup(sourceCommit){
+    if(!guard()||restoring)return;
+    if(!ready){status('Conecte e abra a última versão antes de salvar');return}
+    api.flush();busy=true;status('Salvando no GitHub…');
     try{
       await repository();
       const snapshot=api.snapshot(), fingerprint=content();
       const remote=await request(filePath(),{allowMissing:true});
-      if((remote&&remote.sha)!==(config.sha||null)&&!(remote===null&&!config.sha))
-        throw new Error('Backup remoto diferente. Restaure antes de salvar; nada foi sobrescrito.');
-      if(remote&&fingerprint===lastContent){status('Backup já atualizado');return}
+      if((remote?.sha||null)!==(config.sha||null))
+        throw new Error('Versão remota diferente. Abra a última versão antes de salvar; nada foi sobrescrito.');
+      if(remote&&fingerprint===lastContent&&!sourceCommit){status('Nenhuma alteração para salvar');return}
       const result=await request('/contents/'+PATH,{method:'PUT',body:JSON.stringify({
-        message:'Backup automático dos cronogramas',branch:config.branch,
+        message:sourceCommit?'Restaurar cronogramas da versão '+sourceCommit.slice(0,7):'Salvar cronogramas',
+        branch:config.branch,
         content:encode(JSON.stringify({...snapshot,exportedAt:new Date().toISOString()},null,2)),
         ...(remote?{sha:remote.sha}:{})
       })});
-      config.sha=result.content.sha;config.lastSaved=new Date().toISOString();persist();
-      lastContent=fingerprint;status('Backup salvo às '+new Date(config.lastSaved).toLocaleTimeString());
-    }catch(error){blocked=true;status('Backup pendente: '+(error.name==='AbortError'?'tempo de conexão esgotado.':error.message))}
-    finally{busy=false;if(!blocked)changed()}
+      config.sha=result.content.sha;config.lastSaved=new Date().toISOString();
+      lastContent=fingerprint;config.fingerprint=lastContent;persist();
+      status(content()===lastContent?'Salvo no GitHub às '+new Date(config.lastSaved).toLocaleTimeString():'Versão salva; há novas alterações locais — clique em 💾 Salvar');
+    }catch(error){status('Não salvo no GitHub: '+(error.name==='AbortError'?'tempo de conexão esgotado.':error.message))}
+    finally{busy=false}
   }
   function validate(data){
     if(data.version!==1||!Array.isArray(data.projects)||!data.projects.length)throw new Error('Backup inválido.');
@@ -80,31 +88,88 @@ window.GanttBackup = (() => {
       p.tasks.forEach((_,i)=>visit(i));
     }
   }
-  async function restore(){
-    if(busy||!credentials())return;
-    clearTimeout(timer);timer=null;busy=true;status('Lendo backup…');
+  function apply(data){
+    restoring=true;
+    try{api.restore(data)}finally{restoring=false}
+  }
+  async function latest(prompt=false){
+    if(!guard())return;
+    busy=true;lock(true);status('Abrindo última versão…');
     try{
-      await repository();const remote=await request(filePath());
+      await repository();const remote=await request(filePath(),{allowMissing:true});
+      if(!remote){
+        if(config.sha)throw new Error('O arquivo remoto foi removido. Seus dados locais foram mantidos.');
+        ready=true;status('Repositório conectado — clique em 💾 Salvar para criar a primeira versão');return;
+      }
       const data=JSON.parse(decode(remote.content));validate(data);
-      if(!window.confirm('Substituir todos os cronogramas deste navegador pelo backup do GitHub? Uma cópia local será baixada antes.')){status('Restauração cancelada');return}
-      api.localBackup();restoring=true;api.restore(data);restoring=false;
-      config.sha=remote.sha;persist();lastContent=content();blocked=false;status('Backup restaurado');
-    }catch(error){blocked=true;status('Falha ao restaurar: '+error.message)}
-    finally{restoring=false;busy=false;if(!blocked)changed()}
+      const dirty=config.fingerprint&&content()!==config.fingerprint;
+      if((prompt||dirty)&&!window.confirm('Abrir a última versão salva no GitHub e substituir os cronogramas locais? Uma cópia local será baixada antes.')){
+        status('Dados locais mantidos; abra a última versão para conectar');return;
+      }
+      if(prompt||dirty)api.localBackup();
+      apply(data);config.sha=remote.sha;lastContent=content();config.fingerprint=lastContent;persist();
+      ready=true;status('Última versão do GitHub aberta');
+    }catch(error){status('Não foi possível abrir o GitHub; dados locais mantidos: '+error.message)}
+    finally{busy=false;lock(false)}
+  }
+  async function history(){
+    if(!guard())return;
+    if(!ready){status('Conecte e abra a última versão antes de consultar o histórico');return}
+    busy=true;status('Carregando histórico…');
+    try{
+      await repository();closePopups();closeEditor();
+      const overlay=document.createElement('div');overlay.className='popup-overlay';
+      const modal=document.createElement('div');modal.className='modal';modal.style.width='min(520px,95vw)';
+      modal.innerHTML='<h3>Versões salvas no GitHub</h3><p>Escolha uma versão para restaurar. A restauração cria um novo salvamento e mantém todas as versões anteriores.</p><div id="gbVersions" style="max-height:45vh;overflow:auto"></div><div class="modal-actions"><button id="gbMore">Mais versões</button><button id="gbHistoryClose">Fechar</button></div>';
+      document.body.append(overlay,modal);let page=1;
+      const list=modal.querySelector('#gbVersions'),more=modal.querySelector('#gbMore');
+      async function addPage(){
+        more.disabled=true;
+        try{
+          const commits=await request('/commits?path='+encodeURIComponent(PATH)+'&sha='+encodeURIComponent(config.branch)+'&per_page=30&page='+page);
+          for(const commit of commits){
+            const button=document.createElement('button');button.style.cssText='display:block;width:100%;text-align:left;margin-bottom:5px;white-space:normal;padding:8px';
+            button.textContent=new Date(commit.commit.committer.date).toLocaleString()+' · '+commit.sha.slice(0,7)+' · '+commit.commit.message.split('\n')[0];
+            button.onclick=()=>{closePopups();restoreVersion(commit.sha)};list.appendChild(button);
+          }
+          if(!commits.length&&page===1)list.textContent='Nenhum salvamento encontrado.';
+          page++;more.hidden=commits.length<30;status('Histórico carregado');
+        }catch(error){status('Falha ao carregar histórico: '+error.message)}
+        finally{more.disabled=false}
+      }
+      more.onclick=async()=>{if(busy)return;busy=true;try{await addPage()}finally{busy=false}};
+      modal.querySelector('#gbHistoryClose').onclick=closePopups;overlay.onclick=closePopups;
+      await addPage();
+    }catch(error){status('Falha ao carregar histórico: '+error.message)}
+    finally{busy=false}
+  }
+  async function restoreVersion(commit){
+    if(!guard()||!ready)return;
+    busy=true;lock(true);status('Lendo versão selecionada…');let restored=false;
+    try{
+      await repository();
+      const latestFile=await request(filePath());
+      if(latestFile.sha!==config.sha)throw new Error('Versão remota diferente. Abra a última versão antes de restaurar.');
+      const remote=await request(filePath(commit));const data=JSON.parse(decode(remote.content));validate(data);
+      if(!window.confirm('Restaurar a versão '+commit.slice(0,7)+' e salvá-la como uma nova versão no GitHub? Uma cópia local será baixada antes.')){status('Restauração cancelada');return}
+      api.localBackup();apply(data);restored=true;
+    }catch(error){status('Falha ao restaurar: '+error.message)}
+    finally{busy=false;lock(false)}
+    if(restored)await backup(commit);
   }
   function settings(){
     if(busy){status('Aguarde a operação em andamento');return}
     closePopups();closeEditor();
     const overlay=document.createElement('div');overlay.className='popup-overlay';
     const modal=document.createElement('div');modal.className='modal';modal.style.width='min(440px,95vw)';
-    modal.innerHTML=`<h3>Backup automático no GitHub</h3>
+    modal.innerHTML=`<h3>Salvar cronogramas no GitHub</h3>
       <p>Crie um repositório <strong>privado</strong>, sem Pages, e inicialize com README. Crie um token fine-grained limitado a esse repositório, com Contents: Read and write.</p>
-      <p>Todos os cronogramas serão salvos em <code>${PATH}</code>, até um minuto após alterações. O histórico de commits guarda as versões. Mantenha o site aberto até aparecer “Backup salvo”.</p>
+      <p>O botão 💾 Salvar grava todos os cronogramas no GitHub. Ao abrir o app conectado, ele carrega a última versão. Use Histórico para restaurar salvamentos anteriores.</p>
       <label>Repositório (usuário/nome)<input id="gbRepo" placeholder="brunopentium/gantt-backups" autocomplete="off"></label>
       <label>Token do GitHub<input id="gbToken" type="password" autocomplete="off"></label>
       <label style="display:block;margin-bottom:8px"><input id="gbRemember" type="checkbox" style="width:auto;margin:0"> Lembrar token neste navegador pessoal</label>
       <p>Sem essa opção, o token dura apenas nesta aba. Se lembrar, ele fica no armazenamento do navegador. Nunca use um computador compartilhado.</p>
-      <div class="modal-actions" style="flex-wrap:wrap"><button id="gbClose">Fechar</button><button id="gbDisconnect">Desconectar</button><button id="gbRestore">Restaurar</button><button class="act" id="gbSave">Salvar e ativar</button></div>`;
+      <div class="modal-actions" style="flex-wrap:wrap"><button id="gbClose">Fechar</button><button id="gbDisconnect">Desconectar</button><button class="act" id="gbConnect">Conectar / abrir última versão</button></div>`;
     document.body.append(overlay,modal);
     const field=id=>modal.querySelector('#'+id);
     field('gbRepo').value=config.repo||'';field('gbToken').value=token;
@@ -113,22 +178,23 @@ window.GanttBackup = (() => {
       const repo=field('gbRepo').value.trim(), nextToken=field('gbToken').value.trim();
       if(!/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9_.-]+$/.test(repo)||!nextToken){status('Informe usuário/repositório e token');return false}
       if(config.repo!==repo)config={repo};
-      config.enabled=true;token=nextToken;blocked=false;persist();
+      config.enabled=true;token=nextToken;ready=false;persist();
       localStorage.removeItem(TOKEN_KEY);sessionStorage.removeItem(TOKEN_KEY);
       (field('gbRemember').checked?localStorage:sessionStorage).setItem(TOKEN_KEY,JSON.stringify(token));
       closePopups();return true;
     }
-    field('gbSave').onclick=()=>{if(configure())backup()};
-    field('gbRestore').onclick=()=>{if(configure())restore()};
+    field('gbConnect').onclick=()=>{if(configure())latest(true)};
     field('gbClose').onclick=closePopups;overlay.onclick=closePopups;
-    field('gbDisconnect').onclick=()=>{clearTimeout(timer);timer=null;config.enabled=false;persist();token='';localStorage.removeItem(TOKEN_KEY);sessionStorage.removeItem(TOKEN_KEY);closePopups();status('Backup desconectado')};
+    field('gbDisconnect').onclick=()=>{ready=false;config.enabled=false;persist();token='';localStorage.removeItem(TOKEN_KEY);sessionStorage.removeItem(TOKEN_KEY);closePopups();status('Backup desconectado')};
   }
   function init(adapter){
     api=adapter;config=read(localStorage,KEY,{});token=read(localStorage,TOKEN_KEY,'')||read(sessionStorage,TOKEN_KEY,'');
+    lastContent=config.fingerprint||'';
     document.getElementById('btnCloudBackup').onclick=settings;
-    status(config.enabled?(token?'Backup conectado':'Informe o token para retomar os backups'):'Backup GitHub desconectado');
-    changed();
-    window.addEventListener('online',()=>{if(credentials()){blocked=false;changed()}});
+    document.getElementById('btnCloudSave').onclick=()=>backup();
+    document.getElementById('btnCloudHistory').onclick=history;
+    status(config.enabled?(token?'Abrindo GitHub…':'Informe o token para abrir a última versão'):'GitHub desconectado');
+    if(credentials())latest();
     window.addEventListener('beforeunload',event=>{if(credentials()&&content()!==lastContent){event.preventDefault();event.returnValue=''}});
   }
   return {init,changed};
