@@ -12,7 +12,23 @@ As ações vinculadas compartilham as datas da tarefa, identificada pelo ID do c
 
 Para desvincular uma ação, edite-a e escolha **Ação independente**: as últimas datas são preservadas e podem ser editadas livremente. Excluir uma ação ou um plano não exclui tarefas. Se uma tarefa ou cronograma for removido, a ação mantém seus dados e mostra o vínculo indisponível; você pode desvincular ou escolher outra tarefa.
 
-Os planos são incluídos em **💾 Salvar**, **Histórico** e **📥 Backup local**. Ao restaurar uma versão, cronogramas e planos são restaurados juntos. Versões antigas criadas antes deste recurso continuam compatíveis; restaurá-las traz apenas os cronogramas, sem planos de ação. Antes da restauração, o app baixa uma cópia local do estado atual.
+### Comandos próprios dos planos
+
+A barra da guia tem **💾 Salvar**, **Histórico**, **☁ GitHub**, **Backup dos planos**, **Exportar JSON**, **Importar JSON**, **Excel**, **PDF**, **Desfazer**, **Tema**, **Observações** e zoom. Também há novo plano, duplicar, renomear/editar e excluir plano, além de criar, editar, duplicar e excluir ações. Tema e desfazer dos planos são independentes dos controles do Gantt.
+
+- **Salvar / Histórico:** gravam todos os planos em `backups/planos-de-acao.json`, com histórico próprio. Usam a conexão existente e não exigem um novo token. Na primeira utilização, clique em Salvar para criar o arquivo. O salvamento dos cronogramas continua em `backups/cronogramas.json`.
+- **Exportar JSON:** exporta apenas o plano selecionado. **Backup dos planos** exporta todos os planos, sem cronogramas ou credenciais.
+- **Importar JSON:** aceita um plano ou um backup de planos e acrescenta cópias com IDs novos, preservando planos e cronogramas existentes. Também aceita os planos presentes em backups antigos completos. Datas vinculadas seguem as tarefas correspondentes que existirem no app.
+- **Histórico dos planos:** restaura somente os planos como uma nova versão e baixa uma cópia local antes. Tarefas vinculadas podem receber as datas restauradas; nomes, hierarquia e tarefas sem vínculo são mantidos. **Histórico anterior** permite recuperar apenas os planos de versões antigas que eram salvas junto com os cronogramas.
+- **Desfazer:** mantém até 50 alterações dos planos na sessão, incluindo as datas vinculadas alteradas por uma edição de ação. Importações e duplicações também podem ser desfeitas.
+
+Na reabertura, o app carrega as duas versões separadamente. Para datas compartilhadas, o salvamento mais recente entre cronogramas e planos prevalece, respeitando dependências, resumos e dias úteis. Datas de tarefas já salvas pelos planos não geram um aviso falso de alterações pendentes no Gantt; alterações não relacionadas continuam protegidas. Excluir ou importar planos não substitui os cronogramas, e importar/restaurar cronogramas mantém os planos.
+
+### Excel e PDF dos planos
+
+**Excel** exporta o plano selecionado em um template `.xlsx` com abas **Resumo** e **Ações**. O resumo tem indicadores de total, status, atrasos e percentual concluído. A tabela tem filtros, cabeçalho congelado, linhas alternadas, responsáveis, datas reais do Excel, duração, status, prazo, vínculos e observações. Fórmulas recalculam duração, prazo e indicadores; status tem lista de seleção e atrasos recebem destaque. O arquivo usa layout de impressão em paisagem. Texto digitado pelo usuário permanece texto, mesmo quando começa com `=`.
+
+**PDF** abre a impressão do navegador com um relatório do plano, cabeçalho, indicadores e tabela; selecione Salvar como PDF. Excel e PDF são relatórios independentes da aba do cronograma. Alterações feitas no Excel não são sincronizadas com o app; o formato de reimportação é JSON.
 
 ## Conectar ao GitHub
 
@@ -57,4 +73,6 @@ npm test
 
 Os testes usam Chromium e respostas simuladas da API do GitHub; não acessam cronogramas reais. Cobrem salvamento exclusivamente manual, histórico com paginação, restauração como novo commit, reabertura da última versão, preservação de alterações locais e proteção contra conflitos e falhas de autenticação.
 
-Os testes de planos de ação cobrem ações independentes e vinculadas, sincronização de datas com cronogramas ativos e inativos, dependências, resumos, marcos, tabela/cards, desvinculação, exclusões, persistência e layout em celular. Os testes de GitHub verificam também salvamento e restauração dos planos e rejeição de planos inválidos.
+Os testes de planos de ação cobrem ações independentes e vinculadas, sincronização de datas com cronogramas ativos e inativos, dependências, resumos, marcos, tabela/cards, desvinculação, exclusões, persistência e layout em celular. Os testes adicionais verificam controles próprios, históricos e arquivos separados, reuso das credenciais, importação/exportação, backup, desfazer, duplicação, prioridade das datas compartilhadas e recuperação do histórico anterior. Nenhum teste usa dados reais do usuário.
+
+Para verificar o Excel baixado pelos testes, com `openpyxl` instalado, rode `python tests/validate-plan-excel.py`. A verificação cobre estrutura XML, abas, datas, fórmulas e valores em cache, tabela/filtros, estilos, validação, impressão e preservação de texto literal.

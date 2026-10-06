@@ -32,3 +32,11 @@
 .ap-modal input:disabled{opacity:.6}.ap-error{color:var(--red);font-size:12px}.ap-hint{color:var(--text2);font-size:11px;line-height:1.5}
 #apNotice{color:var(--text2);font-size:12px;margin-bottom:12px}
 @media(max-width:600px){#actionPanel{padding:12px}.ap-head h2{width:100%}.ap-tools .ap-views{margin-left:0}.ap-modal .ap-dates{grid-template-columns:1fr}}
+[data-app-view="actions"] #toolbar{display:none}
+#actionToolbar[hidden]{display:none}
+#actionToolbar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:8px 10px;background:var(--toolbar-bg);border-bottom:1px solid var(--toolbar-border)}
+#apCloudStatus{font-size:11px;color:var(--text2);flex-basis:100%}
+#actionPanel{font-size:calc(13px * var(--ap-zoom,1))}
+#actionPanel .ap-title{font-size:calc(13px * var(--ap-zoom,1))}
+#actionPanel .ap-table td,#actionPanel .ap-meta{font-size:calc(12px * var(--ap-zoom,1))}
+[data-ap-notes="hidden"] .ap-note{display:none}

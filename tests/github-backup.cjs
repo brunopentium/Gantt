@@ -5,7 +5,7 @@ const assert=require('node:assert/strict');
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  let remote=null,puts=0,isPrivate=true,hasPages=false,fail=false,payload,commits=[];
  const versions=new Map(),answers=[];let dialogs=0;
- page.on('dialog',d=>{dialogs++;return answers.shift()===false?d.dismiss():d.accept()});
+ page.on('dialog',d=>{if(d.type()==='confirm')dialogs++;return answers.shift()===false?d.dismiss():d.accept()});
  await page.route('https://api.github.com/repos/**',async route=>{
   const req=route.request(),url=new URL(req.url());assert.equal(req.headers().authorization,'Bearer test-token');
   if(fail)return route.fulfill({status:401,json:{}});
@@ -35,7 +35,7 @@ const assert=require('node:assert/strict');
  await page.click('#btnCloudSave');await waitStatus('Salvo no GitHub');assert.equal(puts,1);
  assert.equal(payload.branch,'main');assert.equal(payload.message,'Salvar cronogramas');
  const exported=JSON.parse(Buffer.from(payload.content,'base64').toString());assert.equal(exported.projects[0].tasks.length,20);
- assert.equal(exported.actionPlans[0].actions[0].title,'Verificar entregas');assert(!JSON.stringify(exported).includes('test-token'));assert.equal(await page.evaluate(()=>localStorage.getItem('pf_github_backup_v1_token')),null);
+ assert.equal(exported.actionPlans,undefined);assert(!JSON.stringify(exported).includes('test-token'));assert.equal(await page.evaluate(()=>localStorage.getItem('pf_github_backup_v1_token')),null);
  await page.click('#btnAdd');await page.clock.fastForward(120000);assert.equal(puts,1);await waitStatus('Alterações locais');
  await page.click('#btnCloudSave');await waitStatus('Salvo no GitHub');assert.equal(puts,2);assert.equal(payload.sha,'blob1');
  await page.evaluate(()=>{const plans=ActionPlans.exportData();plans[0].actions[0].title='Conferência revisada';ActionPlans.load(plans);T[0].name='Projeto café 🗓';recalc();render()});await page.click('#btnCloudSave');await waitStatus('Salvo no GitHub');assert.equal(puts,3);
@@ -43,7 +43,7 @@ const assert=require('node:assert/strict');
  await page.click('#btnCloudSave');await waitStatus('Nenhuma alteração');assert.equal(puts,3);
  await page.click('#btnCloudHistory');await waitStatus('Histórico carregado');assert.equal(await page.locator('#gbVersions button').count(),3);
  await page.locator('#gbVersions button').nth(2).click();await waitStatus('Salvo no GitHub');assert.equal(puts,4);assert.equal(await page.locator('.tr').count(),20);
- assert.equal(payload.message,'Restaurar cronogramas da versão commit1');assert.equal(payload.sha,'blob3');assert.equal(commits.length,4);assert.equal(await page.evaluate(()=>ActionPlans.exportData()[0].actions[0].title),'Verificar entregas');
+ assert.equal(payload.message,'Restaurar cronogramas da versão commit1');assert.equal(payload.sha,'blob3');assert.equal(commits.length,4);assert.equal(await page.evaluate(()=>ActionPlans.exportData()[0].actions[0].title),'Conferência revisada');
  // Invalid historical data is rejected before local replacement or a remote write.
  versions.set('commit1',{sha:'bad',content:Buffer.from('{"version":1,"projects":[{"id":"x","title":"Bad","tasks":[{}]}]}').toString('base64')});
  await page.click('#btnCloudHistory');await waitStatus('Histórico carregado');await page.locator('#gbVersions button').last().click();await waitStatus('Falha ao restaurar');assert.equal(puts,4);assert.equal(await page.locator('.tr').count(),20);
