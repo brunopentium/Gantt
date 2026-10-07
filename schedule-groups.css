@@ -45,6 +45,11 @@
 .sg-heading-row{font-weight:600}
 .sg-name{border:0;background:transparent;color:var(--text);padding:0;text-align:left;white-space:normal;overflow-wrap:anywhere;max-width:100%;font-size:12px}
 .sg-name:hover{color:var(--accent);text-decoration:underline}
+.sg-task-title{display:flex;align-items:flex-start;gap:4px;min-width:0}
+.sg-task-title .sg-name{min-width:0;flex:1}
+.sg-task-toggle{flex:none;width:22px;padding:0 3px;border:0;background:transparent;color:var(--text);font-size:13px;cursor:pointer}
+.sg-task-toggle:hover{color:var(--accent);background:var(--row-sel)}
+.sg-task-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sg-label small{display:block;font-size:10px;color:var(--text2);margin-top:4px;font-weight:400}
 .sg-track{position:relative;background:repeating-linear-gradient(90deg,transparent,transparent calc(var(--sg-step) - 1px),var(--grid-line) calc(var(--sg-step) - 1px),var(--grid-line) var(--sg-step));min-height:44px}
 .sg-scale{position:relative;overflow:hidden}
