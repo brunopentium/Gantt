@@ -70,6 +70,25 @@ window.ScheduleGroups=(()=>{
     return {data,sources,leaves,metrics,summary:metrics(leaves)};
   }
   function matches(entry){const t=entry.task,text=[t.name,entry.project.title,...path(api.projects(),entry.project).map(p=>p.title)].join(' ').toLocaleLowerCase('pt-BR');return (!search||text.includes(search.toLocaleLowerCase('pt-BR')))&&(filter==='all'||filter==='late'&&t.pct<100&&t.end&&t.end<api.today()||filter==='done'&&t.pct===100||filter==='open'&&t.pct<100||filter==='critical'&&t.critical)}
+  // Shared row selection keeps PDF and the grouped chart in the same expansion/filter state.
+  function viewRows(state){
+    const filtered=new Map(state.sources.map(s=>[s.id,s.tasks.map(task=>({project:s,task})).filter(matches)])),rows=[];
+    function walk(node,depth){
+      const source=state.sources.find(s=>s.id===node.id),sub=branch(state.data,node);
+      if((filter!=='all'||search)&&!state.sources.some(s=>sub.some(p=>p.id===s.id)&&filtered.get(s.id).length))return;
+      rows.push({node,source,depth,summary:true,collapsed:collapsed.has(node.id),stats:state.metrics(state.leaves.filter(e=>sub.some(p=>p.id===e.project.id)))});
+      if(collapsed.has(node.id))return;
+      const included=new Set((filtered.get(node.id)||[]).map(e=>e.task.id)),ancestors=[];
+      for(const t of source?.tasks||[]){
+        while(ancestors.length&&(ancestors.at(-1).indent||0)>=(t.indent||0))ancestors.pop();
+        const hidden=ancestors.some(parent=>included.has(parent.id)&&collapsedTasks.has(taskKey(node.id,parent.id)));
+        if(included.has(t.id)&&!hidden)rows.push({node,source,task:t,depth:depth+1+(t.indent||0),summary:t.summary,collapsed:collapsedTasks.has(taskKey(node.id,t.id))});
+        if(t.summary)ancestors.push(t);
+      }
+      for(const child of children(state.data,node))walk(child,depth+1);
+    }
+    walk(current(),0);return rows;
+  }
   function setExpandedAll(expanded){
     if(isAggregate()){for(const p of scope()){expanded?collapsed.delete(p.id):collapsed.add(p.id);p.tasks.forEach((t,i)=>{if(p.tasks[i+1]&&(p.tasks[i+1].indent||0)>(t.indent||0)){const key=taskKey(p.id,t.id);expanded?collapsedTasks.delete(key):collapsedTasks.add(key)}})}refresh()}
     else api.setTasksExpanded(expanded);
@@ -86,23 +105,19 @@ window.ScheduleGroups=(()=>{
     let mn=m.start?api.date(m.start):api.date(api.today()),mx=m.end?api.date(m.end):new Date(mn);mn.setDate(mn.getDate()-2);mx.setDate(mx.getDate()+7);
     const days=Math.max(1,Math.round((mx-mn)/86400000)+1),pixels=({days:28,weeks:7,months:2.5,quarters:1}[view.res]||7)*view.cw/36,width=Math.min(30000,Math.max(500,days*pixels)),scale=width/days;
     const x=date=>date?Math.round((api.date(date)-mn)/86400000)*scale:0,step=Math.max(1,Math.ceil(75/scale)),ticks=[];for(let day=0;day<days;day+=step){const d=new Date(mn);d.setDate(d.getDate()+day);ticks.push(`<span style="left:${day*scale}px">${api.dateString(d)}</span>`)}
-    const filtered=new Map(state.sources.map(s=>[s.id,s.tasks.map(task=>({project:s,task})).filter(matches)])),rows=[];
+    const rows=[];
     function row(title,depth,stats,attrs='',type='task',detail='',fold=null){
       const todayX=x(api.today());
       const left=x(stats.start),w=Math.max(4,x(stats.end)-left+scale),barHTML=stats.start?`<button class="sg-bar ${type==='task'?'':'sg-summary-bar'} ${stats.critical===true&&(view.cpOn||filter==='critical')?'sg-critical':''}" ${attrs} style="left:${left}px;width:${w}px" title="${esc(title)} · ${stats.start} → ${stats.end} · ${stats.progress??stats.pct??0}%"><span style="width:${stats.progress??stats.pct??0}%"></span></button>`:'';
       const control=fold?`<button class="sg-task-toggle" data-sg-fold-task="${esc(fold.taskId)}" data-sg-project="${esc(fold.projectId)}" aria-expanded="${fold.expanded}" aria-label="${fold.expanded?'Recolher':'Expandir'} tarefas de ${esc(title)}" title="${fold.expanded?'Recolher':'Expandir'} tarefas de ${esc(title)}">${fold.expanded?'▾':'▸'}</button>`:'';
       rows.push(`<div class="sg-row ${type==='task'?'':'sg-heading-row'}" ${attrs}><div class="sg-label" style="padding-left:${12+Math.min(depth,12)*14}px"><div><div class="sg-task-title">${control}<button class="sg-name" ${attrs}>${esc(title)}</button></div>${detail?`<small>${esc(detail)}</small>`:''}</div><span>${stats.progress??stats.pct??0}%</span></div><div class="sg-track" style="--sg-step:${step*scale}px">${barHTML}${todayX>=0&&todayX<width?`<span class="sg-today" style="left:${todayX}px" aria-hidden="true"></span>`:''}</div></div>`);
     }
-    function walk(node,depth){const source=state.sources.find(s=>s.id===node.id),sub=branch(state.data,node),subEntries=state.leaves.filter(e=>sub.some(p=>p.id===e.project.id));if(filter!=='all'||search){if(!state.sources.some(s=>sub.some(p=>p.id===s.id)&&filtered.get(s.id).length))return}const stats=state.metrics(subEntries);row((collapsed.has(node.id)?'▸ ':'▾ ')+node.title,depth,stats,`data-sg-collapse="${esc(node.id)}"`,'summary',node.kind==='group'?'Grupo':`${source?.tasks.filter(t=>!t.summary).length||0} tarefas · ${path(api.projects(),node).map(p=>p.title).join(' / ')}`);if(collapsed.has(node.id))return;
-      const included=new Set((filtered.get(node.id)||[]).map(e=>e.task.id)),ancestors=[];
-      for(const t of source?.tasks||[]){
-        while(ancestors.length&&(ancestors.at(-1).indent||0)>=(t.indent||0))ancestors.pop();
-        const hidden=ancestors.some(parent=>included.has(parent.id)&&collapsedTasks.has(taskKey(node.id,parent.id))),open=!collapsedTasks.has(taskKey(node.id,t.id));
-        if(included.has(t.id)&&!hidden)row(t.name,depth+1+(t.indent||0),{...t,progress:t.pct},`data-sg-project="${esc(node.id)}" data-sg-task="${esc(t.id)}"`,t.summary?'summary':'task',`${t.wbs||''} · ${t.start||'—'} → ${t.end||'—'}${t.pred?' · Dependências locais: '+t.pred:''}${t.mile?' · Marco':''}`,t.summary?{projectId:node.id,taskId:t.id,expanded:open}:null);
-        if(t.summary)ancestors.push(t);
-      }for(const child of children(state.data,node))walk(child,depth+1)}
-    walk(p,0);
-    panel.innerHTML=`<header class="sg-head"><h1>${esc(p.title)}</h1><span>Visão consolidada · ${state.data.length-1} descendentes</span></header>${summaryHTML}<div class="sg-analysis-tools"><label>Buscar<input id="sgSearch" type="search" placeholder="Tarefa ou cronograma" value="${esc(search)}"></label><label>Mostrar<select id="sgFilter"><option value="all">Todas as tarefas</option><option value="late">Atrasadas</option><option value="open">Não concluídas</option><option value="done">Concluídas</option><option value="critical">Críticas nas origens</option></select></label><span>Abra uma tarefa para editar no cronograma de origem. Progresso ponderado pela duração; marcos têm peso 1. Excel/PDF exportam o ramo completo.</span></div><div class="sg-chart"><div class="sg-chart-content" style="width:calc(var(--sg-label-width) + ${width}px);--sg-width:${width}px"><div class="sg-chart-header"><div class="sg-label">Cronograma / tarefa · progresso</div><div class="sg-scale">${ticks.join('')}</div></div>${rows.join('')||'<div class="sg-empty">Nenhuma tarefa encontrada.</div>'}</div></div>`;
+    for(const r of viewRows(state)){
+      const {node,source,task:t,depth}=r;
+      if(!t)row((r.collapsed?'▸ ':'▾ ')+node.title,depth,r.stats,`data-sg-collapse="${esc(node.id)}"`,'summary',node.kind==='group'?'Grupo':`${source?.tasks.filter(t=>!t.summary).length||0} tarefas · ${path(api.projects(),node).map(p=>p.title).join(' / ')}`);
+      else row(t.name,depth,{...t,progress:t.pct},`data-sg-project="${esc(node.id)}" data-sg-task="${esc(t.id)}"`,t.summary?'summary':'task',`${t.wbs||''} · ${t.start||'—'} → ${t.end||'—'}${t.pred?' · Dependências locais: '+t.pred:''}${t.mile?' · Marco':''}`,t.summary?{projectId:node.id,taskId:t.id,expanded:!r.collapsed}:null);
+    }
+    panel.innerHTML=`<header class="sg-head"><h1>${esc(p.title)}</h1><span>Visão consolidada · ${state.data.length-1} descendentes</span></header>${summaryHTML}<div class="sg-analysis-tools"><label>Buscar<input id="sgSearch" type="search" placeholder="Tarefa ou cronograma" value="${esc(search)}"></label><label>Mostrar<select id="sgFilter"><option value="all">Todas as tarefas</option><option value="late">Atrasadas</option><option value="open">Não concluídas</option><option value="done">Concluídas</option><option value="critical">Críticas nas origens</option></select></label><span>Abra uma tarefa para editar no cronograma de origem. Progresso ponderado pela duração; marcos têm peso 1. O PDF respeita os filtros e níveis visíveis. Excel exporta o ramo completo.</span></div><div class="sg-chart"><div class="sg-chart-content" style="width:calc(var(--sg-label-width) + ${width}px);--sg-width:${width}px"><div class="sg-chart-header"><div class="sg-label">Cronograma / tarefa · progresso</div><div class="sg-scale">${ticks.join('')}</div></div>${rows.join('')||'<div class="sg-empty">Nenhuma tarefa encontrada.</div>'}</div></div>`;
     panel.querySelector('#sgFilter').value=filter;panel.querySelector('#sgFilter').onchange=e=>{filter=e.target.value;refresh()};panel.querySelector('#sgSearch').oninput=e=>{search=e.target.value;const pos=e.target.selectionStart;refresh();const input=panel.querySelector('#sgSearch');input.focus();input.setSelectionRange(pos,pos)};
     panel.querySelectorAll('[data-sg-collapse]').forEach(b=>{if(b.tagName==='BUTTON')b.onclick=()=>{const id=b.dataset.sgCollapse;collapsed.has(id)?collapsed.delete(id):collapsed.add(id);refresh()}});
     panel.querySelectorAll('[data-sg-fold-task]').forEach(b=>b.onclick=event=>{event.preventDefault();event.stopPropagation();const projectId=b.dataset.sgProject,taskId=b.dataset.sgFoldTask,key=taskKey(projectId,taskId);collapsedTasks.has(key)?collapsedTasks.delete(key):collapsedTasks.add(key);refresh();[...panel.querySelectorAll('[data-sg-fold-task]')].find(x=>x.dataset.sgProject===projectId&&x.dataset.sgFoldTask===taskId)?.focus()});
@@ -113,8 +128,17 @@ window.ScheduleGroups=(()=>{
     function walk(node,depth){const sub=branch(state.data,node),m=state.metrics(state.leaves.filter(e=>sub.some(p=>p.id===e.project.id)));out.push({id:'group:'+node.id,name:node.title,indent:depth,dur:m.start&&m.end?Math.max(1,Math.round((api.date(m.end)-api.date(m.start))/86400000)+1):0,unit:'cd',start:m.start,end:m.end,pct:m.progress,pred:'',mile:false,color:'#687386',collapsed:false});const source=state.sources.find(s=>s.id===node.id);for(const [i,t]of (source?.tasks||[]).entries()){map.set(node.id+':'+(i+1),out.length+1);out.push({...t,id:node.id+':'+t.id,indent:depth+1+(t.indent||0),collapsed:false,_project:node.id})}for(const child of children(state.data,node))walk(child,depth+1)}walk(current(),0);
     for(const t of out){if(!t._project)continue;t.pred=api.parsePred(t.pred).filter(p=>map.has(t._project+':'+p.n)).map(p=>map.get(t._project+':'+p.n)+p.ty+(p.lag?(p.lag>0?'+':'')+p.lag+'d':'')).join(',');delete t._project;delete t.summary;delete t.critical}return out;
   }
+  function pdfTasks(){
+    const rows=new Map(viewRows(snapshot()).map(r=>[r.task?r.node.id+':'+r.task.id:'group:'+r.node.id,r])),counters=[];
+    // Preserve full-tree numbering and summary bars even when their children are omitted.
+    return reportTasks().map((t,i)=>{
+      counters.length=t.indent+1;counters[t.indent]=(counters[t.indent]||0)+1;
+      const r=rows.get(t.id);
+      return r?{...t,_printIndex:i+1,_printWbs:counters.join('.'),_printSummary:r.summary,_printCollapsed:r.collapsed}:null;
+    }).filter(Boolean);
+  }
   function excel(){api.flush();api.exportExcel(reportTasks())}
-  function pdf(pages){api.flush();api.exportPDF(reportTasks(),pages)}
+  function pdf(pages){api.flush();api.exportPDF(pdfTasks(),pages)}
   function init(adapter){api=adapter;document.addEventListener('click',e=>{const picker=document.querySelector('.sg-tree-picker[open]');if(picker&&!picker.contains(e.target))picker.open=false});document.addEventListener('keydown',e=>{if(e.key==='Escape'){const picker=document.querySelector('.sg-tree-picker[open]');if(picker){picker.open=false;picker.querySelector('summary').focus()}}});refresh()}
-  return {init,validate,options,isAggregate,refresh,onSelect,edit,duplicate,remove,exportBranch,excel,pdf,snapshot,reportTasks,newSchedule:()=>edit(null,'schedule',current()?.kind==='group'?current().id:current()?.parentId||null)};
+  return {init,validate,options,isAggregate,refresh,onSelect,edit,duplicate,remove,exportBranch,excel,pdf,snapshot,reportTasks,pdfTasks,newSchedule:()=>edit(null,'schedule',current()?.kind==='group'?current().id:current()?.parentId||null)};
 })();

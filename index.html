@@ -151,7 +151,7 @@ input{font-family:inherit}
 
 #statusbar{display:flex;align-items:center;justify-content:space-between;padding:1px 10px;background:var(--bg1);border-top:1px solid var(--border);font-size:10px;color:var(--text3);height:20px;flex-shrink:0}
 </style>
-<link rel="stylesheet" href="action-plans.css?v=20261007-hierarchy">
+<link rel="stylesheet" href="action-plans.css?v=20261007-filtered-pdf">
 <link rel="stylesheet" href="schedule-groups.css?v=20261007-task-folding">
 </head>
 <body>
@@ -223,13 +223,13 @@ input{font-family:inherit}
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
-<script src="action-plans.js?v=20261007-hierarchy"></script>
-<script src="schedule-groups.js?v=20261007-task-folding"></script>
-<script src="plan-exports.js?v=20261007-plan-pagination"></script>
+<script src="action-plans.js?v=20261007-filtered-pdf"></script>
+<script src="schedule-groups.js?v=20261007-filtered-pdf"></script>
+<script src="plan-exports.js?v=20261007-filtered-pdf"></script>
 <script src="plan-cloud.js?v=20261007-plan-document"></script>
 <script src="github-backup.js?v=20261007-groups"></script>
-<script src="gantt-print.js?v=20261007-pagination"></script>
-<script src="plan-print.js?v=20261007-pagination"></script>
+<script src="gantt-print.js?v=20261007-filtered-pdf"></script>
+<script src="plan-print.js?v=20261007-filtered-pdf"></script>
 <script>
 // ========== STATE ==========
 let T=[], sel=new Set(), lastSel=null, undo=[], fmt={}, cpOn=false, labelsOn=true, statusOn=false, theme='dark', res='weeks', cw=36;
@@ -863,8 +863,8 @@ function showPdfModal(){
   commitEdit();closePopups();closeEditor();
   let ov=document.createElement('div');ov.className='popup-overlay';document.body.appendChild(ov);
   let m=document.createElement('div');m.className='modal';
-  const taskCount=window.ScheduleGroups?.isAggregate()?window.ScheduleGroups.reportTasks().length:T.length;
-  m.innerHTML=`<h3>Imprimir / salvar PDF</h3><p>Todo o cronograma, inclusive tarefas recolhidas. Tabela e barras usam a mesma escala.</p><label style="display:block;margin:12px 0">Orientação do relatório<select id="pdfOrientation" style="display:block;width:100%;margin-top:6px;padding:8px"><option value="landscape">Paisagem</option><option value="portrait">Retrato</option></select></label><label style="display:block;margin:12px 0">Páginas na altura<input id="pdfPages" type="number" min="1" max="50" value="${Math.max(1,Math.min(50,Math.ceil(taskCount/32)))}" style="margin-top:6px"></label><p>1 página na largura × o número escolhido na altura. Mais páginas deixam as linhas maiores. Na janela de impressão, escolha a mesma orientação para aproveitar melhor o papel.</p><div class="modal-actions"><button data-a="cancel">Cancelar</button><button class="act" data-a="ok">Imprimir / PDF</button></div>`;
+  const taskCount=window.ScheduleGroups?.isAggregate()?window.ScheduleGroups.pdfTasks().length:visible().length;
+  m.innerHTML=`<h3>Imprimir / salvar PDF</h3><p>A visão atual do cronograma: níveis recolhidos permanecem recolhidos e os filtros da visão agrupada são respeitados. Tabela e barras usam a mesma escala.</p><label style="display:block;margin:12px 0">Orientação do relatório<select id="pdfOrientation" style="display:block;width:100%;margin-top:6px;padding:8px"><option value="landscape">Paisagem</option><option value="portrait">Retrato</option></select></label><label style="display:block;margin:12px 0">Páginas na altura<input id="pdfPages" type="number" min="1" max="50" value="${Math.max(1,Math.min(50,Math.ceil(taskCount/32)))}" style="margin-top:6px"></label><p>1 página na largura × o número escolhido na altura. Mais páginas deixam as linhas maiores. Na janela de impressão, escolha a mesma orientação para aproveitar melhor o papel.</p><div class="modal-actions"><button data-a="cancel">Cancelar</button><button class="act" data-a="ok">Imprimir / PDF</button></div>`;
   document.body.appendChild(m);
   let inp=m.querySelector('input');
   function ok(){const options=GanttPrint.settings({pages:inp.value,orientation:m.querySelector('#pdfOrientation').value});closePopups();exportPDF(options)}
@@ -1181,9 +1181,9 @@ function buildPDFHTML(options){
   return GanttPrint.build({
     title:cleanTitle(document.getElementById('ptitle').value),start:fdi(rng.mn),end:fdi(rng.mx),days,
     today:d2x(today(),rng)/tw,status:statusOn,labels:labelsOn,format:fmt,
-    tasks:T.map((t,index)=>({id:t.id,index:index+1,wbs:t.wbs||'',name:t.name,indent:t.indent||0,
+    tasks:visible().map(t=>({id:t.id,index:t._printIndex??T.indexOf(t)+1,wbs:t._printWbs??t.wbs??'',name:t.name,indent:t.indent||0,
       dur:t.mile?0:t.dur,unit:t.unit==='cd'?'CD':'BD',start:printDate(t.start),end:printDate(t.end),pred:t.pred||'',pct:t.pct||0,
-      summary:isSummary(t),mile:t.mile||t.dur===0,color:t.color||'#4a9eff',hasDate:!!t.start,
+      summary:t._printSummary??isSummary(t),collapsed:t._printCollapsed??!!t.collapsed,mile:t.mile||t.dur===0,color:t.color||'#4a9eff',hasDate:!!t.start,
       x:d2x(t.start,rng)/tw,w:barW(t.start,t.end,rng)/tw}))
   },options);
 }

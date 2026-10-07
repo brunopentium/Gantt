@@ -32,7 +32,7 @@ window.GanttPrint=(()=>{
           const cf={...rowFmt,...(data.format[t.id+'_'+c.key]||{})},clip=`cell-${page}-${i}-${c.key}`,indent=c.key==='name'?Math.min(t.indent*7,c.w*.35):0,cellFont=c.key==='name'?font:font*.88;
           defs+=`<clipPath id="${clip}"><rect x="${c.x+2}" y="${y+.2}" width="${c.w-4}" height="${rowHeight-.4}"/></clipPath>`;
           if(cf.bg)svg+=`<rect x="${c.x}" y="${y}" width="${c.w}" height="${rowHeight}" fill="${esc(cf.bg)}"/>`;
-          const value=c.key==='id'?t.index:c.key==='pct'?t.pct+'%':t[c.key],parts=c.key==='name'?lines(value,Math.max(2,Math.floor((c.w-indent-7)/(cellFont*.55))),rowHeight>font*2.5?2:1):[String(value??'')];
+          const value=c.key==='id'?t.index:c.key==='pct'?t.pct+'%':c.key==='name'&&t.summary?(t.collapsed?'▸ ':'▾ ')+t.name:t[c.key],parts=c.key==='name'?lines(value,Math.max(2,Math.floor((c.w-indent-7)/(cellFont*.55))),rowHeight>font*2.5?2:1):[String(value??'')];
           parts.forEach((line,n)=>{svg+=text(c.x+3+indent,mid+(n-(parts.length-1)/2)*cellFont*1.15+cellFont*.33,line,cellFont,`clip-path="url(#${clip})" fill="${esc(cf.fc||'#20242b')}" ${cf.b||t.summary?'font-weight="700"':''}`)});
           svg+=`<line x1="${c.x}" y1="${y}" x2="${c.x}" y2="${y+rowHeight}" stroke="#d8dfe9" stroke-width=".5"/>`;
         }
@@ -51,7 +51,7 @@ window.GanttPrint=(()=>{
         svg+='</g>';
       }
       if(!rows.length)svg+=text(0,top+header+30,'Nenhuma tarefa neste cronograma.',12);
-      svg+=text(0,height-6,'Cronograma completo · cabeçalho e período repetidos em cada página',9,'fill="#526074"');
+      svg+=text(0,height-6,'Visão atual do cronograma · cabeçalho e período repetidos em cada página',9,'fill="#526074"');
       sheets+=`<section class="sheet"><svg class="report" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMinYMin meet" role="img" aria-label="${esc(data.title)} — página ${page+1}"><defs>${defs}</defs>${svg}</svg></section>`;
     }
     // size:auto preserves the browser's portrait/landscape controls. Both components scale together.

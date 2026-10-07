@@ -115,3 +115,5 @@
 #actionPanel .ap-origin-plan{display:block;text-align:left;background:transparent;border:0;color:var(--ap-purple);font-size:.75em;padding:3px 0;white-space:normal;overflow-wrap:anywhere}
 .ap-card .ap-origin-plan{margin:8px 0}
 @media(max-width:480px){.ap-tree-picker{flex:1}.ap-tree-picker summary{text-align:center}.ap-tree-menu{position:fixed;left:16px;right:16px;top:150px;width:auto;max-height:60vh}.ap-hierarchy-context{align-items:flex-start;flex-direction:column;gap:8px}}
+
+.ap-filters{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px;font-size:.85em;color:var(--ap-muted)}.ap-filters label{font-weight:600}.ap-filters select,#actionPanel .ap-filters button{padding:8px 10px;background:var(--ap-surface);border:1px solid var(--ap-line);border-radius:6px;color:var(--ap-text);max-width:100%}.ap-filters span{flex-basis:100%;line-height:1.5}
