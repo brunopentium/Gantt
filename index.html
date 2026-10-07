@@ -151,11 +151,11 @@ input{font-family:inherit}
 
 #statusbar{display:flex;align-items:center;justify-content:space-between;padding:1px 10px;background:var(--bg1);border-top:1px solid var(--border);font-size:10px;color:var(--text3);height:20px;flex-shrink:0}
 </style>
-<link rel="stylesheet" href="action-plans.css?v=20261007-plan-document">
+<link rel="stylesheet" href="action-plans.css?v=20261007-todo">
 </head>
 <body>
 <div id="app">
-<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabGantt" aria-controls="main" class="act" role="tab" aria-selected="true">Cronogramas</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button></nav>
+<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabGantt" aria-controls="main" class="act" role="tab" aria-selected="true">Cronogramas</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabTodo" aria-controls="todoPanel" role="tab" aria-selected="false">✅ Todo</button></nav>
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
   <div class="tsep"></div>
@@ -213,10 +213,14 @@ input{font-family:inherit}
   <span id="apCloudStatus" role="status" aria-live="polite"></span>
 </div>
 <section id="actionPanel" hidden aria-label="Planos de ação"></section>
+<section id="todoPanel" hidden aria-label="Todo List">
+  <div class="todo-header"><span>Todo List · Google Apps Script</span><a href="https://script.google.com/macros/s/AKfycbxz130g31jZd9no5MiH97NvhChrM9W5gUBubJfseSp_Ke_y0RHe8KR7TP6I3p5FnAVL/exec" target="_blank" rel="noopener noreferrer">Abrir em outra aba ↗</a></div>
+  <iframe id="todoFrame" title="Todo List — TaskMaster" data-src="https://script.google.com/macros/s/AKfycbxz130g31jZd9no5MiH97NvhChrM9W5gUBubJfseSp_Ke_y0RHe8KR7TP6I3p5FnAVL/exec" allow="fullscreen"></iframe>
+</section>
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
-<script src="action-plans.js?v=20261007-plan-document"></script>
+<script src="action-plans.js?v=20261007-todo"></script>
 <script src="plan-exports.js?v=20261007-plan-document"></script>
 <script src="plan-cloud.js?v=20261007-plan-document"></script>
 <script src="github-backup.js?v=20261007-plan-document"></script>
@@ -981,7 +985,7 @@ document.getElementById('thead').addEventListener('mousedown',function(e){
 // ========== KEYBOARD ==========
 document.addEventListener('keydown',function(e){
   if(e.target.closest?.('#appTabs'))return;
-  if(window.ActionPlans?.isVisible()||document.querySelector('.ap-modal'))return;
+  if(document.documentElement.dataset.appView==='todo'||window.ActionPlans?.isVisible()||document.querySelector('.ap-modal'))return;
   if(editing)return;
   let ae=document.activeElement;if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT')&&ae.id!=='ptitle')return;
   if(e.key==='Delete'&&sel.size>0){e.preventDefault();deleteSelected()}

@@ -185,7 +185,23 @@ window.ActionPlans=(()=>{
     m.querySelector('#apTargetPlan').onchange=e=>m.querySelector('#apNewTitleLabel').hidden=!!e.target.value;
     m.querySelector('form').onsubmit=e=>{e.preventDefault();const target=m.querySelector('#apTargetPlan').value,title=m.querySelector('#apNewTitle').value.trim();if(!target&&!title){m.querySelector('#apError').textContent='Informe o nome do plano.';return}checkpoint();activeId=target;if(!activeId){const p={id:id(),title,description:'',source:link,actions:[]};plans.push(p);activeId=p.id}const p=current();p.actions.push({id:id(),title:t.taskName,owner:'',start:t.start,end:t.end,status:'pending',notes:'',link});closePopups();save();switchView(true)};
   }
-  function switchView(value){api.flush();shown=value;document.documentElement.dataset.theme=value?(planTheme||api.getTheme()):api.getTheme();document.documentElement.dataset.appView=value?'actions':'gantt';document.getElementById('actionPanel').hidden=!value;document.getElementById('actionToolbar').hidden=!value;for(const [name,on]of [['tabGantt',!value],['tabActions',value]]){const b=document.getElementById(name);b.classList.toggle('act',on);b.setAttribute('aria-selected',on)}if(value)refresh();else render()}
+  function switchView(value){
+    api.flush();
+    const next=value==='todo'?'todo':value?'actions':'gantt';
+    shown=next==='actions';
+    document.documentElement.dataset.theme=shown?(planTheme||api.getTheme()):api.getTheme();
+    document.documentElement.dataset.appView=next;
+    document.getElementById('actionPanel').hidden=!shown;
+    document.getElementById('actionToolbar').hidden=!shown;
+    document.getElementById('todoPanel').hidden=next!=='todo';
+    for(const [name,on]of [['tabGantt',next==='gantt'],['tabActions',shown],['tabTodo',next==='todo']]){
+      const b=document.getElementById(name);b.classList.toggle('act',on);b.setAttribute('aria-selected',on);
+    }
+    if(next==='todo'){
+      const frame=document.getElementById('todoFrame');
+      if(!frame.getAttribute('src'))frame.src=frame.dataset.src;
+    }else if(shown)refresh();else render();
+  }
   function init(adapter){
     api=adapter;planTheme=localStorage.getItem('pf_action_plan_theme');if(!['dark','light'].includes(planTheme))planTheme='light';
     document.getElementById('apBackup').onclick=backup;document.getElementById('apImport').onclick=importFile;document.getElementById('apUndo').onclick=undoPlan;document.getElementById('apTheme').onclick=()=>{planTheme=(planTheme||api.getTheme())==='dark'?'light':'dark';localStorage.setItem('pf_action_plan_theme',planTheme);document.documentElement.dataset.theme=planTheme};
@@ -198,6 +214,7 @@ window.ActionPlans=(()=>{
     document.addEventListener('keydown',e=>{if(shown&&!document.querySelector('.ap-modal')&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)&&e.key==='z'&&(e.ctrlKey||e.metaKey)){e.preventDefault();undoPlan()}});
     for(const name of ['btnCloudSave','btnCloudHistory','btnBackupAll','btnCloudBackup','cloudBackupStatus'])document.getElementById(name).classList.add('global-control');
     document.getElementById('tabGantt').onclick=()=>switchView(false);document.getElementById('tabActions').onclick=()=>switchView(true);
+    document.getElementById('tabTodo').onclick=()=>switchView('todo');
     document.getElementById('btnActionFromTask').onclick=()=>{const link=api.selectedTask();if(link)fromTask(link.projectId,link.taskId);else alert('Selecione uma linha do cronograma para criar uma ação vinculada. Para ações independentes, abra Planos de ação.')};
     sync();
   }
