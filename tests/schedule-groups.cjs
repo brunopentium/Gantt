@@ -34,7 +34,7 @@ const fs=require('node:fs');
   await page.selectOption('#selProject','grand');await page.check('#sgInclude');assert.equal(await page.evaluate(()=>ScheduleGroups.snapshot().summary.end),'2026-11-12');
   await page.click('#tabActions');assert(await page.locator('#scheduleHierarchyBar').isHidden());await page.click('#tabGantt');
   // Create a subgroup and a child schedule; move a pre-existing schedule into it.
-  await page.click('#sgNewGroup');await page.fill('#sgTitle','Subgrupo <novo>');assert.equal(await page.locator('#sgParent').inputValue(),'grand');await page.locator('.sg-modal button[type=submit]').click();
+  await page.click('#sgNewSubgroup');await page.fill('#sgTitle','Subgrupo <novo>');assert.equal(await page.locator('#sgParent').inputValue(),'grand');await page.locator('.sg-modal button[type=submit]').click();
   const groupId=await page.evaluate(()=>activeProjectId);assert.equal(await page.evaluate(id=>projects.find(p=>p.id===id).kind,groupId),'group');
   await page.click('#sgNewChild');await page.fill('#sgTitle','Cronograma filho');await page.locator('.sg-modal button[type=submit]').click();const childId=await page.evaluate(()=>activeProjectId);assert.equal(await page.evaluate(id=>projects.find(p=>p.id===id).parentId,childId),groupId);
   await page.selectOption('#selProject','outside');await page.click('#sgEdit');await page.selectOption('#sgParent',groupId);await page.locator('.sg-modal button[type=submit]').click();

@@ -55,6 +55,18 @@
 .sg-bar.sg-critical{background:var(--red);border-color:var(--red)}
 .sg-modal label{display:block;margin:12px 0;font-size:12px}
 .sg-modal input,.sg-modal select{display:block;width:100%;margin-top:5px;padding:8px;max-width:100%}
+.sg-modal{max-height:calc(100dvh - 32px);overflow:auto}
+.sg-members{border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:16px;min-width:0}
+.sg-members legend{font-size:12px;font-weight:600;padding:0 5px}
+.sg-members p,.sg-members>span{font-size:11px;color:var(--text2);line-height:1.5}
+.sg-member-list{max-height:240px;overflow:auto;margin:10px 0}
+.sg-modal .sg-member-list label{display:flex;align-items:flex-start;gap:9px;margin:0;padding:9px 4px;cursor:pointer;border-bottom:1px solid var(--border)}
+.sg-modal .sg-member-list input{flex:none;display:inline-block;width:auto;margin:3px 0 0;padding:0;accent-color:var(--accent)}
+.sg-member-list span{min-width:0;overflow-wrap:anywhere}
+.sg-member-list strong{font-size:12px;font-weight:500}
+.sg-member-list small{display:block;font-size:10px;color:var(--text2);margin-top:4px}
+.sg-member-list label:has(input:checked){background:var(--row-sel)}
+.sg-member-list label:has(input:disabled){opacity:.65;cursor:default}
 #sgError{color:var(--red);font-size:12px}
 .sg-empty{padding:30px;color:var(--text2)}
 @media(max-width:1000px){.sg-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.sg-metrics .sg-period strong{font-size:13px}}

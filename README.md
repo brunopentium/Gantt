@@ -95,7 +95,9 @@ A hierarquia acompanha o salvamento local e os backups dos planos. **Exportar JS
 
 ## Grupos de cronogramas
 
-Na guia **Cronogramas**, **Novo grupo** cria um agrupamento, e **Subgrupo / Subcronograma** cria filhos do item selecionado. Use **Editar / mover** para escolher o pai de um cronograma já existente. A **Árvore de cronogramas** revela os filhos com o mouse ou pelas setas no celular; escolher um pai reúne todo o ramo. Um cronograma também pode ter filhos sem perder suas tarefas diretas.
+Na guia **Cronogramas**, **Novo grupo** cria um agrupamento no nível principal e já marca o item atual para ficar dentro dele. Marque outros cronogramas para reuni-los sob esse grupo. **Subgrupo** é uma opção separada para criar um grupo dentro do grupo atual; **Subcronograma** cria um cronograma filho. Use **Editar / mover** para escolher o pai de um cronograma já existente. A **Árvore de cronogramas** revela os filhos com o mouse ou pelas setas no celular; escolher um pai reúne todo o ramo. Um cronograma também pode ter filhos sem perder suas tarefas diretas.
+
+Ao criar ou editar um **grupo**, use a lista de caixas de seleção para reunir vários cronogramas e subgrupos de uma vez. O botão **Selecionar cronogramas** também abre essa lista. Os membros atuais já aparecem marcados; marcar outro mantém as escolhas anteriores. Subgrupos levam seus descendentes, sem achatar a árvore. Se um grupo estiver dentro de um cronograma que deveria reunir, marque esse cronograma: o grupo sobe automaticamente e passa a contê-lo, preservando as tarefas e evitando ciclos. Desmarcar um membro atual o move para o nível acima. Cada item tem um único pai; o campo **Colocar este grupo/cronograma dentro de** muda sua posição na árvore.
 
 **Incluir subcronogramas** alterna entre a visão consolidada e o cronograma individual. A consolidação mostra uma linha do tempo comum, período total, atrasos e progresso ponderado pela duração das tarefas executáveis (marcos têm peso 1); tarefas de resumo não são contadas novamente. Os caminhos críticos são calculados separadamente em cada origem. Busca e filtros ajudam a comparar as entregas.
 
