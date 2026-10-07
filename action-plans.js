@@ -1,6 +1,7 @@
 /* Action plans share linked dates with the original task; identifiers survive row reordering. */
 window.ActionPlans=(()=>{
   'use strict';
+  let includeChildren=true;
   let api,plans=[],activeId=null,view='table',shown=false,notice='',undo=[],zoom=1,notesShown=true,planTheme=null;
   const statuses={pending:'Pendente',doing:'Em andamento',done:'Concluída',blocked:'Bloqueada'};
   const id=()=>crypto.randomUUID();
@@ -19,6 +20,12 @@ window.ActionPlans=(()=>{
         actionIds.add(a.id);
       }
     }
+    const byId=new Map(data.map(p=>[p.id,p]));
+    for(const p of data){
+      if(p.parentId!=null&&(typeof p.parentId!=='string'||!byId.has(p.parentId)))throw new Error('Plano pai inexistente ou inválido.');
+      const ancestors=new Set([p.id]);let parent=p.parentId;
+      while(parent){if(ancestors.has(parent))throw new Error('Um plano não pode ser pai de si mesmo ou de um ancestral.');ancestors.add(parent);const ancestor=byId.get(parent);if(!ancestor)throw new Error('Plano pai inexistente ou inválido.');parent=ancestor.parentId}
+    }
   }
   function load(data){validate(data);undo=[];plans=JSON.parse(JSON.stringify(data));activeId=plans.some(p=>p.id===activeId)?activeId:plans[0]?.id||null}
   function checkpoint(taskChange){undo.push({plans:JSON.parse(JSON.stringify(plans)),activeId,taskChange});if(undo.length>50)undo.shift()}
@@ -30,7 +37,8 @@ window.ActionPlans=(()=>{
   function exportData(){return JSON.parse(JSON.stringify(plans))}
   function importData(data){
     const incoming=data.actionPlans||(data.actions?[data]:null);validate(incoming);if(!incoming.length)throw new Error('O arquivo não contém planos.');checkpoint();const copies=JSON.parse(JSON.stringify(incoming));
-    for(const p of copies){p.id=id();p.actions.forEach(a=>a.id=id());plans.push(p)}activeId=copies[0].id;sync();notice=copies.length+' plano(s) importado(s). Os planos existentes foram mantidos.';save();
+    const mapping=new Map(copies.map(p=>[p.id,id()]));
+    for(const p of copies){p.id=mapping.get(p.id);if(p.parentId)p.parentId=mapping.get(p.parentId);p.actions.forEach(a=>a.id=id());plans.push(p)}activeId=copies[0].id;sync();notice=copies.length+' plano(s) importado(s). Os planos existentes foram mantidos.';save();
   }
   function importFile(){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=async()=>{try{if(input.files[0])importData(JSON.parse(await input.files[0].text()))}catch(e){notice='Falha na importação: '+e.message;refresh()}};input.click()}
   function restoreData(data,applyDates=true){
@@ -39,8 +47,29 @@ window.ActionPlans=(()=>{
     if(applyDates)for(const p of copy)for(const a of p.actions){const t=task(a.link);if(t&&!t.summary&&a.start&&a.end){const start=t.pred?t.start:a.start;if(a.end>=start)api.updateTask(a.link.projectId,a.link.taskId,{start,end:t.mile?start:a.end})}}
     load(copy);sync();notice='Planos restaurados. Datas vinculadas seguem as regras dos cronogramas.';save();
   }
-  function duplicatePlan(){const p=current();if(!p)return;checkpoint();const copy=JSON.parse(JSON.stringify(p));copy.id=id();copy.title+=' — cópia';copy.actions.forEach(a=>a.id=id());plans.push(copy);activeId=copy.id;save()}
+  function duplicatePlan(){
+    const p=current();if(!p)return;checkpoint();
+    const copies=JSON.parse(JSON.stringify(branch(p))),mapping=new Map(copies.map(p=>[p.id,id()]));
+    for(const copy of copies){const original=copy.id;copy.id=mapping.get(original);if(original===p.id)copy.title+=' — cópia';else copy.parentId=mapping.get(copy.parentId);copy.actions.forEach(a=>a.id=id());plans.push(copy)}
+    activeId=mapping.get(p.id);save();
+  }
   function current(){return plans.find(p=>p.id===activeId)}
+  function children(p){return plans.filter(x=>(x.parentId||null)===(p?.id||null))}
+  function branch(p){return p?[p,...children(p).flatMap(branch)]:[]}
+  function path(p){const chain=[];while(p){chain.unshift(p);p=plans.find(x=>x.id===p.parentId)}return chain}
+  function planOptions(exclude){
+    const blocked=new Set(exclude?branch(exclude).map(p=>p.id):[]);
+    function options(p,depth){return `${blocked.has(p.id)?'':`<option value="${esc(p.id)}">${'　'.repeat(depth)}${depth?'↳ ':''}${esc(p.title)}</option>`}${children(p).map(x=>options(x,depth+1)).join('')}`}
+    return children(null).map(p=>options(p,0)).join('');
+  }
+  function visibleEntries(p=current()){return (includeChildren?branch(p):[p]).filter(Boolean).flatMap(plan=>plan.actions.map(action=>({plan,action})))}
+  function reportPlan(p){const entries=visibleEntries(p);return {...p,actions:entries.map(({plan,action})=>({...action,title:plan===p?action.title:`[${path(plan).map(p=>p.title).join(' / ')}] ${action.title}`}))}}
+  function exportBranch(p){const copies=JSON.parse(JSON.stringify(branch(p)));if(copies[0])delete copies[0].parentId;return copies}
+  function treeHTML(){
+    const expanded=new Set(path(current()).slice(0,-1).map(p=>p.id));
+    function node(p){const sub=children(p),open=expanded.has(p.id);return `<li><div class="ap-tree-row"><button data-select-plan="${esc(p.id)}" ${p.id===activeId?'aria-current="true"':''}>${esc(p.title)}<span>${branch(p).reduce((n,p)=>n+p.actions.length,0)} ações</span></button>${sub.length?`<button class="ap-tree-expand" data-expand-plan aria-expanded="${open}" aria-label="Mostrar subplanos de ${esc(p.title)}">${open?'▾':'▸'}</button>`:''}</div>${sub.length?`<ul ${open?'':'hidden'}>${sub.map(node).join('')}</ul>`:''}</li>`}
+    return `<details class="ap-tree-picker"><summary>Árvore de planos ▾</summary><nav class="ap-tree-menu" aria-label="Árvore de planos"><ul>${children(null).map(node).join('')||'<li class="ap-empty">Nenhum plano criado.</li>'}</ul></nav></details>`;
+  }
   function task(link){return link&&api?api.task(link.projectId,link.taskId):null}
   function sync(){if(!api)return;for(const p of plans)for(const a of p.actions){const t=task(a.link);if(t){a.start=t.start;a.end=t.end}}}
   function save(){api.save();refresh()}
@@ -94,7 +123,7 @@ window.ActionPlans=(()=>{
     if(name==='status'){for(const [key,label]of Object.entries(statuses))choice(label,key);m.querySelector('button[type=submit]').hidden=true}
     if(name==='owner'){
       choice('Sem responsável','');
-      for(const owner of [...new Set(current().actions.map(x=>x.owner.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')))choice(owner,owner);
+      for(const owner of [...new Set(visibleEntries().map(({action})=>action.owner.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')))choice(owner,owner);
       options.insertAdjacentHTML('beforeend','<label>Adicionar novo responsável<input id="apInlineOwner" maxlength="200" placeholder="Nome do responsável" autocomplete="off"></label>');
       m.querySelector('form').onsubmit=e=>{e.preventDefault();const value=m.querySelector('input').value.trim();if(!value){error.textContent='Informe o nome ou escolha um responsável acima.';return}apply(value)};
     }
@@ -107,27 +136,40 @@ window.ActionPlans=(()=>{
   function buttons(a){return `<div class="ap-row-options"><button data-edit="${esc(a.id)}" aria-label="Editar ação" title="Editar ação">${icon('edit')}</button><button data-copy="${esc(a.id)}" aria-label="Duplicar ação" title="Duplicar ação">${icon('copy')}</button><button class="del" data-delete="${esc(a.id)}" aria-label="Excluir ação" title="Excluir ação">${icon('trash')}</button></div>`}
   function refresh(){
     if(!api||!shown)return;document.documentElement.dataset.theme=planTheme||api.getTheme();document.getElementById('apUndo').disabled=!undo.length;sync();const panel=document.getElementById('actionPanel'),p=current();
-    panel.innerHTML=`<div class="ap-document"><div class="ap-head"><h2>Planos de ação</h2><select id="apPlanSelect" aria-label="Plano de ação">${plans.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('')}</select><button id="apNewPlan">＋ Novo plano</button></div><div id="apNotice" role="status">${esc(notice)}</div><div id="apDocumentBody"></div></div>`;
+    panel.innerHTML=`<div class="ap-document"><div class="ap-head"><h2>Planos de ação</h2><select id="apPlanSelect" aria-label="Plano de ação">${planOptions()}</select>${treeHTML()}<button id="apNewPlan">＋ Novo plano</button></div><div id="apNotice" role="status">${esc(notice)}</div><div id="apDocumentBody"></div></div>`;
     panel.querySelector('#apNewPlan').onclick=()=>editPlan();const select=panel.querySelector('#apPlanSelect');select.value=activeId||'';select.onchange=()=>{activeId=select.value;notice='';refresh()};
+    panel.querySelectorAll('[data-select-plan]').forEach(b=>b.onclick=()=>{activeId=b.dataset.selectPlan;notice='';refresh()});
+    panel.querySelectorAll('.ap-tree-row').forEach(row=>{
+      const toggle=row.querySelector('[data-expand-plan]'),list=row.parentElement.querySelector(':scope > ul');if(!toggle)return;
+      function open(value){list.hidden=!value;toggle.setAttribute('aria-expanded',String(value));toggle.textContent=value?'▾':'▸'}
+      row.onpointerenter=e=>{if(e.pointerType==='mouse')open(true)};
+      toggle.onclick=()=>open(list.hidden);
+      row.onkeydown=e=>{if(e.key==='ArrowRight'){e.preventDefault();open(true)}else if(e.key==='ArrowLeft'){e.preventDefault();open(false)}};
+    });
     const body=panel.querySelector('#apDocumentBody');
     if(!p){body.innerHTML='<div class="ap-empty">Crie um plano e organize ações, datas e responsáveis.<br>Você pode acrescentar ações independentes ou vinculadas a qualquer cronograma.</div>';return}
-    const done=p.actions.filter(a=>a.status==='done').length,overdue=p.actions.filter(late).length,blocked=p.actions.filter(a=>a.status==='blocked').length,progress=p.actions.length?Math.round(done/p.actions.length*100):0,d=p.document||{};
-    body.innerHTML=`<header class="ap-hero"><div class="ap-hero-main"><div class="ap-hero-icon">${icon('plan')}</div><div class="ap-hero-copy"><span class="ap-eyebrow">PLANO DE AÇÃO</span><h1>${esc(p.title)}</h1>${p.description?`<p class="ap-description">${esc(p.description)}</p>`:''}${p.source?linkedHTML(p.source):''}</div><button id="apAddSection">＋ Adicionar seção</button></div><div class="ap-plan-title"><button id="apDuplicatePlan">Duplicar plano</button><button id="apEditPlan">Renomear / editar</button><button id="apDeletePlan" class="del">Excluir plano</button></div>${d.participants?.length?`<div class="ap-participants" data-document-section="participants"><h2>${icon('people')}Participantes</h2><div class="ap-participant-list">${d.participants.map(ownerHTML).join('')}</div>${sectionControls('participants')}</div>`:''}</header>${documentHTML(p)}<section class="ap-section ap-action-section"><div class="ap-section-head"><h2><span class="ap-section-icon">${icon('plan')}</span>Plano de ação</h2><div class="ap-views"><button id="apTable" class="${view==='table'?'act':''}" aria-pressed="${view==='table'}">Tabela</button><button id="apCards" class="${view==='cards'?'act':''}" aria-pressed="${view==='cards'}">Cards</button></div></div><div class="ap-tools"><button class="act" id="apAddAction">＋ Nova ação</button><span>${p.actions.length} ações · ${done} concluídas</span><div class="ap-indicators">${overdue?`<span class="ap-indicator ap-late">${overdue} atrasada${overdue>1?'s':''}</span>`:''}${blocked?`<span class="ap-indicator ap-blocked-count">${blocked} bloqueada${blocked>1?'s':''}</span>`:''}<span class="ap-progress-label">${progress}% concluído</span><progress class="ap-progress" max="100" value="${progress}" aria-label="Progresso do plano">${progress}%</progress></div></div><div id="apActionContent"></div></section>`;
-    panel.querySelector('#apDuplicatePlan').onclick=duplicatePlan;panel.querySelector('#apEditPlan').onclick=()=>editPlan(p);panel.querySelector('#apDeletePlan').onclick=()=>{if(confirm('Excluir este plano e todas as suas ações? Os cronogramas não serão excluídos.')){checkpoint();plans=plans.filter(x=>x!==p);activeId=plans[0]?.id||null;save()}};
+    const entries=visibleEntries(p),actions=entries.map(e=>e.action),scope=branch(p),entryFor=b=>{const owner=plans.find(x=>x.id===b.closest('[data-plan-id]').dataset.planId);return {plan:owner,action:owner.actions.find(a=>a.id===(b.dataset.action||b.dataset.complete||b.dataset.edit||b.dataset.copy||b.dataset.delete))}};
+    const done=actions.filter(a=>a.status==='done').length,overdue=actions.filter(late).length,blocked=actions.filter(a=>a.status==='blocked').length,progress=actions.length?Math.round(done/actions.length*100):0,d=p.document||{};
+    body.innerHTML=`<div class="ap-hierarchy-context"><nav class="ap-breadcrumbs" aria-label="Caminho do plano">${path(p).map(x=>`<button data-select-plan="${esc(x.id)}" ${x===p?'aria-current="page"':''}>${esc(x.title)}</button>`).join('<span aria-hidden="true">›</span>')}</nav><label><input id="apIncludeChildren" type="checkbox" ${includeChildren?'checked':''}> Incluir subplanos</label><span>${scope.length-1} subplanos · ${includeChildren?'ações de todo este ramo':'somente ações deste plano'}</span></div><header class="ap-hero"><div class="ap-hero-main"><div class="ap-hero-icon">${icon('plan')}</div><div class="ap-hero-copy"><span class="ap-eyebrow">PLANO DE AÇÃO</span><h1>${esc(p.title)}</h1>${p.description?`<p class="ap-description">${esc(p.description)}</p>`:''}${p.source?linkedHTML(p.source):''}</div><button id="apAddSection">＋ Adicionar seção</button></div><div class="ap-plan-title"><button id="apNewChild">＋ Novo subplano</button><button id="apDuplicatePlan">Duplicar ramo</button><button id="apEditPlan">Renomear / editar</button><button id="apDeletePlan" class="del">Excluir plano</button></div>${d.participants?.length?`<div class="ap-participants" data-document-section="participants"><h2>${icon('people')}Participantes</h2><div class="ap-participant-list">${d.participants.map(ownerHTML).join('')}</div>${sectionControls('participants')}</div>`:''}</header>${documentHTML(p)}<section class="ap-section ap-action-section"><div class="ap-section-head"><h2><span class="ap-section-icon">${icon('plan')}</span>Plano de ação</h2><div class="ap-views"><button id="apTable" class="${view==='table'?'act':''}" aria-pressed="${view==='table'}">Tabela</button><button id="apCards" class="${view==='cards'?'act':''}" aria-pressed="${view==='cards'}">Cards</button></div></div><div class="ap-tools"><button class="act" id="apAddAction">＋ Nova ação</button><span>${actions.length} ações · ${done} concluídas</span><div class="ap-indicators">${overdue?`<span class="ap-indicator ap-late">${overdue} atrasada${overdue>1?'s':''}</span>`:''}${blocked?`<span class="ap-indicator ap-blocked-count">${blocked} bloqueada${blocked>1?'s':''}</span>`:''}<span class="ap-progress-label">${progress}% concluído</span><progress class="ap-progress" max="100" value="${progress}" aria-label="Progresso do plano">${progress}%</progress></div></div><div id="apActionContent"></div></section>`;
+    panel.querySelector('#apDuplicatePlan').onclick=duplicatePlan;panel.querySelector('#apEditPlan').onclick=()=>editPlan(p);panel.querySelector('#apDeletePlan').onclick=()=>{if(confirm('Excluir este plano e suas ações diretas? Os subplanos serão mantidos no nível acima. Os cronogramas serão mantidos.')){checkpoint();children(p).forEach(child=>child.parentId=p.parentId||null);plans=plans.filter(x=>x!==p);activeId=p.parentId||plans[0]?.id||null;save()}};
+    panel.querySelector('#apNewChild').onclick=()=>editPlan(null,p.id);
+    panel.querySelector('#apIncludeChildren').onchange=e=>{includeChildren=e.target.checked;refresh()};
+    body.querySelectorAll('[data-select-plan]').forEach(b=>b.onclick=()=>{activeId=b.dataset.selectPlan;notice='';refresh()});
     panel.querySelector('#apAddSection').onclick=()=>addSection(p);
     panel.querySelectorAll('[data-section-edit]').forEach(b=>b.onclick=()=>editSection(p,b.dataset.sectionEdit));
     panel.querySelectorAll('[data-section-remove]').forEach(b=>b.onclick=()=>{checkpoint();delete p.document[b.dataset.sectionRemove];notice='Seção removida. Use Desfazer para recuperá-la.';save()});
     panel.querySelector('#apAddAction').onclick=()=>editAction();
     panel.querySelector('#apTable').onclick=()=>{view='table';refresh()};panel.querySelector('#apCards').onclick=()=>{view='cards';refresh()};
     const content=panel.querySelector('#apActionContent');
-    if(!p.actions.length)content.innerHTML='<div class="ap-empty">Este plano ainda não tem ações. Clique em <strong>＋ Nova ação</strong> para começar.</div>';
-    else if(view==='table')content.innerHTML=`<div class="ap-table-wrap"><table class="ap-table"><thead><tr><th class="ap-number">#</th><th>Ação / vínculo</th><th>${icon('people')} Atribuído a</th><th>${icon('calendar')} Data de conclusão</th><th>Status</th><th><span class="ap-sr-only">Opções</span></th></tr></thead><tbody>${p.actions.map((a,i)=>`<tr class="ap-row-${a.status} ${late(a)?'ap-row-late':''}" data-action-id="${esc(a.id)}"><td class="ap-number">${i+1}</td><td><div class="ap-task-cell"><button class="ap-complete ${a.status==='done'?'is-done':''}" data-complete="${esc(a.id)}" aria-label="${a.status==='done'?'Reabrir':'Concluir'} ${esc(a.title)}" aria-pressed="${a.status==='done'}" title="${a.status==='done'?'Reabrir ação':'Concluir ação'}">${a.status==='done'?'✓':''}</button><div class="ap-task-copy"><div class="ap-title">${esc(a.title)}</div>${linkedHTML(a.link)}${a.notes?`<div class="ap-note">${esc(a.notes)}</div>`:''}</div></div></td><td>${field(a,'owner',ownerHTML(a.owner))}</td><td>${field(a,'end',dateHTML(a))}<div class="ap-start">Início: ${format(a.start)}</div></td><td>${field(a,'status',badge(a))}</td><td>${buttons(a)}</td></tr>`).join('')}</tbody></table></div>`;
-    else content.innerHTML=`<div class="ap-cards">${p.actions.map((a,i)=>`<article class="ap-card ap-row-${a.status} ${late(a)?'ap-row-late':''}" data-action-id="${esc(a.id)}"><div class="ap-card-top"><span class="ap-card-number">${String(i+1).padStart(2,'0')}</span>${field(a,'status',badge(a))}</div><div class="ap-task-cell"><button class="ap-complete ${a.status==='done'?'is-done':''}" data-complete="${esc(a.id)}" aria-label="${a.status==='done'?'Reabrir':'Concluir'} ${esc(a.title)}" aria-pressed="${a.status==='done'}">${a.status==='done'?'✓':''}</button><div class="ap-title">${esc(a.title)}</div></div>${linkedHTML(a.link)}<div class="ap-meta"><span class="ap-meta-label">Responsável</span>${field(a,'owner',ownerHTML(a.owner))}</div><div class="ap-meta"><span class="ap-meta-label">Término</span>${field(a,'end',dateHTML(a))}</div><div class="ap-start">Início: ${format(a.start)}</div>${a.notes?`<div class="ap-note">${esc(a.notes)}</div>`:''}<div class="ap-card-footer">${buttons(a)}</div></article>`).join('')}</div>`;
-    panel.querySelectorAll('[data-complete]').forEach(b=>b.onclick=()=>{const a=p.actions.find(a=>a.id===b.dataset.complete);checkpoint();a.status=a.status==='done'?'pending':'done';notice='';save()});
-    panel.querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>inlineEdit(p.actions.find(a=>a.id===b.dataset.action),b.dataset.field));
-    panel.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editAction(p.actions.find(a=>a.id===b.dataset.edit)));
-    panel.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{const a=p.actions.find(a=>a.id===b.dataset.copy);checkpoint();p.actions.push({...JSON.parse(JSON.stringify(a)),id:id(),title:a.title+' — cópia'});save()});
-    panel.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{if(confirm('Excluir esta ação? A tarefa vinculada no cronograma será mantida.')){checkpoint();p.actions=p.actions.filter(a=>a.id!==b.dataset.delete);save()}});
+    if(!actions.length)content.innerHTML='<div class="ap-empty">Este plano ainda não tem ações. Clique em <strong>＋ Nova ação</strong> para começar.</div>';
+    else if(view==='table')content.innerHTML=`<div class="ap-table-wrap"><table class="ap-table"><thead><tr><th class="ap-number">#</th><th>Ação / vínculo</th><th>${icon('people')} Atribuído a</th><th>${icon('calendar')} Data de conclusão</th><th>Status</th><th><span class="ap-sr-only">Opções</span></th></tr></thead><tbody>${entries.map(({plan,action:a},i)=>`<tr class="ap-row-${a.status} ${late(a)?'ap-row-late':''}" data-plan-id="${esc(plan.id)}" data-action-id="${esc(a.id)}"><td class="ap-number">${i+1}</td><td><div class="ap-task-cell"><button class="ap-complete ${a.status==='done'?'is-done':''}" data-complete="${esc(a.id)}" aria-label="${a.status==='done'?'Reabrir':'Concluir'} ${esc(a.title)}" aria-pressed="${a.status==='done'}" title="${a.status==='done'?'Reabrir ação':'Concluir ação'}">${a.status==='done'?'✓':''}</button><div class="ap-task-copy"><div class="ap-title">${esc(a.title)}</div>${scope.length>1?`<button class="ap-origin-plan" data-select-plan="${esc(plan.id)}">${esc(path(plan).map(p=>p.title).join(' / '))}</button>`:''}${linkedHTML(a.link)}${a.notes?`<div class="ap-note">${esc(a.notes)}</div>`:''}</div></div></td><td>${field(a,'owner',ownerHTML(a.owner))}</td><td>${field(a,'end',dateHTML(a))}<div class="ap-start">Início: ${format(a.start)}</div></td><td>${field(a,'status',badge(a))}</td><td>${buttons(a)}</td></tr>`).join('')}</tbody></table></div>`;
+    else content.innerHTML=`<div class="ap-cards">${entries.map(({plan,action:a},i)=>`<article class="ap-card ap-row-${a.status} ${late(a)?'ap-row-late':''}" data-plan-id="${esc(plan.id)}" data-action-id="${esc(a.id)}"><div class="ap-card-top"><span class="ap-card-number">${String(i+1).padStart(2,'0')}</span>${field(a,'status',badge(a))}</div><div class="ap-task-cell"><button class="ap-complete ${a.status==='done'?'is-done':''}" data-complete="${esc(a.id)}" aria-label="${a.status==='done'?'Reabrir':'Concluir'} ${esc(a.title)}" aria-pressed="${a.status==='done'}">${a.status==='done'?'✓':''}</button><div class="ap-title">${esc(a.title)}</div>${scope.length>1?`<button class="ap-origin-plan" data-select-plan="${esc(plan.id)}">${esc(path(plan).map(p=>p.title).join(' / '))}</button>`:''}</div>${linkedHTML(a.link)}<div class="ap-meta"><span class="ap-meta-label">Responsável</span>${field(a,'owner',ownerHTML(a.owner))}</div><div class="ap-meta"><span class="ap-meta-label">Término</span>${field(a,'end',dateHTML(a))}</div><div class="ap-start">Início: ${format(a.start)}</div>${a.notes?`<div class="ap-note">${esc(a.notes)}</div>`:''}<div class="ap-card-footer">${buttons(a)}</div></article>`).join('')}</div>`;
+    content.querySelectorAll('[data-select-plan]').forEach(b=>b.onclick=()=>{activeId=b.dataset.selectPlan;notice='';refresh()});
+    panel.querySelectorAll('[data-complete]').forEach(b=>b.onclick=()=>{const {action:a}=entryFor(b);checkpoint();a.status=a.status==='done'?'pending':'done';notice='';save()});
+    panel.querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>inlineEdit(entryFor(b).action,b.dataset.field));
+    panel.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const entry=entryFor(b);editAction(entry.action,null,entry.plan)});
+    panel.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{const {plan,action:a}=entryFor(b);checkpoint();plan.actions.push({...JSON.parse(JSON.stringify(a)),id:id(),title:a.title+' — cópia'});save()});
+    panel.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{if(confirm('Excluir esta ação? A tarefa vinculada no cronograma será mantida.')){const {plan,action}=entryFor(b);checkpoint();plan.actions=plan.actions.filter(a=>a!==action);save()}});
     panel.querySelectorAll('[data-open-task]').forEach(b=>b.onclick=()=>{switchView(false);api.openTask(b.dataset.openProject,b.dataset.openTask)});
   }
   function modal(title,body){
@@ -135,14 +177,15 @@ window.ActionPlans=(()=>{
     m.innerHTML=`<h3>${esc(title)}</h3><form>${body}<div class="ap-error" role="alert" id="apError"></div><div class="modal-actions"><button type="button" id="apCancel">Cancelar</button><button class="act" type="submit">Salvar</button></div></form>`;
     document.body.append(overlay,m);m.querySelector('#apCancel').onclick=closePopups;overlay.onclick=closePopups;m.querySelector('input,select')?.focus();return m;
   }
-  function editPlan(p){
-    const m=modal(p?'Editar plano':'Novo plano',`<label>Nome do plano<input id="apPlanTitle" required maxlength="200" value="${esc(p?.title)}"></label><label>Descrição<textarea id="apPlanDescription">${esc(p?.description)}</textarea></label>`);
-    m.querySelector('form').onsubmit=e=>{e.preventDefault();const title=m.querySelector('#apPlanTitle').value.trim();if(!title)return;const data={title,description:m.querySelector('#apPlanDescription').value.trim()};checkpoint();if(p)Object.assign(p,data);else{const plan={id:id(),...data,source:null,actions:[]};plans.push(plan);activeId=plan.id}closePopups();notice='';save()};
+  function editPlan(p,parentId=null){
+    const m=modal(p?'Editar plano':'Novo plano',`<label>Nome do plano<input id="apPlanTitle" required maxlength="200" value="${esc(p?.title)}"></label><label>Descrição<textarea id="apPlanDescription">${esc(p?.description)}</textarea></label><label>Plano pai<select id="apPlanParent"><option value="">Nenhum — plano principal</option>${planOptions(p)}</select></label>`);
+    m.querySelector('#apPlanParent').value=p?.parentId||parentId||'';
+    m.querySelector('form').onsubmit=e=>{e.preventDefault();const title=m.querySelector('#apPlanTitle').value.trim();if(!title)return;const data={title,description:m.querySelector('#apPlanDescription').value.trim(),parentId:m.querySelector('#apPlanParent').value||null};checkpoint();if(p)Object.assign(p,data);else{const plan={id:id(),...data,source:null,actions:[]};plans.push(plan);activeId=plan.id}closePopups();notice='';save()};
   }
-  function editAction(existing,initialLink){
-    api.flush();sync();const p=current();if(!p)return;
+  function editAction(existing,initialLink,ownerPlan=current()){
+    api.flush();sync();const p=ownerPlan;if(!p)return;
     const a=existing||{id:id(),title:'',owner:'',start:'',end:'',status:'pending',notes:'',link:initialLink||null};
-    const m=modal(existing?'Editar ação':'Nova ação',`<label>Ação<input id="apActionTitle" required maxlength="300"></label><label>Responsável<input id="apOwner" maxlength="200" placeholder="Nome do responsável"></label><label>Cronograma vinculado<select id="apLinkProject"><option value="">Ação independente</option></select></label><label id="apTaskLabel">Linha do cronograma<select id="apLinkTask"></select></label><div class="ap-dates"><label>Início<input type="date" id="apStart"></label><label>Término<input type="date" id="apEnd"></label></div><p class="ap-hint" id="apDateHint"></p><label>Status<select id="apStatus">${Object.entries(statuses).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><label>Observações<textarea id="apNotes"></textarea></label>`);
+    const m=modal(existing?'Editar ação':'Nova ação',`<p class="ap-hint">Plano: ${esc(path(p).map(p=>p.title).join(' / '))}</p><label>Ação<input id="apActionTitle" required maxlength="300"></label><label>Responsável<input id="apOwner" maxlength="200" placeholder="Nome do responsável"></label><label>Cronograma vinculado<select id="apLinkProject"><option value="">Ação independente</option></select></label><label id="apTaskLabel">Linha do cronograma<select id="apLinkTask"></select></label><div class="ap-dates"><label>Início<input type="date" id="apStart"></label><label>Término<input type="date" id="apEnd"></label></div><p class="ap-hint" id="apDateHint"></p><label>Status<select id="apStatus">${Object.entries(statuses).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><label>Observações<textarea id="apNotes"></textarea></label>`);
     const f=k=>m.querySelector('#'+k),projects=api.projects();
     f('apActionTitle').value=a.title||task(a.link)?.taskName||'';f('apOwner').value=a.owner;f('apStart').value=a.start;f('apEnd').value=a.end;f('apStatus').value=a.status;f('apNotes').value=a.notes;
     for(const project of projects){const o=new Option(project.title,project.id);f('apLinkProject').add(o)}
@@ -181,7 +224,7 @@ window.ActionPlans=(()=>{
   }
   function fromTask(projectId,taskId){
     api.flush();const link={projectId,taskId},t=task(link);if(!t)return;
-    const m=modal('Criar plano / ação vinculada',`<p class="ap-hint">${esc(t.projectTitle)} · ${esc(t.taskName)}</p><label>Adicionar a<select id="apTargetPlan"><option value="">Novo plano de ação</option>${plans.map(p=>`<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('')}</select></label><label id="apNewTitleLabel">Nome do novo plano<input id="apNewTitle" value="${esc('Plano — '+t.taskName)}" maxlength="200"></label>`);
+    const m=modal('Criar plano / ação vinculada',`<p class="ap-hint">${esc(t.projectTitle)} · ${esc(t.taskName)}</p><label>Adicionar a<select id="apTargetPlan"><option value="">Novo plano de ação</option>${planOptions()}</select></label><label id="apNewTitleLabel">Nome do novo plano<input id="apNewTitle" value="${esc('Plano — '+t.taskName)}" maxlength="200"></label>`);
     m.querySelector('#apTargetPlan').onchange=e=>m.querySelector('#apNewTitleLabel').hidden=!!e.target.value;
     m.querySelector('form').onsubmit=e=>{e.preventDefault();const target=m.querySelector('#apTargetPlan').value,title=m.querySelector('#apNewTitle').value.trim();if(!target&&!title){m.querySelector('#apError').textContent='Informe o nome do plano.';return}checkpoint();activeId=target;if(!activeId){const p={id:id(),title,description:'',source:link,actions:[]};plans.push(p);activeId=p.id}const p=current();p.actions.push({id:id(),title:t.taskName,owner:'',start:t.start,end:t.end,status:'pending',notes:'',link});closePopups();save();switchView(true)};
   }
@@ -205,9 +248,9 @@ window.ActionPlans=(()=>{
   function init(adapter){
     api=adapter;planTheme=localStorage.getItem('pf_action_plan_theme');if(!['dark','light'].includes(planTheme))planTheme='light';
     document.getElementById('apBackup').onclick=backup;document.getElementById('apImport').onclick=importFile;document.getElementById('apUndo').onclick=undoPlan;document.getElementById('apTheme').onclick=()=>{planTheme=(planTheme||api.getTheme())==='dark'?'light':'dark';localStorage.setItem('pf_action_plan_theme',planTheme);document.documentElement.dataset.theme=planTheme};
-    document.getElementById('apExport').onclick=()=>{const p=current();if(p){sync();downloadJSON({version:1,type:'action-plans',actionPlans:[JSON.parse(JSON.stringify(p))]},cleanFileName(p.title)+'.json')}else{notice='Crie ou selecione um plano para exportar.';refresh()}};
-    document.getElementById('apExcel').onclick=()=>{const p=current();if(p){sync();window.PlanExports.excel(p,task)}else{notice='Selecione um plano para exportar.';refresh()}};
-    document.getElementById('apPDF').onclick=()=>{const p=current();if(p){sync();window.PlanExports.pdf(p,task)}else{notice='Selecione um plano para imprimir.';refresh()}};
+    document.getElementById('apExport').onclick=()=>{const p=current();if(p){sync();downloadJSON({version:1,type:'action-plans',actionPlans:exportBranch(p)},cleanFileName(p.title)+'.json')}else{notice='Crie ou selecione um plano para exportar.';refresh()}};
+    document.getElementById('apExcel').onclick=()=>{const p=current();if(p){sync();window.PlanExports.excel(reportPlan(p),task)}else{notice='Selecione um plano para exportar.';refresh()}};
+    document.getElementById('apPDF').onclick=()=>{const p=current();if(p){sync();window.PlanExports.pdf(reportPlan(p),task)}else{notice='Selecione um plano para imprimir.';refresh()}};
     document.getElementById('apToggleNotes').onclick=e=>{notesShown=!notesShown;document.documentElement.dataset.apNotes=notesShown?'visible':'hidden';e.target.textContent='Observações: '+(notesShown?'sim':'não')};
     function setZoom(amount){zoom=Math.min(1.6,Math.max(.8,zoom+amount));document.documentElement.style.setProperty('--ap-zoom',zoom)}
     document.getElementById('apZoomIn').onclick=()=>setZoom(.1);document.getElementById('apZoomOut').onclick=()=>setZoom(-.1);
@@ -216,6 +259,8 @@ window.ActionPlans=(()=>{
     document.getElementById('tabGantt').onclick=()=>switchView(false);document.getElementById('tabActions').onclick=()=>switchView(true);
     document.getElementById('tabTodo').onclick=()=>switchView('todo');
     document.getElementById('btnActionFromTask').onclick=()=>{const link=api.selectedTask();if(link)fromTask(link.projectId,link.taskId);else alert('Selecione uma linha do cronograma para criar uma ação vinculada. Para ações independentes, abra Planos de ação.')};
+    document.addEventListener('click',e=>{const picker=document.querySelector('.ap-tree-picker[open]');if(picker&&!picker.contains(e.target))picker.open=false});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){const picker=document.querySelector('.ap-tree-picker[open]');if(picker){picker.open=false;picker.querySelector('summary').focus()}}});
     sync();
   }
   return {init,load,validate,sync,refresh,fromTask,isVisible:()=>shown,exportData,backup,importData,restoreData};

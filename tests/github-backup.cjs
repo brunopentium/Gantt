@@ -28,7 +28,7 @@ const assert=require('node:assert/strict');
   await page.click('#btnCloudBackup');await page.fill('#gbRepo','brunopentium/gantt-backups');await page.fill('#gbToken','test-token');
   await page.locator('#gbRemember').setChecked(remember);await page.click('#gbConnect');
  }
- await page.goto('http://127.0.0.1:8765');assert.equal(await page.locator('.tr').count(),20);
+ await page.goto('http://127.0.0.1:8765');await page.click('#tabGantt');assert.equal(await page.locator('.tr').count(),20);
  await configure();await waitStatus('primeira versão');assert.equal(puts,0);
  await page.evaluate(()=>{ActionPlans.load([{id:'plan1',title:'Plano de entrega',description:'',source:null,actions:[{id:'action1',title:'Verificar entregas',owner:'Bruno',start:'2026-10-05',end:'2026-10-09',status:'pending',notes:'',link:null}]}]);saveStore()});
  await page.clock.install();await page.clock.fastForward(120000);assert.equal(puts,0);
@@ -53,9 +53,9 @@ const assert=require('node:assert/strict');
  // Clean reopens load a newer remote version without a write.
  let newer=JSON.parse(Buffer.from(remote.content,'base64').toString());newer.projects[0].tasks[0].name='Versão de outro dispositivo';
  remote={sha:'other-device',content:Buffer.from(JSON.stringify(newer)).toString('base64')};
- await page.reload();await waitStatus('Última versão do GitHub aberta');assert.equal(await page.evaluate(()=>T[0].name),'Versão de outro dispositivo');assert.equal(puts,4);
+ await page.reload();await waitStatus('Última versão do GitHub aberta');await page.click('#tabGantt');assert.equal(await page.evaluate(()=>T[0].name),'Versão de outro dispositivo');assert.equal(puts,4);
  // Unsaved local edits survive reload if the user declines replacement.
- await page.click('#btnAdd');answers.push(true,false);await page.reload();await waitStatus('Dados locais mantidos');assert.equal(await page.locator('.tr').count(),21);
+ await page.click('#btnAdd');answers.push(true,false);await page.reload();await waitStatus('Dados locais mantidos');await page.click('#tabGantt');assert.equal(await page.locator('.tr').count(),21);
  await page.click('#btnCloudSave');await waitStatus('antes de salvar');assert.equal(puts,4);
  await configure(true);await waitStatus('Última versão do GitHub aberta');assert.equal(await page.locator('.tr').count(),20);
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('pf_github_backup_v1_token'))),'test-token');
@@ -75,6 +75,6 @@ const assert=require('node:assert/strict');
  const legacy={version:exported.version,activeProjectId:exported.activeProjectId,projects:exported.projects};
  remote={sha:'legacy',content:Buffer.from(JSON.stringify(legacy)).toString('base64')};
  await page.evaluate(legacy=>{localStorage.setItem('pf_projects_v1',JSON.stringify(legacy));localStorage.setItem('pf_github_backup_v1',JSON.stringify({repo:'brunopentium/gantt-backups',branch:'main',sha:'legacy',enabled:true,fingerprint:JSON.stringify(legacy,(k,v)=>k==='updatedAt'?undefined:v)}));sessionStorage.setItem('pf_github_backup_v1_token',JSON.stringify('test-token'))},legacy);
- const priorDialogs=dialogs;await page.reload();await waitStatus('Última versão do GitHub aberta');assert.equal(dialogs,priorDialogs);assert.deepEqual(await page.evaluate(()=>ActionPlans.exportData()),[]);assert.equal(puts,4);
+ const priorDialogs=dialogs;await page.reload();await waitStatus('Última versão do GitHub aberta');await page.click('#tabGantt');assert.equal(dialogs,priorDialogs);assert.deepEqual(await page.evaluate(()=>ActionPlans.exportData()),[]);assert.equal(puts,4);
  assert.deepEqual(errors,[]);await browser.close();console.log('PASS: manual-only saves, Unicode, history and pagination, restore as new commit, invalid restore, latest-version startup, unsaved draft protection, concurrency, auth failures, private/no-Pages checks, token persistence and disconnect');
 })().catch(e=>{console.error(e);process.exit(1)});

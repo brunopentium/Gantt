@@ -91,3 +91,27 @@
 .todo-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px}
 .todo-header a{color:var(--accent)}
 #todoFrame{display:block;width:100%;flex:1;min-height:0;border:0;background:#f1f5f9}
+
+/* Plan hierarchy: mouse hover reveals children; arrows also work by touch/keyboard. */
+.ap-tree-picker{position:relative;max-width:100%}
+.ap-tree-picker summary{cursor:pointer;padding:8px 12px;border:1px solid var(--ap-line);border-radius:7px;background:var(--ap-surface);color:var(--ap-text);font-size:.86em;list-style:none}
+.ap-tree-picker summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.ap-tree-menu{position:absolute;right:0;top:calc(100% + 5px);width:min(420px,calc(100vw - 48px));max-height:55vh;overflow:auto;z-index:20;padding:8px;border:1px solid var(--ap-line);border-radius:12px;background:var(--ap-surface);box-shadow:var(--menu-shadow);color:var(--ap-text)}
+.ap-tree-menu ul{list-style:none;padding:0;min-width:0}
+.ap-tree-menu ul ul{padding-left:14px;margin-left:8px;border-left:1px solid var(--ap-line)}
+.ap-tree-menu ul[hidden]{display:none}
+.ap-tree-row{display:flex;align-items:center;min-width:0}
+#actionPanel .ap-tree-row button{border:0;background:transparent;min-width:0;text-align:left;white-space:normal;overflow-wrap:anywhere}
+#actionPanel .ap-tree-row [data-select-plan]{flex:1}
+.ap-tree-row button span{display:block;font-size:.8em;color:var(--ap-muted);margin-top:3px}
+#actionPanel .ap-tree-row button:hover,#actionPanel .ap-tree-row [aria-current]{background:var(--ap-purple-bg);color:var(--ap-purple)}
+#actionPanel .ap-tree-row .ap-tree-expand{flex:none;width:38px;text-align:center}
+.ap-hierarchy-context{display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;margin-bottom:16px;color:var(--ap-muted);font-size:.85em}
+.ap-hierarchy-context>span{font-size:.9em}
+.ap-hierarchy-context label{display:flex;align-items:center;gap:7px;cursor:pointer}
+.ap-breadcrumbs{display:flex;align-items:center;gap:4px;flex-wrap:wrap;max-width:100%}
+#actionPanel .ap-breadcrumbs button{background:transparent;border:0;color:var(--ap-purple);padding:4px 6px;white-space:normal;overflow-wrap:anywhere}
+#actionPanel .ap-breadcrumbs [aria-current]{color:var(--ap-text);font-weight:600}
+#actionPanel .ap-origin-plan{display:block;text-align:left;background:transparent;border:0;color:var(--ap-purple);font-size:.75em;padding:3px 0;white-space:normal;overflow-wrap:anywhere}
+.ap-card .ap-origin-plan{margin:8px 0}
+@media(max-width:480px){.ap-tree-picker{flex:1}.ap-tree-picker summary{text-align:center}.ap-tree-menu{position:fixed;left:16px;right:16px;top:150px;width:auto;max-height:60vh}.ap-hierarchy-context{align-items:flex-start;flex-direction:column;gap:8px}}

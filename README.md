@@ -82,3 +82,12 @@ Os testes usam Chromium e respostas simuladas da API do GitHub; não acessam cro
 Os testes de planos de ação cobrem ações independentes e vinculadas, sincronização de datas com cronogramas ativos e inativos, dependências, resumos, marcos, tabela/cards, desvinculação, exclusões, persistência e layout em celular. Os testes adicionais verificam controles próprios, históricos e arquivos separados, reuso das credenciais, importação/exportação, backup, desfazer, duplicação, prioridade das datas compartilhadas e recuperação do histórico anterior. Nenhum teste usa dados reais do usuário.
 
 Para verificar o Excel baixado pelos testes, com `openpyxl` instalado, rode `python tests/validate-plan-excel.py`. A verificação cobre estrutura XML, abas, datas, fórmulas e valores em cache, tabela/filtros, estilos, validação, impressão e preservação de texto literal.
+
+
+## Planos e subplanos
+
+Na guia **Planos de ação**, use **Novo subplano** para criar um filho do plano selecionado. Em **Renomear / editar → Plano pai**, você pode mover um plano existente para outro ramo ou torná-lo principal. O app impede relações circulares.
+
+Abra **Árvore de planos**: passar o mouse sobre um plano revela seus filhos; no celular, toque na seta. Selecionar um pai reúne suas ações e as de todos os descendentes. **Incluir subplanos** permite alternar entre esse conjunto e apenas as ações diretas. O caminho abaixo de cada ação mostra seu plano de origem; editar uma ação agregada altera a original.
+
+A hierarquia acompanha o salvamento local e os backups dos planos. **Exportar JSON** e **Duplicar ramo** incluem os descendentes; Excel e PDF usam o conjunto de ações exibido. Excluir um plano mantém seus subplanos, movendo-os para o nível acima. **Desfazer** restaura a estrutura anterior.

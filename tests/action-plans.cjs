@@ -10,7 +10,7 @@ const assert=require('node:assert/strict');
    {id:'p2',title:'Cronograma B',tasks:[task('other','Execução','2026-10-05','2026-10-09'),task('dependent','Validação','2026-10-12','2026-10-16',{pred:'1FS'}),task('mile','Aprovação','2026-10-05','2026-10-05',{dur:0,mile:true})]}
   ]}));
  });
- await page.goto('http://127.0.0.1:8765');
+ await page.goto('http://127.0.0.1:8765');await page.click('#tabGantt');
  await page.locator('.tr[data-id="child"] .tc').first().click();await page.click('#btnActionFromTask');
  await page.fill('#apNewTitle','Plano de entrega');await page.locator('.ap-modal button[type=submit]').click();
  assert(await page.locator('#actionPanel').isVisible());assert.equal(await page.locator('.ap-table tbody tr').count(),1);
