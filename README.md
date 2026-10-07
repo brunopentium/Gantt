@@ -101,6 +101,10 @@ Abra **Árvore de planos**: passar o mouse sobre um plano revela seus filhos; no
 A hierarquia acompanha o salvamento local e os backups dos planos. **Exportar JSON** e **Duplicar ramo** incluem os descendentes; Excel usa todas as ações do ramo selecionado; PDF usa as ações exibidas, respeitando o filtro por status. Excluir um plano mantém seus subplanos, movendo-os para o nível acima. **Desfazer** restaura a estrutura anterior.
 
 
+## Navegação dos cronogramas no celular
+
+No celular, tanto em retrato como em paisagem, a página rola até a última tarefa. No cronograma individual, arraste para os lados para navegar pela tabela e pelas barras juntas; os atalhos **Tabela** e **Barras** permanecem acessíveis durante a rolagem. O gesto com dois dedos amplia a página inteira. Os botões **＋Z / －Z** continuam ajustando a escala das datas. A visão agrupada também usa a rolagem vertical da página, com movimento horizontal na linha do tempo. O layout e a rolagem do desktop permanecem iguais.
+
 ## Impressão / PDF
 
 O botão **PDF** permite escolher **Retrato / Paisagem** e **Páginas na altura** (1 a 50), mantendo **uma página na largura** com todo o período do Gantt. O app sugere uma quantidade de páginas para preservar a leitura. As linhas visíveis são exportadas, incluindo as que ficam fora da tela ao rolar. Descendentes de níveis recolhidos ficam fora do PDF; tabela e barras compartilham a mesma escala e as mesmas linhas. Cada página repete o título, as colunas, o período e a numeração. A janela de impressão mantém a opção de trocar a orientação. Para aproveitar melhor o papel, use a mesma orientação escolhida no relatório. A impressão dos grupos usa essa mesma configuração e respeita a busca, os filtros e a expansão de grupos, cronogramas e níveis internos de tarefas.

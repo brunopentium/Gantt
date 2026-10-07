@@ -153,6 +153,7 @@ input{font-family:inherit}
 </style>
 <link rel="stylesheet" href="action-plans.css?v=20261007-live-status-flag">
 <link rel="stylesheet" href="schedule-groups.css?v=20261007-task-folding">
+<link rel="stylesheet" href="gantt-mobile.css?v=20261007-mobile-navigation">
 </head>
 <body>
 <div id="app">
@@ -197,6 +198,10 @@ input{font-family:inherit}
   <button id="btnPDF">🖨 PDF</button>
 </div>
 <div id="scheduleHierarchyBar"></div>
+<div id="scheduleMobileNav" aria-label="Navegação do cronograma no celular">
+  <button id="mobileShowTable" type="button">Tabela</button><button id="mobileShowGantt" type="button">Barras</button>
+  <span>Arraste para os lados. Use dois dedos para ampliar.</span>
+</div>
 <section id="scheduleAggregate" hidden aria-label="Análise consolidada dos cronogramas"></section>
 <div id="main">
   <div id="tpanel">
@@ -230,6 +235,7 @@ input{font-family:inherit}
 <script src="github-backup.js?v=20261007-groups"></script>
 <script src="gantt-print.js?v=20261007-filtered-pdf"></script>
 <script src="plan-print.js?v=20261007-filtered-pdf"></script>
+<script src="gantt-mobile.js?v=20261007-mobile-navigation"></script>
 <script>
 // ========== STATE ==========
 let T=[], sel=new Set(), lastSel=null, undo=[], fmt={}, cpOn=false, labelsOn=true, statusOn=false, theme='dark', res='weeks', cw=36;

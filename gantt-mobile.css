@@ -1,0 +1,46 @@
+#scheduleMobileNav{display:none}
+
+/* Phones, including landscape: the document owns vertical scrolling;
+   table and time axis share one horizontal viewport. Fine-pointer desktop
+   keeps its existing fixed-height, independently scrolling panes. */
+@media (max-width:1024px) and (pointer:coarse){
+  html[data-app-view="gantt"],html[data-app-view="gantt"] body{
+    height:auto;min-height:100%;overflow:visible;touch-action:auto;
+  }
+  [data-app-view="gantt"] #app{height:auto;min-height:100vh;min-height:100dvh;max-width:100%}
+  [data-app-view="gantt"] #toolbar{gap:6px;padding:8px}
+  [data-app-view="gantt"] #toolbar button,
+  [data-app-view="gantt"] #toolbar select,
+  [data-app-view="gantt"] #scheduleHierarchyBar button,
+  [data-app-view="gantt"] #scheduleHierarchyBar summary{min-height:36px}
+  [data-app-view="gantt"] #ptitle{width:100%;max-width:100%;font-size:16px}
+  [data-app-view="gantt"] #selProject{max-width:calc(100vw - 100px);width:250px}
+  [data-app-view="gantt"] #scheduleMobileNav{
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px;
+    position:sticky;top:0;z-index:20;
+    background:var(--bg1);border-bottom:1px solid var(--border);color:var(--text2);font-size:11px;
+  }
+  #scheduleMobileNav button{min-height:36px;font-size:12px}
+  #scheduleMobileNav span{flex:1;min-width:160px}
+  [data-schedule-aggregate="on"] #scheduleMobileNav button{display:none}
+  [data-app-view="gantt"] #main{
+    flex:none;width:100%;max-width:100%;height:auto;overflow-x:auto;overflow-y:hidden;
+    align-items:stretch;touch-action:auto;-webkit-overflow-scrolling:touch;
+  }
+  [data-app-view="gantt"] #tpanel{
+    flex:none;width:var(--mobile-table-width,572px)!important;
+    min-width:var(--mobile-table-width,572px);overflow:visible;
+  }
+  [data-app-view="gantt"] #divider{display:none}
+  [data-app-view="gantt"] #gpanel{
+    flex:none;width:var(--mobile-chart-width,100vw);min-width:var(--mobile-chart-width,100vw);
+    overflow:visible;
+  }
+  [data-app-view="gantt"] #tbody,[data-app-view="gantt"] #gbody{flex:none;overflow:visible}
+  [data-app-view="gantt"] #thead .resize-handle{display:none}
+  [data-app-view="gantt"] #scheduleAggregate{flex:none;overflow:visible;height:auto}
+  [data-app-view="gantt"] .sg-chart{
+    flex:none;height:auto;overflow-x:auto;overflow-y:hidden;touch-action:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+}
