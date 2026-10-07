@@ -32,7 +32,7 @@ A tela usa blocos com título do plano, responsáveis com iniciais e cores consi
 
 ### Filtro por status dos planos
 
-**Filtrar por status** oferece todos os status, pendentes, em andamento, concluídas e bloqueadas, tanto na tabela como nos cards. Trocar o status do filtro aplica uma nova seleção; **Atualizar filtro** reaplica o mesmo status. Ao concluir ou editar o status de uma ação, ela permanece visível até atualizar ou trocar o filtro. Assim, o PDF pode registrar a seleção atual com as ações recém-concluídas marcadas. O filtro respeita o plano e a opção **Incluir subplanos**; trocar o plano ou essa opção aplica a seleção ao novo escopo.
+**Filtrar por status** oferece **Ocultar concluídas**, **Ocultar concluídas e bloqueadas** e **Ocultar bloqueadas** para combinar os demais status. Também permite mostrar todos os status ou apenas pendentes, em andamento, concluídas ou bloqueadas, tanto na tabela como nos cards. A opção selecionada é lembrada neste navegador; ao reabrir o app, ela se aplica às ações atuais. Trocar o status do filtro aplica uma nova seleção; **Atualizar filtro** reaplica o mesmo status. Ao concluir ou editar o status de uma ação, ela permanece visível até atualizar ou trocar o filtro. Assim, o PDF pode registrar a seleção atual com as ações recém-concluídas marcadas. O filtro respeita o plano e a opção **Incluir subplanos**; trocar o plano ou essa opção aplica a seleção ao novo escopo.
 
 ### Excel e PDF dos planos
 
