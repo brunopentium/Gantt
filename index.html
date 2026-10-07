@@ -224,7 +224,7 @@ input{font-family:inherit}
 </div>
 
 <script src="action-plans.js?v=20261007-hierarchy"></script>
-<script src="schedule-groups.js?v=20261007-parent-groups"></script>
+<script src="schedule-groups.js?v=20261007-expand-all"></script>
 <script src="plan-exports.js?v=20261007-plan-pagination"></script>
 <script src="plan-cloud.js?v=20261007-plan-document"></script>
 <script src="github-backup.js?v=20261007-groups"></script>
@@ -1440,6 +1440,7 @@ function withScheduleReport(tasks,callback){
 window.ScheduleGroups.init({
   projects:()=>projects,activeId:()=>activeProjectId,view:()=>({res,cw,cpOn}),
   flush:()=>{commitEdit();save()},select:switchProject,
+  setTasksExpanded:expanded=>{commitEdit();for(const t of T)if(isSummary(t))t.collapsed=!expanded;render();save()},
   newProject:p=>normalizeProject({view:{res:'weeks',cw:36,theme},...p}),id:uid,fileName:cleanFileName,downloadJSON,
   date:pd,dateString:fdi,today:()=>fdi(today()),parsePred,calculate:calculateSchedule,
   closePopups,closeEditor,confirm:showConfirmModal,
