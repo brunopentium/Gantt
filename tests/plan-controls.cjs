@@ -62,6 +62,11 @@ const fs=require('node:fs');
  await page.click('#apCloudSettings');assert.equal(await page.inputValue('#apRepo'),'brunopentium/gantt-backups');assert.equal(await page.inputValue('#apToken'),'test-token');await page.click('#apCancelCloud');
  // Legacy combined history restores only the old plans into the new independent file.
  await page.click('#apCloudHistory');await wait('Histórico dos planos carregado');await page.click('#apOtherHistory');await wait('Histórico dos planos carregado');await page.locator('#apVersions button').click();await wait('Planos salvos');assert.equal(writes,4);assert.equal(ganttWrites,0);assert.equal(await page.evaluate(()=>T.length),2);
+ // Optional document sections survive the independent cloud save/startup/history pipeline.
+ await page.click('#apAddSection');await page.click('[data-add-section="notes"]');await page.fill('#apSectionValue','Decisão registrada no documento do plano.');await page.locator('.ap-modal button[type=submit]').click();await page.click('#apCloudSave');await wait('Planos salvos');assert.equal(writes,5);assert.equal(ganttWrites,0);
+ assert.equal(JSON.parse(Buffer.from(remote.content,'base64').toString()).actionPlans[0].document.notes,'Decisão registrada no documento do plano.');
+ await page.reload();await wait('Última versão dos planos aberta');await page.click('#tabActions');assert.equal(await page.locator('.ap-section-notes p').innerText(),'Decisão registrada no documento do plano.');
+ await page.click('#apCloudHistory');await wait('Histórico dos planos carregado');await page.locator('#apVersions button').nth(1).click();await wait('Planos salvos');assert.equal(writes,6);assert.equal(await page.locator('.ap-section-notes').count(),0);assert.equal(ganttWrites,0);
  await page.setViewportSize({width:390,height:844});await page.click('#apCards');await page.screenshot({path:'/tmp/action-plan-controls-mobile.png',fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
  assert.deepEqual(errors,[]);await browser.close();console.log('PASS: standalone plan toolbar, scoped GitHub saves/history/restores, credential reuse, JSON import/export/backup, undo including linked dates, duplicate, theme/notes/zoom, Excel/PDF, startup, conflict/auth protections and mobile layout');
 })().catch(e=>{console.error(e);process.exit(1)});

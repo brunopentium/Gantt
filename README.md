@@ -24,11 +24,17 @@ A barra da guia tem **💾 Salvar**, **Histórico**, **☁ GitHub**, **Backup do
 
 Na migração do formato anterior, planos locais não salvos (inclusive exclusões) são preservados; a versão anterior remota é adotada automaticamente apenas quando a cópia local estava salva. Na reabertura, o app carrega as duas versões separadamente. Para datas compartilhadas, o salvamento mais recente entre cronogramas e planos prevalece, respeitando dependências, resumos e dias úteis. Datas de tarefas já salvas pelos planos não geram um aviso falso de alterações pendentes no Gantt; alterações não relacionadas continuam protegidas. Excluir ou importar planos não substitui os cronogramas, e importar/restaurar cronogramas mantém os planos.
 
+### Documento do plano de ação
+
+A tela usa blocos com título do plano, responsáveis com iniciais e cores consistentes, status coloridos, datas destacadas e indicadores de conclusão, atraso e bloqueio. Clique em responsável, término ou status para alterar diretamente na tabela ou nos cards; o círculo da ação conclui ou reabre a ação. Datas vinculadas continuam seguindo as regras do cronograma.
+
+**＋ Adicionar seção** permite incluir **Participantes**, **Agenda** e **Notas** no plano selecionado. Participantes e assuntos da agenda são escritos um por linha. Cada seção pode ser editada ou removida pelos ícones ao lado do título; Desfazer recupera uma remoção. Sem essas seções, o documento vai direto às ações. Seções são próprias de cada plano, entram em importação, backup, duplicação, salvamento e histórico. O tema claro é o padrão para planos sem preferência de tema, e o botão Tema permite alternar para escuro.
+
 ### Excel e PDF dos planos
 
-**Excel** exporta o plano selecionado em um template `.xlsx` com abas **Resumo** e **Ações**. O resumo tem indicadores de total, status, atrasos e percentual concluído. A tabela tem filtros, cabeçalho congelado, linhas alternadas, responsáveis, datas reais do Excel, duração, status, prazo, vínculos e observações. Fórmulas recalculam duração, prazo e indicadores; status tem lista de seleção e atrasos recebem destaque. O arquivo usa layout de impressão em paisagem. Texto digitado pelo usuário permanece texto, mesmo quando começa com `=`.
+**Excel** exporta o plano selecionado em um template `.xlsx` com abas **Resumo** e **Ações**; a aba **Contexto** é incluída quando participantes, agenda ou notas estão preenchidos. O resumo tem indicadores de total, status, atrasos e percentual concluído. A tabela tem filtros, cabeçalho congelado, linhas alternadas, responsáveis, datas reais do Excel, duração, status, prazo, vínculos e observações. Fórmulas recalculam duração, prazo e indicadores; status tem lista de seleção e atrasos recebem destaque. O arquivo usa layout de impressão em paisagem. Texto digitado pelo usuário permanece texto, mesmo quando começa com `=`.
 
-**PDF** abre a impressão do navegador com um relatório do plano, cabeçalho, indicadores e tabela; selecione Salvar como PDF. Excel e PDF são relatórios independentes da aba do cronograma. Alterações feitas no Excel não são sincronizadas com o app; o formato de reimportação é JSON.
+**PDF** abre a impressão do navegador com um relatório do plano, cabeçalho, seções opcionais preenchidas, indicadores e tabela; selecione Salvar como PDF. Excel e PDF são relatórios independentes da aba do cronograma. Alterações feitas no Excel não são sincronizadas com o app; o formato de reimportação é JSON.
 
 ## Conectar ao GitHub
 
