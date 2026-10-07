@@ -93,6 +93,10 @@ Abra **Árvore de planos**: passar o mouse sobre um plano revela seus filhos; no
 A hierarquia acompanha o salvamento local e os backups dos planos. **Exportar JSON** e **Duplicar ramo** incluem os descendentes; Excel e PDF usam o conjunto de ações exibido. Excluir um plano mantém seus subplanos, movendo-os para o nível acima. **Desfazer** restaura a estrutura anterior.
 
 
+## Impressão / PDF
+
+O botão **PDF** permite escolher **Retrato / Paisagem** e **Páginas na altura** (1 a 50), mantendo **uma página na largura** com todo o período do Gantt. O app sugere uma quantidade de páginas para preservar a leitura. Todas as tarefas são exportadas, inclusive as recolhidas ou fora da tela; tabela e barras compartilham a mesma escala e as mesmas linhas. Cada página repete o título, as colunas, o período e a numeração. A janela de impressão mantém a opção de trocar a orientação. Para aproveitar melhor o papel, use a mesma orientação escolhida no relatório. A impressão dos grupos usa essa mesma configuração para todo o ramo.
+
 ## Grupos de cronogramas
 
 Na guia **Cronogramas**, **Novo grupo** cria um agrupamento no nível principal e já marca o item atual para ficar dentro dele. Marque outros cronogramas para reuni-los sob esse grupo. **Subgrupo** é uma opção separada para criar um grupo dentro do grupo atual; **Subcronograma** cria um cronograma filho. Use **Editar / mover** para escolher o pai de um cronograma já existente. A **Árvore de cronogramas** revela os filhos com o mouse ou pelas setas no celular; escolher um pai reúne todo o ramo. Um cronograma também pode ter filhos sem perder suas tarefas diretas.
