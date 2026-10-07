@@ -32,7 +32,11 @@ A tela usa blocos com título do plano, responsáveis com iniciais e cores consi
 
 ### Filtro por status dos planos
 
-**Filtrar por status** oferece **Ocultar concluídas**, **Ocultar concluídas e bloqueadas** e **Ocultar bloqueadas** para combinar os demais status. Também permite mostrar todos os status ou apenas pendentes, em andamento, concluídas ou bloqueadas, tanto na tabela como nos cards. A opção selecionada é lembrada neste navegador; ao reabrir o app, ela se aplica às ações atuais. Trocar o status do filtro aplica uma nova seleção; **Atualizar filtro** reaplica o mesmo status. Ao concluir ou editar o status de uma ação, ela permanece visível até atualizar ou trocar o filtro. Assim, o PDF pode registrar a seleção atual com as ações recém-concluídas marcadas. O filtro respeita o plano e a opção **Incluir subplanos**; trocar o plano ou essa opção aplica a seleção ao novo escopo.
+O flag **Ocultar concluídas, bloqueadas e canceladas** combina pendentes e ações em andamento, tanto na tabela como nos cards. Ele fica salvo neste navegador e reaplica a ocultação ao abrir o app. Quem usava a opção anterior **Ocultar concluídas e bloqueadas** recebe o flag marcado automaticamente.
+
+Novas ações que atendem ao filtro aparecem imediatamente. Se uma ação visível mudar de status, ela permanece na tela com o novo status até **Atualizar filtro**. O PDF usa exatamente essas ações exibidas, incluindo as recém-concluídas, bloqueadas ou canceladas. Ao recarregar o app, as exceções temporárias são descartadas e o flag salvo volta a ocultar os três status. Trocar o filtro ou o flag também reaplica a seleção.
+
+**Filtrar por status** permite mostrar todos ou apenas um status, além das opções individuais de ocultar concluídas ou bloqueadas. Para consultar somente concluídas, bloqueadas ou canceladas, desmarque o flag. O filtro respeita o plano e **Incluir subplanos**. **Cancelada** está disponível nos formulários e na edição direta, entra em JSON, backups, histórico, PDF e Excel, e não é contada como atraso.
 
 ### Excel e PDF dos planos
 

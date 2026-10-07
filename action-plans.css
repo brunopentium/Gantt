@@ -117,3 +117,5 @@
 @media(max-width:480px){.ap-tree-picker{flex:1}.ap-tree-picker summary{text-align:center}.ap-tree-menu{position:fixed;left:16px;right:16px;top:150px;width:auto;max-height:60vh}.ap-hierarchy-context{align-items:flex-start;flex-direction:column;gap:8px}}
 
 .ap-filters{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px;font-size:.85em;color:var(--ap-muted)}.ap-filters label{font-weight:600}.ap-filters select,#actionPanel .ap-filters button{padding:8px 10px;background:var(--ap-surface);border:1px solid var(--ap-line);border-radius:6px;color:var(--ap-text);max-width:100%}.ap-filters span{flex-basis:100%;line-height:1.5}
+
+.ap-hide-statuses{display:flex;align-items:center;gap:8px;flex-wrap:wrap;max-width:100%;line-height:1.5}.ap-hide-statuses input{flex:none;width:auto;margin:0;accent-color:var(--ap-purple)}.ap-badge.cancelled{background:var(--ap-soft);color:var(--ap-muted)}.ap-card.ap-row-cancelled{border-top-color:var(--ap-muted)}
