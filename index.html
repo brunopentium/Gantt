@@ -155,7 +155,7 @@ input{font-family:inherit}
 </head>
 <body>
 <div id="app">
-<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabGantt" aria-controls="main" class="act" role="tab" aria-selected="true">Cronogramas</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabTodo" aria-controls="todoPanel" role="tab" aria-selected="false">✅ Todo</button></nav>
+<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabTodo" aria-controls="todoPanel" class="act" role="tab" aria-selected="true">✅ Todo</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button></nav>
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
   <div class="tsep"></div>
@@ -1437,6 +1437,8 @@ Promise.resolve(window.GanttBackup.init({
   },
   localBackup:downloadAllProjects
 })).then(()=>{planScopeInitialized=true;window.PlanCloud.start()});
+// Always open the Todo view when the app starts.
+document.getElementById('tabTodo').click();
 </script>
 </body>
 </html>
