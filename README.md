@@ -91,3 +91,12 @@ Na guia **Planos de ação**, use **Novo subplano** para criar um filho do plano
 Abra **Árvore de planos**: passar o mouse sobre um plano revela seus filhos; no celular, toque na seta. Selecionar um pai reúne suas ações e as de todos os descendentes. **Incluir subplanos** permite alternar entre esse conjunto e apenas as ações diretas. O caminho abaixo de cada ação mostra seu plano de origem; editar uma ação agregada altera a original.
 
 A hierarquia acompanha o salvamento local e os backups dos planos. **Exportar JSON** e **Duplicar ramo** incluem os descendentes; Excel e PDF usam o conjunto de ações exibido. Excluir um plano mantém seus subplanos, movendo-os para o nível acima. **Desfazer** restaura a estrutura anterior.
+
+
+## Grupos de cronogramas
+
+Na guia **Cronogramas**, **Novo grupo** cria um agrupamento, e **Subgrupo / Subcronograma** cria filhos do item selecionado. Use **Editar / mover** para escolher o pai de um cronograma já existente. A **Árvore de cronogramas** revela os filhos com o mouse ou pelas setas no celular; escolher um pai reúne todo o ramo. Um cronograma também pode ter filhos sem perder suas tarefas diretas.
+
+**Incluir subcronogramas** alterna entre a visão consolidada e o cronograma individual. A consolidação mostra uma linha do tempo comum, período total, atrasos e progresso ponderado pela duração das tarefas executáveis (marcos têm peso 1); tarefas de resumo não são contadas novamente. Os caminhos críticos são calculados separadamente em cada origem. Busca e filtros ajudam a comparar as entregas.
+
+Clique em uma tarefa consolidada para abrir e editar seu cronograma de origem. Os IDs e as dependências permanecem locais ao cronograma; a análise não cria cópias de tarefas nos grupos. Excel e PDF exportam o ramo completo, com índices de dependências ajustados apenas no relatório. JSON, backup local e histórico do GitHub preservam a árvore. **Duplicar** copia o ramo; excluir um grupo mantém seus filhos no nível acima.

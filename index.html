@@ -152,6 +152,7 @@ input{font-family:inherit}
 #statusbar{display:flex;align-items:center;justify-content:space-between;padding:1px 10px;background:var(--bg1);border-top:1px solid var(--border);font-size:10px;color:var(--text3);height:20px;flex-shrink:0}
 </style>
 <link rel="stylesheet" href="action-plans.css?v=20261007-hierarchy">
+<link rel="stylesheet" href="schedule-groups.css?v=20261007-groups">
 </head>
 <body>
 <div id="app">
@@ -171,20 +172,20 @@ input{font-family:inherit}
   <button id="btnCloudBackup">☁ GitHub</button>
   <span id="cloudBackupStatus" role="status" aria-live="polite" style="font-size:10px;max-width:260px"></span>
   <div class="tsep"></div>
-  <button id="btnActionFromTask">＋ Plano / ação vinculada</button>
-  <button id="btnAdd">＋ Task</button>
-  <button id="btnMile">◆ Mile</button>
-  <button id="btnDel" class="del">✕ Del</button>
+  <button id="btnActionFromTask" data-schedule-edit>＋ Plano / ação vinculada</button>
+  <button id="btnAdd" data-schedule-edit>＋ Task</button>
+  <button id="btnMile" data-schedule-edit>◆ Mile</button>
+  <button id="btnDel" data-schedule-edit class="del">✕ Del</button>
   <div class="tsep"></div>
-  <button id="btnIn">→ In</button>
-  <button id="btnOut">← Out</button>
+  <button id="btnIn" data-schedule-edit>→ In</button>
+  <button id="btnOut" data-schedule-edit>← Out</button>
   <div class="tsep"></div>
   <label>View:</label>
   <select id="selRes"><option value="days">Days</option><option value="weeks" selected>Weeks</option><option value="months">Months</option><option value="quarters">Quarters</option></select>
   <button id="btnZI">＋Z</button>
   <button id="btnZO">－Z</button>
   <div class="tsep"></div>
-  <button id="btnUndo">↩ Undo</button>
+  <button id="btnUndo" data-schedule-edit>↩ Undo</button>
   <button id="btnCP">CP Off</button>
   <button id="btnLbl">Labels On</button>
   <button id="btnStatus">Status Off</button>
@@ -195,6 +196,8 @@ input{font-family:inherit}
   <button id="btnXLSX">Excel</button>
   <button id="btnPDF">🖨 PDF</button>
 </div>
+<div id="scheduleHierarchyBar"></div>
+<section id="scheduleAggregate" hidden aria-label="Análise consolidada dos cronogramas"></section>
 <div id="main">
   <div id="tpanel">
     <div id="thead"></div>
@@ -221,9 +224,10 @@ input{font-family:inherit}
 </div>
 
 <script src="action-plans.js?v=20261007-hierarchy"></script>
+<script src="schedule-groups.js?v=20261007-groups"></script>
 <script src="plan-exports.js?v=20261007-plan-document"></script>
 <script src="plan-cloud.js?v=20261007-plan-document"></script>
-<script src="github-backup.js?v=20261007-plan-document"></script>
+<script src="github-backup.js?v=20261007-groups"></script>
 <script>
 // ========== STATE ==========
 let T=[], sel=new Set(), lastSel=null, undo=[], fmt={}, cpOn=false, labelsOn=true, statusOn=false, theme='dark', res='weeks', cw=36;
@@ -369,7 +373,7 @@ function doUndo(){if(!undo.length)return;T=JSON.parse(undo.pop()).map(t=>{t.star
 
 // ========== RECALC & RENDER ==========
 function recalc(){compWBS();schedule();save()}
-function render(){renderTable();renderGantt();renderStatus();window.ActionPlans?.refresh()}
+function render(){renderTable();renderGantt();renderStatus();window.ActionPlans?.refresh();window.ScheduleGroups?.refresh()}
 
 function renderTable(){
   // Header
@@ -629,8 +633,8 @@ function openEditor(cell,tid,field){
   cell.appendChild(inp);inp.focus();inp.select();
   editing={inp,tid,field};
   inp.addEventListener('keydown',function(ev){
-    if(ev.key==='Enter'){ev.preventDefault();commitEdit()}
-    else if(ev.key==='Escape'){ev.preventDefault();closeEditor();render()}
+    if(ev.key==='Enter'){ev.preventDefault();ev.stopPropagation();commitEdit()}
+    else if(ev.key==='Escape'){ev.preventDefault();ev.stopPropagation();closeEditor();render()}
   });
   inp.addEventListener('blur',function(){setTimeout(()=>{if(editing&&editing.inp===inp)commitEdit()},80)});
 }
@@ -942,6 +946,7 @@ document.getElementById('btnLbl').addEventListener('click',function(){labelsOn=!
 document.getElementById('btnStatus').addEventListener('click',function(){statusOn=!statusOn;updateToggleButtons();render();save()});
 document.getElementById('btnTheme').addEventListener('click',function(){theme=theme==='light'?'dark':'light';applyTheme();render();save()});
 document.getElementById('btnExp').addEventListener('click',function(){
+  if(window.ScheduleGroups?.isAggregate()||projects.find(p=>p.id===activeProjectId)?.parentId)return window.ScheduleGroups.exportBranch();
   let d=currentProjectData();
   downloadJSON(d,(d.title||'project')+'.json');
 });
@@ -985,7 +990,7 @@ document.getElementById('thead').addEventListener('mousedown',function(e){
 // ========== KEYBOARD ==========
 document.addEventListener('keydown',function(e){
   if(e.target.closest?.('#appTabs'))return;
-  if(document.documentElement.dataset.appView==='todo'||window.ActionPlans?.isVisible()||document.querySelector('.ap-modal'))return;
+  if(window.ScheduleGroups?.isAggregate()||document.documentElement.dataset.appView==='todo'||window.ActionPlans?.isVisible()||document.querySelector('.ap-modal'))return;
   if(editing)return;
   let ae=document.activeElement;if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT')&&ae.id!=='ptitle')return;
   if(e.key==='Delete'&&sel.size>0){e.preventDefault();deleteSelected()}
@@ -1148,6 +1153,7 @@ function zipBlob(files){
   return new Blob([...parts,...central,...end],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
 function exportXLSX(){
+  if(window.ScheduleGroups?.isAggregate())return window.ScheduleGroups.excel();
   try{
     save();
     let blob=buildXLSXBlob(),url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -1208,6 +1214,7 @@ function buildPDFHTML(pageCount){
   return`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} PDF</title><style>@page{size:A4 landscape;margin:8mm}*{box-sizing:border-box}body{font-family:Segoe UI,Arial,sans-serif;margin:0;color:#20242b}.page{page-break-after:always;height:190mm;overflow:hidden}.page:last-child{page-break-after:auto}.ph{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #c8ced8;padding:0 0 5px;margin-bottom:6px;font-size:11px}.ph strong{font-size:14px}.wrap{display:flex;gap:6px;height:174mm}.pt{width:42%;overflow:hidden}.pg{flex:1;overflow:hidden;border-left:1px solid #d5dae2;padding-left:5px}table{width:100%;border-collapse:collapse;font-size:8px;table-layout:fixed}th{background:#2d3541;color:#fff;border:1px solid #596274;padding:3px 2px;text-align:left}td{border:1px solid #d8dde6;padding:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:14px}th:nth-child(1),td:nth-child(1){width:20px}th:nth-child(2),td:nth-child(2){width:32px}th:nth-child(3),td:nth-child(3){width:120px}th:nth-child(4),td:nth-child(4){width:26px}th:nth-child(5),td:nth-child(5){width:28px}th:nth-child(6),td:nth-child(6),th:nth-child(7),td:nth-child(7){width:48px}th:nth-child(8),td:nth-child(8){width:38px}th:nth-child(9),td:nth-child(9){width:28px}svg{width:100%;height:100%;display:block}</style></head><body>${sheets}</body></html>`;
 }
 function exportPDF(pageCount){
+  if(window.ScheduleGroups?.isAggregate())return window.ScheduleGroups.pdf(pageCount);
   save();
   let fr=document.createElement('iframe');
   fr.style.position='fixed';fr.style.right='0';fr.style.bottom='0';fr.style.width='0';fr.style.height='0';fr.style.border='0';
@@ -1220,6 +1227,8 @@ function currentProjectData(){
   return{
     id:activeProjectId||uid(),
     title:cleanTitle(document.getElementById('ptitle').value),
+    ...(projects.find(p=>p.id===activeProjectId)?.parentId!=null?{parentId:projects.find(p=>p.id===activeProjectId).parentId}:{}),
+    ...(projects.find(p=>p.id===activeProjectId)?.kind==='group'?{kind:'group'}:{}),
     updatedAt:new Date().toISOString(),
     tasks:T.map(taskOut),
     fmt:JSON.parse(JSON.stringify(fmt||{})),
@@ -1231,6 +1240,8 @@ function normalizeProject(p){
   return{
     id:p.id||uid(),
     title:cleanTitle(p.title),
+    ...(p.parentId!=null?{parentId:p.parentId}:{}),
+    ...(p.kind==='group'?{kind:'group'}:{}),
     updatedAt:p.updatedAt||new Date().toISOString(),
     tasks:Array.isArray(p.tasks)?p.tasks.map(t=>({...t})):[],
     fmt:p.fmt||{},
@@ -1258,6 +1269,7 @@ function load(){
       let d=JSON.parse(s);
       hasLocalPlanState=Object.hasOwn(d,'actionPlans');
       window.ActionPlans?.load(d.actionPlans||[]);
+      window.ScheduleGroups.validate(d.projects||[]);
       projects=(d.projects||[]).map(normalizeProject);
       activeProjectId=d.activeProjectId&&projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:(projects[0]&&projects[0].id);
       if(activeProjectId){loadProject(activeProjectId,false);return true}
@@ -1289,15 +1301,17 @@ function loadProject(id,doRender=true){
 function renderProjectSelect(){
   let s=document.getElementById('selProject');if(!s)return;
   let cur=s.value,html='';
-  for(let p of projects){html+=`<option value="${p.id}">${esc(p.title)}</option>`}
+  html=window.ScheduleGroups.options(projects);
   s.innerHTML=html;
   s.value=activeProjectId||cur||'';
 }
 function switchProject(id){
   if(!id||id===activeProjectId)return;
+  window.ScheduleGroups?.onSelect();
   save();loadProject(id,true);
 }
 function newProject(){
+  if(window.ScheduleGroups)return window.ScheduleGroups.newSchedule();
   showTextModal('New schedule','New Schedule',function(title){
     save();
     let p=normalizeProject({title,tasks:[],fmt:{},view:{res:'weeks',cw:36,labelsOn:true,statusOn:false,cpOn:false,theme}});
@@ -1305,6 +1319,7 @@ function newProject(){
   });
 }
 function duplicateProject(){
+  if(window.ScheduleGroups)return window.ScheduleGroups.duplicate();
   save();
   let src=projects.find(p=>p.id===activeProjectId);if(!src)return;
   let p=normalizeProject(JSON.parse(JSON.stringify(src)));
@@ -1312,12 +1327,14 @@ function duplicateProject(){
   projects.push(p);loadProject(p.id,true);save();
 }
 function renameProject(){
+  if(window.ScheduleGroups)return window.ScheduleGroups.edit(projects.find(p=>p.id===activeProjectId));
   let p=projects.find(x=>x.id===activeProjectId);if(!p)return;
   showTextModal('Rename schedule',p.title,function(title){
     document.getElementById('ptitle').value=cleanTitle(title);save();renderStatus();
   });
 }
 function deleteProject(){
+  if(window.ScheduleGroups)return window.ScheduleGroups.remove();
   let p=projects.find(x=>x.id===activeProjectId);if(!p)return;
   showConfirmModal('Delete schedule','Delete "'+p.title+'"? This only removes it from this browser.',function(){
     projects=projects.filter(x=>x.id!==activeProjectId);
@@ -1332,6 +1349,7 @@ function downloadAllProjects(){
 }
 function importProjectFile(d){
   if(d.projects&&Array.isArray(d.projects)){
+    window.ScheduleGroups.validate(d.projects);
     showConfirmModal('Import backup','Replace all saved schedules with this backup?',function(){
       projects=d.projects.map(normalizeProject);
       activeProjectId=d.activeProjectId&&projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:(projects[0]&&projects[0].id);
@@ -1340,6 +1358,7 @@ function importProjectFile(d){
     },'Import');return;
   }
   if(d.tasks&&Array.isArray(d.tasks)){
+    if(window.ScheduleGroups?.isAggregate()){alert('Selecione um cronograma individual para importar tarefas. Para importar uma árvore, use um backup com cronogramas.');return}
     document.getElementById('ptitle').value=cleanTitle(d.title||document.getElementById('ptitle').value);
     T=d.tasks.map(t=>taskIn({...t}));fmt=d.fmt||{};
     if(d.view){res=d.view.res||res;cw=d.view.cw||cw;cpOn=!!d.view.cpOn;labelsOn=d.view.labelsOn!==false;statusOn=!!d.view.statusOn;theme=d.view.theme==='light'?'light':'dark'}else{if(d.res)res=d.res;if(d.cw)cw=d.cw}
@@ -1414,7 +1433,7 @@ function updateActionTask(projectId,taskId,dates){
 window.ActionPlans.init({
   save:()=>{save();render()},
   flush:()=>{commitEdit();save()},
-  projects:()=>projects.map(p=>({id:p.id,title:p.title,tasks:(p.id===activeProjectId?T:p.tasks).map(t=>({id:t.id,name:t.name}))})),
+  projects:()=>projects.filter(p=>p.kind!=='group').map(p=>({id:p.id,title:p.title,tasks:(p.id===activeProjectId?T:p.tasks).map(t=>({id:t.id,name:t.name}))})),
   task:actionTask,updateTask:updateActionTask,
   getTheme:()=>theme,
   selectedTask:()=>{const id=[...sel][0]||lastSel;return id?{projectId:activeProjectId,taskId:id}:null},
@@ -1437,6 +1456,35 @@ Promise.resolve(window.GanttBackup.init({
   },
   localBackup:downloadAllProjects
 })).then(()=>{planScopeInitialized=true;window.PlanCloud.start()});
+function calculateSchedule(p){
+  const previous=T,previousCP=cpOn;
+  try{
+    T=(p.id===activeProjectId?T.map(taskOut):p.tasks).map(t=>taskIn({...t}));
+    compWBS();schedule();cpOn=true;const critical=criticalPath();
+    return {tasks:T.map(t=>({...taskOut(t),summary:isSummary(t),critical:critical.has(t.id)}))};
+  }finally{T=previous;cpOn=previousCP}
+}
+function withScheduleReport(tasks,callback){
+  const previous=T,previousFmt=fmt;
+  try{T=tasks.map(t=>taskIn({...t}));fmt={};compWBS();return callback()}
+  finally{T=previous;fmt=previousFmt}
+}
+window.ScheduleGroups.init({
+  projects:()=>projects,activeId:()=>activeProjectId,view:()=>({res,cw,cpOn}),
+  flush:()=>{commitEdit();save()},select:switchProject,
+  newProject:p=>normalizeProject({view:{res:'weeks',cw:36,theme},...p}),id:uid,fileName:cleanFileName,downloadJSON,
+  date:pd,dateString:fdi,today:()=>fdi(today()),parsePred,calculate:calculateSchedule,
+  closePopups,closeEditor,confirm:showConfirmModal,
+  replace:(data,id)=>{projects=data;loadProject(id,true);saveStore()},
+  openTask:(projectId,taskId)=>{switchProject(projectId);sel.clear();sel.add(taskId);lastSel=taskId;render();setTimeout(()=>document.querySelector('.tr.sel')?.scrollIntoView({block:'center'}),0)},
+  exportExcel:tasks=>{
+    const blob=withScheduleReport(tasks,buildXLSXBlob),url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download=cleanFileName(document.getElementById('ptitle').value)+'-consolidado.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  },
+  exportPDF:(tasks,pages)=>{
+    const html=withScheduleReport(tasks,()=>buildPDFHTML(pages)),frame=document.createElement('iframe');frame.style.cssText='position:fixed;width:0;height:0;border:0';document.body.append(frame);frame.contentDocument.open();frame.contentDocument.write(html);frame.contentDocument.close();setTimeout(()=>{frame.contentWindow.focus();frame.contentWindow.print();setTimeout(()=>frame.remove(),2000)},300);
+  }
+});
 // Always open the Todo view when the app starts.
 document.getElementById('tabTodo').click();
 </script>

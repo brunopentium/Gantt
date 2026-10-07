@@ -73,6 +73,7 @@ window.GanttBackup = (() => {
   }
   function validate(data){
     window.ActionPlans?.validate(data.actionPlans||[]);
+    window.ScheduleGroups?.validate(data.projects);
     if(data.version!==1||!Array.isArray(data.projects)||!data.projects.length)throw new Error('Backup inválido.');
     const ids=new Set();
     for(const p of data.projects){
