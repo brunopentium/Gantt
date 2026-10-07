@@ -12,7 +12,7 @@ const fs=require('node:fs');
   // Modal options reach the printer and include collapsed rows, not only the current screen.
   await page.evaluate(()=>{window.originalPrint=GanttPrint.print;GanttPrint.print=html=>window.printCapture=html});
   await page.click('#btnPDF');assert.equal(await page.locator('#pdfPages').inputValue(),'4');await page.selectOption('#pdfOrientation','portrait');await page.fill('#pdfPages','3');await page.locator('.modal [data-a=ok]').click();
-  let html=await page.evaluate(()=>printCapture);assert(html.includes('data-print-orientation="portrait"'));assert(html.includes('data-print-pages="3"'));assert.equal((html.match(/data-print-task=/g)||[]).length,120);assert(html.includes('@page{size:auto;'));assert(!html.includes('@page{size:A4 landscape'));
+  let html=await page.evaluate(()=>printCapture);assert(html.includes('data-print-orientation="portrait"'));assert(html.includes('data-print-pages="3"'));assert.equal((html.match(/data-print-task=/g)||[]).length,120);assert(html.includes('@page{size:auto;'));assert(!html.includes('@page{size:A4 landscape'));assert(html.includes('05/10/26'));
   const report=await browser.newPage();
   for(const orientation of ['landscape','portrait'])for(const nativeLandscape of [true,false])for(const pages of [1,2,3]){
    html=await page.evaluate(options=>buildPDFHTML(options),{pages,orientation});await report.setContent(html);await report.emulateMedia({media:'print'});

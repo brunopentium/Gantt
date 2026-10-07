@@ -1176,11 +1176,12 @@ function printCellStyle(t,cid){
 }
 function buildPDFHTML(options){
   const rng=dateRange(),tw=Math.max(totalW(rng),1),days=Math.max(1,daysBtw(rng.mn,rng.mx));
+  const printDate=d=>d?d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'';
   return GanttPrint.build({
     title:cleanTitle(document.getElementById('ptitle').value),start:fdi(rng.mn),end:fdi(rng.mx),days,
     today:d2x(today(),rng)/tw,status:statusOn,labels:labelsOn,format:fmt,
     tasks:T.map((t,index)=>({id:t.id,index:index+1,wbs:t.wbs||'',name:t.name,indent:t.indent||0,
-      dur:t.mile?0:t.dur,unit:t.unit==='cd'?'CD':'BD',start:fd(t.start),end:fd(t.end),pred:t.pred||'',pct:t.pct||0,
+      dur:t.mile?0:t.dur,unit:t.unit==='cd'?'CD':'BD',start:printDate(t.start),end:printDate(t.end),pred:t.pred||'',pct:t.pct||0,
       summary:isSummary(t),mile:t.mile||t.dur===0,color:t.color||'#4a9eff',hasDate:!!t.start,
       x:d2x(t.start,rng)/tw,w:barW(t.start,t.end,rng)/tw}))
   },options);
