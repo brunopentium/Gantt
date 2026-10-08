@@ -157,10 +157,12 @@ input{font-family:inherit}
 <link rel="stylesheet" href="gantt-mobile.css?v=20261007-mobile-navigation">
 <link rel="stylesheet" href="todo-native.css?v=20261008-integrated-todo">
 <link rel="stylesheet" href="my-day.css?v=20261008-english-navigation">
+<link rel="stylesheet" href="workspace-autosave.css?v=20261008-auto-save">
 </head>
 <body>
 <div id="app">
 <nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabMyDay" aria-controls="myDayPanel" class="act" role="tab" aria-selected="true">☀ Meu dia</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">Task</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button><button id="tabTodo" aria-controls="todoPanel" role="tab" aria-selected="false" hidden>✅ Todo</button></nav>
+<div class="workspace-save-bar" aria-label="Salvamento e recuperação"><label><input id="autosaveToggle" type="checkbox" checked> Salvar automaticamente</label><span id="autosaveStatus" role="status" aria-live="polite">Abrindo dados…</span><button id="autosaveResolve" type="button" hidden>Resolver sincronização</button><button id="autosaveCheckpoint" type="button">Criar ponto de restauração</button><button id="autosaveRecovery" type="button">Restaurações</button></div>
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
   <div class="tsep"></div>
@@ -243,14 +245,16 @@ input{font-family:inherit}
 <script src="action-plans.js?v=20261008-english-navigation"></script>
 <script src="schedule-groups.js?v=20261008-english-navigation"></script>
 <script src="plan-exports.js?v=20261008-english-navigation"></script>
-<script src="plan-cloud.js?v=20261008-english-navigation"></script>
-<script src="github-backup.js?v=20261008-english-navigation"></script>
+<script src="plan-cloud.js?v=20261008-auto-save"></script>
+<script src="github-backup.js?v=20261008-auto-save"></script>
 <script src="gantt-print.js?v=20261008-english-navigation"></script>
 <script src="plan-print.js?v=20261008-english-navigation"></script>
 <script src="gantt-mobile.js?v=20261007-mobile-navigation"></script>
 <script src="todo-native.js?v=20261008-my-day"></script>
-<script src="todo-cloud.js?v=20261008-english-navigation"></script>
-<script src="workspace-backup.js?v=20261008-integrated-todo"></script>
+<script src="todo-cloud.js?v=20261008-auto-save"></script>
+<script src="workspace-backup.js?v=20261008-auto-save"></script>
+<script src="local-recovery.js?v=20261008-auto-save"></script>
+<script src="workspace-autosave.js?v=20261008-auto-save"></script>
 <script src="my-day-data.js?v=20261008-english-navigation"></script>
 <script src="my-day.js?v=20261008-english-navigation"></script>
 <script src="app-navigation.js?v=20261008-english-navigation"></script>
@@ -1559,6 +1563,7 @@ window.MyDay.init(window.MyDayData,{
   },
   status:source=>document.getElementById({todo:'ntCloudStatus',action:'apCloudStatus',gantt:'cloudBackupStatus'}[source])?.textContent||''
 });
+window.WorkspaceAutosave.init({gantt:window.GanttBackup,action:window.PlanCloud,todo:window.TodoCloud});
 window.AppNavigation.init();
 // Meu dia is always the first view, including when the legacy Todo is enabled.
 document.getElementById('tabMyDay').click();

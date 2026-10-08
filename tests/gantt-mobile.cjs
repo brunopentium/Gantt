@@ -45,6 +45,7 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
       tableHeight:element('tbody').clientHeight,tableScrollHeight:element('tbody').scrollHeight,
       tableTop:element('tbody').scrollTop,ganttHeight:element('gbody').clientHeight,
       ganttScrollHeight:element('gbody').scrollHeight,ganttTop:element('gbody').scrollTop,
+      saveBarHeight:document.querySelector('.workspace-save-bar')?.getBoundingClientRect().height||0,
       left:element('main').scrollLeft,scale:visualViewport.scale};
   });
   try{
@@ -129,7 +130,7 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     const desktop=await open({viewport:{width:1320,height:900}});
     const desktopSize=await dimensions(desktop);
     assert.equal(desktopSize.height,900);assert.equal(desktopSize.width,1320);
-    assert.equal(desktopSize.tableHeight,677);assert.equal(desktopSize.ganttHeight,677);
+    assert.equal(desktopSize.tableHeight+desktopSize.saveBarHeight,677);assert.equal(desktopSize.ganttHeight+desktopSize.saveBarHeight,677);
     assert.equal(await desktop.locator('#tpanel').evaluate(e=>e.clientWidth),580);
     assert(await desktop.locator('#scheduleMobileNav').isHidden());assert(await desktop.locator('#divider').isVisible());
     await desktop.locator('#tbody').evaluate(e=>e.scrollTop=300);

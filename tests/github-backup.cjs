@@ -2,7 +2,8 @@ const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 (async()=>{
  const browser=await chromium.launch({headless:true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}:{})});
- const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));let automaticDownloads=0;page.on('download',()=>automaticDownloads++);
+ await page.addInitScript(()=>localStorage.setItem('pf_autosave_v1',JSON.stringify({enabled:false})));
  let remote=null,puts=0,isPrivate=true,hasPages=false,fail=false,payload,commits=[];
  const versions=new Map(),answers=[];let dialogs=0;
  page.on('dialog',d=>{if(d.type()==='confirm')dialogs++;return answers.shift()===false?d.dismiss():d.accept()});
@@ -55,10 +56,15 @@ const assert=require('node:assert/strict');
  let newer=JSON.parse(Buffer.from(remote.content,'base64').toString());newer.projects[0].tasks[0].name='Versão de outro dispositivo';
  remote={sha:'other-device',content:Buffer.from(JSON.stringify(newer)).toString('base64')};
  await page.reload();await waitStatus('Latest GitHub version loaded');await page.click('#tabGantt');assert.equal(await page.evaluate(()=>T[0].name),'Versão de outro dispositivo');assert.equal(puts,4);
- // Unsaved local edits survive reload if the user declines replacement.
- await page.click('#btnAdd');answers.push(true,false);await page.reload();await waitStatus('Local data kept');await page.click('#tabGantt');assert.equal(await page.locator('.tr').count(),21);
+ // Unsaved drafts reconnect without replacement when the remote file is unchanged.
+ await page.click('#btnAdd');const confirmsBefore=dialogs;await page.reload();await waitStatus('Local data kept');await page.click('#tabGantt');assert.equal(await page.locator('.tr').count(),21);assert.equal(dialogs,confirmsBefore);
+ assert.equal(await page.evaluate(()=>GanttBackup.state().ready),true);assert.equal(puts,4);
+ // A newer remote file never replaces a draft during startup or enables an unsafe write.
+ newer.projects[0].tasks[0].name='Outra revisão remota';remote={sha:'other-device-2',content:Buffer.from(JSON.stringify(newer)).toString('base64')};await page.reload();await waitStatus('Local data kept');await page.click('#tabGantt');assert.equal(await page.locator('.tr').count(),21);assert.equal(dialogs,confirmsBefore);
  await page.click('#btnCloudSave');await waitStatus('before saving');assert.equal(puts,4);
+ const copiesBefore=await page.evaluate(async()=>(await LocalRecovery.list()).length);
  await configure(true);await waitStatus('Latest GitHub version loaded');assert.equal(await page.locator('.tr').count(),20);
+ const safety=await page.evaluate(async()=>{const copies=await LocalRecovery.list();return {count:copies.length,data:await LocalRecovery.get(copies[0].id)}});assert.equal(safety.count,copiesBefore+1);assert.equal(safety.data.projects[0].tasks.length,21);assert.equal(automaticDownloads,0);
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('pf_github_backup_v1_token'))),'test-token');
  // A concurrent save is rejected, and expired credentials preserve local drafts.
  remote.sha='concurrent-device';await page.click('#btnAdd');await page.click('#btnCloudSave');await waitStatus('Different remote version');assert.equal(puts,4);
@@ -77,5 +83,5 @@ const assert=require('node:assert/strict');
  remote={sha:'legacy',content:Buffer.from(JSON.stringify(legacy)).toString('base64')};
  await page.evaluate(legacy=>{localStorage.setItem('pf_projects_v1',JSON.stringify(legacy));localStorage.setItem('pf_github_backup_v1',JSON.stringify({repo:'brunopentium/gantt-backups',branch:'main',sha:'legacy',enabled:true,fingerprint:JSON.stringify(legacy,(k,v)=>k==='updatedAt'?undefined:v)}));sessionStorage.setItem('pf_github_backup_v1_token',JSON.stringify('test-token'))},legacy);
  const priorDialogs=dialogs;await page.reload();await waitStatus('Latest GitHub version loaded');await page.click('#tabGantt');assert.equal(dialogs,priorDialogs);assert.deepEqual(await page.evaluate(()=>ActionPlans.exportData()),[]);assert.equal(puts,4);
- assert.deepEqual(errors,[]);await browser.close();console.log('PASS: manual-only saves, Unicode, history and pagination, restore as new commit, invalid restore, latest-version startup, unsaved draft protection, concurrency, auth failures, private/no-Pages checks, token persistence and disconnect');
+ assert.equal(automaticDownloads,0);assert.deepEqual(errors,[]);await browser.close();console.log('PASS: explicit saves with auto mode disabled, Unicode, history and pagination, restore as new commit, internal protection without downloads, invalid restore, latest-version startup, unchanged-remote draft reconnection, changed-remote draft protection, concurrency, auth failures, private/no-Pages checks, token persistence and disconnect');
 })().catch(e=>{console.error(e);process.exit(1)});

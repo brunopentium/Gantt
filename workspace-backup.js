@@ -29,14 +29,33 @@ window.WorkspaceBackup=(()=>{
     }
   }
   function exportAll(){downloadJSON(snapshot(),'projectflow-backup-geral-'+new Date().toISOString().slice(0,10)+'.json')}
-  function restore(data){
-    validate(data);
-    if(!confirm('Restaurar cronogramas, planos de ação e Todo novo deste backup? Uma cópia geral dos dados atuais será baixada antes. O Todo do Google permanece independente.'))return false;
-    exportAll();api.restore(data);window.NativeTodo.restoreData(data.todo);return true;
+  function content(data){
+    const copy=JSON.parse(JSON.stringify(data));delete copy.exportedAt;
+    for(const project of copy.projects)delete project.updatedAt;
+    return JSON.stringify(copy);
+  }
+  async function restore(raw,{reason='Antes de restaurar o backup geral'}={}){
+    const data=JSON.parse(JSON.stringify(raw));validate(data);
+    if(!confirm('Restaurar cronogramas, planos de ação e Task deste backup? Uma cópia interna dos dados atuais será guardada no Histórico de recuperação antes.'))return false;
+    const autosave=window.WorkspaceAutosave;
+    if(autosave)await autosave.suspend();
+    try{
+      if(autosave?.state().areas.some(area=>area.busy))throw new Error('Aguarde a sincronização antes de restaurar.');
+      const id=await window.LocalRecovery.capture({reason,scope:'all'}),previous=await window.LocalRecovery.get(id);
+      if(!previous)throw new Error('A cópia de segurança não está disponível. A restauração foi cancelada.');
+      if(content(previous)!==content(snapshot()))throw new Error('Os dados foram alterados enquanto a cópia de segurança era guardada. A restauração foi cancelada; tente novamente.');
+      try{api.restore(data);window.NativeTodo.restoreData(data.todo)}
+      catch(error){
+        // Validation runs before mutation; a persistence failure still has a full safety copy.
+        try{api.restore(previous);window.NativeTodo.restoreData(previous.todo)}catch{}
+        throw new Error('Não foi possível concluir a restauração. Os dados anteriores estão no Histórico de recuperação. '+error.message);
+      }
+      return true;
+    }finally{if(autosave)autosave.resume()}
   }
   function importFile(){
     const input=document.createElement('input');input.type='file';input.accept='.json';
-    input.onchange=async()=>{try{if(input.files[0])restore(JSON.parse(await input.files[0].text()))}catch(error){alert('Backup não restaurado: '+error.message)}};input.click();
+    input.onchange=async()=>{try{if(input.files[0])await restore(JSON.parse(await input.files[0].text()))}catch(error){alert('Backup não restaurado: '+error.message)}};input.click();
   }
   return {init,snapshot,validate,exportAll,restore,importFile};
 })();

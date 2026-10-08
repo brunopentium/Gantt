@@ -1,6 +1,5 @@
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
-const fs=require('node:fs');
 const today=new Date().toISOString().slice(0,10);
 const fixture={version:1,activeProjectId:'s',projects:[{id:'s',title:'Cronograma protegido',tasks:[{id:'t',name:'TAREFA GANTT',indent:0,pred:'',dur:1,pct:0,start:today,end:today,unit:'bd'}]}]};
 const initial={version:1,type:'todo',tasks:[{id:'remote',title:'TAREFA REMOTA',date:today,deadline:today,status:'Em Andamento',project:'R&D',priority:3,difficulty:2,notes:'',tags:[],subtasks:[],metadata:{preserved:true},recurrence:{frequency:'Nenhuma',daysOfWeek:[],daysOfMonth:[]},deferBusinessDays:0}],settings:{projects:['R&D'],config:{}},exportedAt:new Date().toISOString()};
@@ -12,10 +11,12 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
   let commits=[];const versions=new Map([['initial',{...remote}]]),errors=[];
   async function open({seed,meta,accept=true,pauseConnection=false}={}){
     const page=await browser.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
+    page.downloads=[];page.on('download',download=>page.downloads.push(download));
     page.on('dialog',d=>d.type()==='confirm'&&!accept?d.dismiss():d.accept());
     await page.route('https://script.google.com/**',r=>r.abort());
     await page.addInitScript(({fixture,seed,meta,pauseConnection})=>{
       if(window!==window.top)return;
+      localStorage.setItem('pf_autosave_v1',JSON.stringify({enabled:false}));
       if(pauseConnection){
         // Install the readiness gate before the default dashboard starts TodoCloud.
         const gate=new Promise(resolve=>window.releaseTodoConnection=resolve);let cloud;
@@ -77,11 +78,13 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     await native(page).getByRole('heading',{name:'TÍTULO VERSÃO 2',exact:true}).waitFor();
     await page.click('#ntCloudSave');await page.waitForFunction(()=>document.getElementById('ntCloudStatus').textContent.includes('salvo no GitHub'));assert.equal(writes,2);
     await page.click('#ntCloudHistory');await page.waitForFunction(()=>document.querySelectorAll('#ntVersions button').length===2);
-    const backup=page.waitForEvent('download');await page.locator('#ntVersions button').last().click();await (await backup).saveAs('/tmp/todo-before-history.json');
+    const copiesBefore=await page.evaluate(async()=>new Set((await LocalRecovery.list()).map(copy=>copy.id)).size);
+    await page.locator('#ntVersions button').last().click();
     await page.waitForFunction(()=>document.getElementById('ntCloudStatus').textContent.includes('salvo no GitHub'));assert.equal(writes,3);
     assert.equal(JSON.parse(Buffer.from(remote.content,'base64').toString()).tasks.find(t=>t.id==='remote').title,'TAREFA REMOTA');
     await native(page).getByRole('heading',{name:'TAREFA REMOTA',exact:true}).waitFor();assert.equal(commits[0].commit.message,'Restaurar Todo da versão v1');
-    assert.equal(JSON.parse(fs.readFileSync('/tmp/todo-before-history.json','utf8')).tasks.find(t=>t.id==='remote').title,'TÍTULO VERSÃO 2');
+    const safety=await page.evaluate(async()=>{const copies=await LocalRecovery.list();return {count:copies.length,data:await LocalRecovery.get(copies[0].id)}});
+    assert.equal(safety.count,copiesBefore+1);assert.equal(safety.data.todo.tasks.find(t=>t.id==='remote').title,'TÍTULO VERSÃO 2');assert.equal(page.downloads.length,0);
     // A stale child render after an external restore cannot undo that restore.
     const revision=await page.evaluate(()=>document.getElementById('todoNativeFrame').contentWindow.TaskMaster.snapshot());
     await page.evaluate(old=>{NativeTodo.restoreData({tasks:[],settings:old.settings});NativeTodo.commit(old);NativeTodo.flush()},revision);
@@ -97,7 +100,7 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     assert.equal(writes,3);isPrivate=true;
     hasPages=true;await page.click('#ntCloudSave');await page.waitForFunction(()=>document.getElementById('ntCloudStatus').textContent.includes('sem GitHub Pages'));assert.equal(writes,3);hasPages=false;
     assert.equal(await source(page),protectedSource);
-    // Initial local changes are kept when the user declines opening remote data.
+    // Startup keeps unmatched local changes without asking to overwrite them.
     const localOnly={tasks:[{...initial.tasks[0],title:'TAREFA LOCAL PROTEGIDA'}],settings:initial.settings};
     const refused=await open({seed:localOnly,accept:false});await enter(refused);
     await native(refused).getByRole('heading',{name:'TAREFA LOCAL PROTEGIDA',exact:true}).waitFor();
@@ -136,6 +139,6 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     await invalid.waitForFunction(()=>document.getElementById('ntCloudStatus').textContent.includes('ID inválido'));
     assert.equal(await invalid.evaluate(()=>NativeTodo.snapshot().tasks[0].title),'TAREFA LOCAL PROTEGIDA');assert.equal(writes,3);await invalid.close();
     assert.deepEqual(errors,[]);
-    console.log('PASS: default Meu dia loads Task cloud data with lazy local UI, existing private credentials, manual-only scoped saves, cross-device loading, own history/restore as new commit/local backup, stale-render and delayed-start edit protection, shared startup promise, source isolation, conflicts/auth/public/Pages guards, refused/invalid remote retention and credential-free archives');
+    console.log('PASS: default Meu dia loads Task cloud data with lazy local UI, existing private credentials, explicit scoped saves with auto mode disabled, cross-device loading, own history/restore as new commit/internal backup without downloads, stale-render and delayed-start edit protection, shared startup promise, source isolation, conflicts/auth/public/Pages guards, refused/invalid remote retention and credential-free archives');
   }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});

@@ -4,6 +4,7 @@ const assert=require('node:assert/strict');
  const browser=await chromium.launch({headless:true});
  try{
   const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());await page.route('https://script.google.com/**',r=>r.abort());
+  await page.addInitScript(()=>localStorage.setItem('pf_autosave_v1',JSON.stringify({enabled:false})));
   let remote=null,writes=0,history=[];const versions=new Map();
   await page.route('https://api.github.com/repos/**',async route=>{
    const req=route.request(),url=new URL(req.url());assert.equal(req.headers().authorization,'Bearer test-token');

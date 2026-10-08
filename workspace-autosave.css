@@ -1,0 +1,9 @@
+.workspace-save-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 10px;background:var(--bg1);border-bottom:1px solid var(--border);color:var(--text2);font-size:11px;flex-shrink:0}
+.workspace-save-bar label{display:flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer;color:var(--text)}
+.workspace-save-bar input{accent-color:var(--accent)}
+.workspace-save-bar button{padding:4px 8px;font-size:11px;white-space:nowrap}
+#autosaveStatus{flex:1;min-width:160px;overflow-wrap:anywhere}
+#autosaveStatus[data-state=saved]{color:var(--green,#21855a)}
+#autosaveStatus[data-state=blocked]{color:var(--red)}
+@media(max-width:600px){.workspace-save-bar{gap:7px}.workspace-save-bar label{font-size:12px}#autosaveStatus{flex-basis:calc(100% - 170px)}.workspace-save-bar button{padding:7px 9px;font-size:12px}}
+@media print{.workspace-save-bar{display:none!important}}

@@ -305,6 +305,7 @@ const schedules=[
     await cloud.route('https://script.google.com/**',r=>r.abort());
     await cloud.addInitScript(()=>{
       if(window!==window.top)return;
+      localStorage.setItem('pf_autosave_v1',JSON.stringify({enabled:false}));
       localStorage.setItem('pf_github_backup_v1',JSON.stringify({repo:'test-owner/private-daily-backups',enabled:true}));
       localStorage.setItem('pf_github_backup_v1_token',JSON.stringify('synthetic-test-token'));
     });
