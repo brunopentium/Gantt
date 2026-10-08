@@ -155,10 +155,11 @@ input{font-family:inherit}
 <link rel="stylesheet" href="schedule-groups.css?v=20261007-task-folding">
 <link rel="stylesheet" href="gantt-mobile.css?v=20261007-mobile-navigation">
 <link rel="stylesheet" href="todo-native.css?v=20261008-integrated-todo">
+<link rel="stylesheet" href="my-day.css?v=20261008-my-day">
 </head>
 <body>
 <div id="app">
-<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabTodo" aria-controls="todoPanel" class="act" role="tab" aria-selected="true">✅ Todo</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">✅ Todo novo</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button></nav>
+<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabTodo" aria-controls="todoPanel" class="act" role="tab" aria-selected="true">✅ Todo</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">✅ Todo novo</button><button id="tabMyDay" aria-controls="myDayPanel" role="tab" aria-selected="false">☀ Meu dia</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button></nav>
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
   <div class="tsep"></div>
@@ -232,12 +233,13 @@ input{font-family:inherit}
   <span id="ntCloudStatus" role="status" aria-live="polite"></span>
 </div>
 <section id="todoNativePanel" hidden aria-label="Todo novo integrado">
-  <iframe id="todoNativeFrame" title="TaskMaster — Todo novo integrado" data-src="todo-native/index.html?v=20261008-integrated-todo"></iframe>
+  <iframe id="todoNativeFrame" title="TaskMaster — Todo novo integrado" data-src="todo-native/index.html?v=20261008-my-day"></iframe>
 </section>
+<section id="myDayPanel" hidden role="tabpanel" aria-labelledby="tabMyDay"></section>
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
-<script src="action-plans.js?v=20261008-integrated-todo"></script>
+<script src="action-plans.js?v=20261008-my-day"></script>
 <script src="schedule-groups.js?v=20261007-filtered-pdf"></script>
 <script src="plan-exports.js?v=20261007-live-status-flag"></script>
 <script src="plan-cloud.js?v=20261007-plan-document"></script>
@@ -245,9 +247,11 @@ input{font-family:inherit}
 <script src="gantt-print.js?v=20261007-filtered-pdf"></script>
 <script src="plan-print.js?v=20261007-filtered-pdf"></script>
 <script src="gantt-mobile.js?v=20261007-mobile-navigation"></script>
-<script src="todo-native.js?v=20261008-integrated-todo"></script>
-<script src="todo-cloud.js?v=20261008-integrated-todo"></script>
+<script src="todo-native.js?v=20261008-my-day"></script>
+<script src="todo-cloud.js?v=20261008-my-day"></script>
 <script src="workspace-backup.js?v=20261008-integrated-todo"></script>
+<script src="my-day-data.js?v=20261008-my-day"></script>
+<script src="my-day.js?v=20261008-my-day"></script>
 <script>
 // ========== STATE ==========
 let T=[], sel=new Set(), lastSel=null, undo=[], fmt={}, cpOn=false, labelsOn=true, statusOn=false, theme='dark', res='weeks', cw=36;
@@ -1011,7 +1015,7 @@ document.getElementById('thead').addEventListener('mousedown',function(e){
 // ========== KEYBOARD ==========
 document.addEventListener('keydown',function(e){
   if(e.target.closest?.('#appTabs'))return;
-  if(window.ScheduleGroups?.isAggregate()||['todo','native-todo'].includes(document.documentElement.dataset.appView)||window.ActionPlans?.isVisible()||document.querySelector('.ap-modal'))return;
+  if(window.ScheduleGroups?.isAggregate()||['todo','native-todo','my-day'].includes(document.documentElement.dataset.appView)||window.ActionPlans?.isVisible()||document.querySelector('.ap-modal'))return;
   if(editing)return;
   let ae=document.activeElement;if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT')&&ae.id!=='ptitle')return;
   if(e.key==='Delete'&&sel.size>0){e.preventDefault();deleteSelected()}
@@ -1240,6 +1244,7 @@ function saveStore(){
   try{localStorage.setItem(STORE_KEY,JSON.stringify(allProjectData()))}catch(e){}
   window.GanttBackup?.changed();
   window.PlanCloud?.changed();
+  window.dispatchEvent(new CustomEvent('projectflow:datachange',{detail:{sources:['gantt','action']}}));
 }
 function save(){
   if(!activeProjectId)return;
@@ -1392,9 +1397,10 @@ function init(){
   recalc();render();
 }
 init();
+const myDaySchedules=new Map();
 function actionTask(projectId,taskId){
   const p=projects.find(p=>p.id===projectId);if(!p)return null;
-  const tasks=projectId===activeProjectId?T:p.tasks;
+  const tasks=projectId===activeProjectId?T:calculatedMyDayTasks(p);
   const i=tasks.findIndex(t=>t.id===taskId);if(i<0)return null;
   const t=tasks[i],summary=i<tasks.length-1&&tasks[i+1].indent>t.indent;
   return {projectTitle:p.title,taskName:t.name,start:fdi(pd(t.start)),end:fdi(pd(t.end)),summary,pred:t.pred||'',mile:!!t.mile};
@@ -1403,7 +1409,7 @@ function updateActionTask(projectId,taskId,dates){
   const p=projects.find(p=>p.id===projectId);if(!p)throw new Error('Cronograma não encontrado');
   const coveredTicket=window.GanttBackup?.planEditStart();
   const previous=T,active=projectId===activeProjectId;
-  if(!active)T=p.tasks.map(t=>taskIn({...t}));
+  if(!active){T=p.tasks.map(t=>taskIn({...t}));compWBS();schedule()}
   try{
     const t=T.find(t=>t.id===taskId);if(!t)throw new Error('Tarefa não encontrada');
     if(isSummary(t))throw new Error('As datas desta linha são calculadas a partir das subtarefas.');
@@ -1475,6 +1481,81 @@ window.ScheduleGroups.init({
     a.href=url;a.download=cleanFileName(document.getElementById('ptitle').value)+'-consolidado.xlsx';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   },
   exportPDF:(tasks,options)=>GanttPrint.print(withScheduleReport(tasks,()=>buildPDFHTML(options)))
+});
+// Meu dia edits the source records. Date calculations remain owned by the Gantt.
+function calculatedMyDayTasks(p){
+  const raw=p.id===activeProjectId?T.map(taskOut):p.tasks;
+  const fingerprint=JSON.stringify(raw);
+  let cached=myDaySchedules.get(p.id);
+  if(!cached||cached.fingerprint!==fingerprint){
+    const previous=T;
+    try{
+      T=raw.map(t=>taskIn({...t}));compWBS();schedule();
+      cached={fingerprint,tasks:T.map((t,i)=>({...taskOut(t),summary:i<T.length-1&&T[i+1].indent>t.indent}))};
+      myDaySchedules.set(p.id,cached);
+    }finally{T=previous}
+  }
+  return cached.tasks;
+}
+function myDayProjects(){
+  const present=new Set(projects.map(p=>p.id));
+  for(const id of myDaySchedules.keys())if(!present.has(id))myDaySchedules.delete(id);
+  return projects.map(p=>{
+    if(p.kind==='group')return {...p,tasks:[]};
+    return {...p,tasks:calculatedMyDayTasks(p).map(t=>({...t}))};
+  });
+}
+function updateMyDayTask(projectId,taskId,patch){
+  if(!patch||typeof patch!=='object'||Array.isArray(patch)||Object.keys(patch).some(k=>!['title','name','start','end','pct','notes'].includes(k)))throw new Error('Alteração de atividade inválida.');
+  const p=projects.find(p=>p.id===projectId);
+  if(!p||p.kind==='group')throw new Error('Cronograma não encontrado.');
+  const active=projectId===activeProjectId,previous=T,priorTasks=p.tasks,priorUpdatedAt=p.updatedAt,undoLength=undo.length;
+  let changed=false;
+  try{
+    T=(active?T.map(taskOut):p.tasks).map(t=>taskIn({...t}));compWBS();schedule();
+    const t=T.find(t=>t.id===taskId);
+    if(!t)throw new Error('Atividade não encontrada. Atualize o painel.');
+    if(isSummary(t))throw new Error('Edite as subtarefas desta linha de resumo.');
+    const title=patch.title??patch.name;
+    if(title!==undefined){if(typeof title!=='string'||!title.trim())throw new Error('Informe o nome da atividade.');t.name=title.trim()}
+    if(patch.pct!==undefined){const pct=Number(patch.pct);if(!Number.isFinite(pct)||pct<0||pct>100)throw new Error('O progresso deve estar entre 0 e 100%.');t.pct=pct}
+    if(patch.notes!==undefined){if(typeof patch.notes!=='string')throw new Error('Observações inválidas.');t.notes=patch.notes}
+    if(patch.start!==undefined||patch.end!==undefined){
+      const start=patch.start??(t.mile?patch.end:undefined)??fdi(t.start),end=t.mile?start:(patch.end??fdi(t.end));
+      for(const value of [start,end]){const parsed=new Date(value+'T12:00:00Z');if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value)||isNaN(parsed)||parsed.toISOString().slice(0,10)!==value)throw new Error('Informe início e término válidos.')}
+      if(end<start)throw new Error('O término deve ser igual ou posterior ao início.');
+      if(t.pred&&start!==fdi(t.start))throw new Error('O início é calculado pelas dependências do cronograma.');
+      if(t.mile&&patch.end!==undefined&&patch.end!==start)throw new Error('Um marco tem início e término na mesma data.');
+      t.start=pd(start);t.end=pd(t.mile?start:end);t.dur=t.mile?0:durBtw(t.start,t.end,t.unit);
+    }
+    if(active){const next=T;T=previous;snap();T=next}
+    compWBS();schedule();p.tasks=T.map(taskOut);p.updatedAt=new Date().toISOString();changed=true;
+  }catch(error){p.tasks=priorTasks;p.updatedAt=priorUpdatedAt;if(active)undo.length=undoLength;throw error}
+  finally{if(!active||!changed)T=previous}
+  save();if(document.documentElement.dataset.appView==='gantt')render();
+  return myDayProjects().find(p=>p.id===projectId).tasks.find(t=>t.id===taskId);
+}
+function openMyDayTask(projectId,taskId){
+  window.ActionPlans.switchView(false);switchProject(projectId);
+  if(window.ScheduleGroups.isAggregate()){
+    const include=document.getElementById('sgInclude');
+    if(include?.checked){include.checked=false;include.dispatchEvent(new Event('change',{bubbles:true}))}
+  }
+  const at=T.findIndex(t=>t.id===taskId);if(at<0)return;
+  let indent=T[at].indent;
+  for(let i=at-1;i>=0;i--)if(T[i].indent<indent){T[i].collapsed=false;indent=T[i].indent}
+  sel.clear();sel.add(taskId);lastSel=taskId;render();save();
+  setTimeout(()=>document.querySelector('.tr.sel')?.scrollIntoView({block:'center'}),0);
+}
+window.MyDayData.init({flush:()=>{commitEdit();save();window.NativeTodo.flush()},projects:myDayProjects,updateTask:updateMyDayTask,openTask:openMyDayTask});
+window.MyDay.init(window.MyDayData,{
+  backup:()=>window.WorkspaceBackup.exportAll(),
+  save:async source=>{
+    if(source==='todo')await window.TodoCloud.start();
+    await document.getElementById({todo:'ntCloudSave',action:'apCloudSave',gantt:'btnCloudSave'}[source])?.onclick?.();
+    return document.getElementById({todo:'ntCloudStatus',action:'apCloudStatus',gantt:'cloudBackupStatus'}[source])?.textContent||'';
+  },
+  status:source=>document.getElementById({todo:'ntCloudStatus',action:'apCloudStatus',gantt:'cloudBackupStatus'}[source])?.textContent||''
 });
 // Always open the Todo view when the app starts.
 document.getElementById('tabTodo').click();

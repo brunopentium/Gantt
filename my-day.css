@@ -1,0 +1,200 @@
+/* All dashboard rules are scoped; the existing three working views retain their layout. */
+html[data-app-view="my-day"] :is(#main,#toolbar,#statusbar,#scheduleHierarchyBar,#scheduleAggregate,#scheduleMobileNav){display:none!important}
+#myDayPanel{--md-bg:#f4f7fb;--md-ink:#1d2d44;--md-muted:#68788e;--md-border:#dce4ee;--md-teal:#087f83;--md-teal-light:#e5f5f3;background:var(--md-bg);color:var(--md-ink);font-family:Inter,'Segoe UI',system-ui,sans-serif;min-height:0;flex:1;overflow-y:auto;overflow-x:hidden;user-select:text;overscroll-behavior-y:auto;color-scheme:light}
+#myDayPanel[hidden]{display:none!important}
+#myDayPanel *,#myDayPanel *::before,#myDayPanel *::after{box-sizing:border-box}
+#myDayPanel svg{width:18px;height:18px;flex-shrink:0;vertical-align:middle}
+#myDayPanel button,#myDayPanel input,#myDayPanel select,#myDayPanel textarea{font:inherit;letter-spacing:normal}
+#myDayPanel button{border:0;background:none;color:inherit;cursor:pointer;line-height:1.35;text-transform:none;white-space:normal;box-shadow:none;border-radius:8px}
+#myDayPanel button:disabled{cursor:default;opacity:.5}
+#myDayPanel input,#myDayPanel select,#myDayPanel textarea{background:#fff;color:var(--md-ink);border:1px solid var(--md-border);border-radius:7px;padding:8px 9px;max-width:100%;min-width:0;outline:none;user-select:text}
+#myDayPanel :is(button,input,select,textarea,summary):focus-visible{outline:3px solid #5bbfb8;outline-offset:3px}
+#myDayPanel h1,#myDayPanel h2,#myDayPanel h3,#myDayPanel h4,#myDayPanel p{margin:0}
+#myDayPanel .md-shell{width:100%;max-width:1480px;padding:28px 32px 24px;margin:0 auto;font-size:13px}
+#myDayPanel .md-header,#myDayPanel .md-heading,#myDayPanel .md-header-actions,#myDayPanel .md-date-bar,#myDayPanel .md-date-navigation,#myDayPanel .md-item-tags,#myDayPanel .md-item-meta,#myDayPanel .md-filters,#myDayPanel .md-schedule-filters,#myDayPanel .md-focus-heading,#myDayPanel .md-schedule-header,#myDayPanel .md-schedule-title,#myDayPanel .md-schedule-detail-head,#myDayPanel .md-footer{display:flex;align-items:center;gap:12px}
+#myDayPanel .md-header,#myDayPanel .md-focus-heading,#myDayPanel .md-schedule-header,#myDayPanel .md-schedule-detail-head{justify-content:space-between}
+#myDayPanel .md-heading{align-items:flex-start;gap:16px}
+#myDayPanel .md-sun{width:48px;height:48px;background:#fff1cf;color:#b87a15;display:grid;place-items:center;border-radius:16px;margin-top:5px}
+#myDayPanel .md-sun svg{width:27px;height:27px}
+#myDayPanel .md-eyebrow{display:block;text-transform:uppercase;letter-spacing:1.4px;font-size:10px;font-weight:750;color:var(--md-muted);margin-bottom:6px}
+#myDayPanel h1{font-size:30px;line-height:1.15;letter-spacing:-1px;font-weight:750;margin-bottom:7px}
+#myDayPanel h2{font-size:20px;line-height:1.3;letter-spacing:-.35px;font-weight:700}
+#myDayPanel h3{font-size:15px;font-weight:720}
+#myDayPanel .md-heading p,#myDayPanel .md-focus-heading p,#myDayPanel .md-schedule-title p,#myDayPanel .md-schedule-detail-head p{color:var(--md-muted);line-height:1.5;margin-top:3px}
+#myDayPanel .md-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:8px 12px;border:1px solid var(--md-border);background:#fff;font-weight:600;font-size:12px}
+#myDayPanel .md-button:hover{background:#eef4f8}
+#myDayPanel .md-primary{background:var(--md-teal);border-color:var(--md-teal);color:#fff}
+#myDayPanel .md-primary:hover{background:#056e72}
+#myDayPanel .md-icon-button{width:35px;height:35px;display:inline-grid;place-items:center;color:var(--md-muted);flex-shrink:0}
+#myDayPanel .md-icon-button:hover{background:#e8eef5;color:var(--md-ink)}
+#myDayPanel .md-date-bar{margin:24px 0 20px;padding:13px 16px;background:#fff;border:1px solid var(--md-border);border-radius:12px;flex-wrap:wrap}
+#myDayPanel .md-date-navigation{gap:6px}
+#myDayPanel .md-date-navigation>button[data-md-day]{width:30px;height:32px;font-size:24px;color:var(--md-muted)}
+#myDayPanel .md-date-input{display:flex;align-items:center;gap:5px;color:var(--md-teal)}
+#myDayPanel .md-date-input input{border:0;padding:5px;width:135px;font-weight:650;font-size:13px}
+#myDayPanel .md-text-button{font-size:12px;color:var(--md-teal);padding:6px 9px;display:inline-flex;align-items:center;gap:5px}
+#myDayPanel .md-text-button:hover,#myDayPanel .md-text-button.is-selected{background:var(--md-teal-light)}
+#myDayPanel .md-long-date{font-size:12px;color:var(--md-muted);flex:1}
+#myDayPanel .md-alert{padding:12px 15px;border:1px solid var(--md-border);border-radius:9px;margin:0 0 15px;line-height:1.5}
+#myDayPanel .md-alert-success{background:#eaf7f1;border-color:#b9ddd0;color:#23664e}
+#myDayPanel .md-alert-error{background:#fff1ee;border-color:#edc9c0;color:#a4412d}
+#myDayPanel .md-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:25px}
+#myDayPanel .md-metric{padding:17px 18px 15px;text-align:left;border:1px solid var(--md-border);border-radius:12px;background:#fff;transition:border-color .15s,transform .15s}
+#myDayPanel .md-metric:hover{transform:translateY(-2px);border-color:#9bb8c4}
+#myDayPanel .md-metric.is-selected{border-color:var(--md-teal);background:#edf9f7;box-shadow:0 0 0 1px var(--md-teal)}
+#myDayPanel .md-metric-top{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:650;color:var(--md-muted)}
+#myDayPanel .md-metric-top svg{color:#8193a8}
+#myDayPanel .md-metric-today .md-metric-top svg{color:#b98a32}
+#myDayPanel .md-metric-overdue strong{color:#b75642}
+#myDayPanel .md-metric-blocked strong{color:#9466a9}
+#myDayPanel .md-metric strong{display:block;font-size:32px;line-height:1;margin:12px 0 8px;font-weight:700;letter-spacing:-1px}
+#myDayPanel .md-metric small{font-size:11px;color:var(--md-muted);display:block;line-height:1.4}
+#myDayPanel .md-schedule-peek{display:flex;align-items:center;gap:15px;flex-wrap:wrap;margin:-10px 0 22px;padding:9px 12px;border:1px solid #e1daec;border-radius:8px;background:#f4f1f9;color:#8c749f;font-size:10px}
+#myDayPanel .md-schedule-peek>span{display:flex;align-items:center;gap:6px;font-weight:650;margin-right:4px}
+#myDayPanel .md-schedule-peek svg{width:13px;height:13px}
+#myDayPanel .md-schedule-peek button{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:3px 5px;color:#755a91}
+#myDayPanel .md-schedule-peek button:hover{background:#e9e1f2}
+#myDayPanel .md-schedule-peek strong{font-size:12px}
+#myDayPanel .md-focus{margin-bottom:25px}
+#myDayPanel .md-focus-heading{margin-bottom:14px}
+#myDayPanel .md-total,#myDayPanel .md-count{font-size:11px;font-weight:650;display:inline-flex;align-items:center;justify-content:center;background:#e7edf4;color:#68788e;border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:middle;min-width:21px}
+#myDayPanel .md-filters{margin-bottom:18px;gap:10px}
+#myDayPanel .md-search{position:relative;display:flex;align-items:center;gap:8px;flex:1;background:#fff;border:1px solid var(--md-border);border-radius:8px;padding-left:12px;color:#8695a6;min-width:100px}
+#myDayPanel .md-search input{border:0;background:transparent;width:100%;padding:10px 10px 10px 0;font-size:12px;min-width:0}
+#myDayPanel .md-search input:focus-visible{outline:0}
+#myDayPanel .md-search:focus-within{outline:3px solid #5bbfb8;outline-offset:2px}
+#myDayPanel .md-source-filter{display:flex;gap:8px;align-items:center;color:var(--md-muted);font-size:11px}
+#myDayPanel .md-source-filter select{min-width:190px;font-size:12px;padding:9px}
+#myDayPanel .md-work-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+#myDayPanel .md-work-grid>.md-work-section:only-child,#myDayPanel .md-unassigned{grid-column:1/-1}
+#myDayPanel .md-work-section{border:1px solid var(--md-border);background:#fff;border-radius:12px;overflow:hidden;min-width:0}
+#myDayPanel .md-work-section>header{padding:16px 18px;background:#f8fafc;border-bottom:1px solid var(--md-border)}
+#myDayPanel .md-work-section>header p{font-size:11px;color:var(--md-muted);margin-top:4px}
+#myDayPanel .md-mine>header{border-top:3px solid #259d8f}
+#myDayPanel .md-followup>header{border-top:3px solid #cd9b45}
+#myDayPanel .md-unassigned>header{border-top:3px solid #a5aebb}
+#myDayPanel .md-item{display:flex;gap:12px;padding:16px;border-bottom:1px solid #edf1f6;min-width:0;background:#fff;position:relative}
+#myDayPanel .md-item:last-child{border-bottom:0}
+#myDayPanel .md-item:hover{background:#fcfdff}
+#myDayPanel .md-complete{width:24px;height:24px;border:1.5px solid #cbd6e3;border-radius:8px;display:grid;place-items:center;flex-shrink:0;color:transparent;margin-top:2px}
+#myDayPanel .md-complete svg{width:15px;height:15px}
+#myDayPanel .md-complete:hover{border-color:var(--md-teal);color:var(--md-teal);background:var(--md-teal-light)}
+#myDayPanel .md-complete.is-done{background:var(--md-teal-light);border-color:#8bc9bd;color:var(--md-teal);opacity:1}
+#myDayPanel .md-item-content{flex:1;min-width:0}
+#myDayPanel .md-item-tags{gap:5px;flex-wrap:wrap;margin-bottom:7px}
+#myDayPanel .md-source,#myDayPanel .md-badge{font-size:9px;font-weight:650;letter-spacing:.1px;border-radius:4px;display:inline-block;padding:3px 5px;line-height:1.2}
+#myDayPanel .md-source-todo{color:#157b75;background:#e6f5f2}
+#myDayPanel .md-source-action{color:#456dae;background:#eaf0fc}
+#myDayPanel .md-source-gantt{color:#79539d;background:#f0ebf8}
+#myDayPanel .md-badge{background:#f0f3f7;color:#748197;font-weight:500}
+#myDayPanel .md-badge-late{background:#fff0ec;color:#b65a44}
+#myDayPanel .md-badge-updated{background:#fef7da;color:#887332}
+#myDayPanel .md-badge-linked{color:#8265a5;background:#f4effa}
+#myDayPanel .md-item h4{font-size:13px;line-height:1.45;font-weight:650;overflow-wrap:anywhere;margin-bottom:5px}
+#myDayPanel .md-context{display:flex;align-items:flex-start;gap:4px;text-align:left;color:var(--md-muted);font-size:10px;padding:0;max-width:100%;line-height:1.4}
+#myDayPanel .md-context svg{width:12px;height:12px;margin-top:1px}
+#myDayPanel .md-context span{overflow-wrap:anywhere}
+#myDayPanel .md-context:hover span{text-decoration:underline;color:var(--md-teal)}
+#myDayPanel .md-linked-context{margin-top:5px;color:#9274a9}
+#myDayPanel .md-item-meta{font-size:10px;color:var(--md-muted);gap:8px;flex-wrap:wrap;margin-top:9px}
+#myDayPanel .md-item-meta>span{display:inline-flex;align-items:center;gap:4px}
+#myDayPanel .md-item-meta svg{width:12px;height:12px}
+#myDayPanel .md-owner{background:#f4f6f9;padding:3px 6px;border-radius:4px}
+#myDayPanel .md-late-text{color:#ad5948}
+#myDayPanel .md-note{font-size:10px;color:#7b889a;white-space:pre-line;line-height:1.5;margin-top:9px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#myDayPanel .md-item-controls{display:flex;flex-direction:column;align-items:flex-end;gap:7px;flex-shrink:0;max-width:135px}
+#myDayPanel .md-item-controls select{font-size:10px;width:132px;padding:5px 6px}
+#myDayPanel .md-inline-date{display:flex;align-items:flex-end;flex-direction:column;gap:2px;font-size:9px;color:var(--md-muted)}
+#myDayPanel .md-inline-date input{width:132px;padding:4px 5px;font-size:10px;min-height:26px}
+#myDayPanel .md-item-controls>.md-icon-button{width:28px;height:26px}
+#myDayPanel .md-item-controls>.md-icon-button svg{width:15px;height:15px}
+#myDayPanel .md-retained{background:#fffefa}
+#myDayPanel .md-more-items{border-top:1px solid var(--md-border)}
+#myDayPanel .md-more-items>summary{padding:12px 16px;cursor:pointer;color:var(--md-teal);font-size:12px}
+#myDayPanel .md-list-note{padding:12px 16px;font-size:11px;color:var(--md-muted);line-height:1.5}
+#myDayPanel .md-refresh-note{font-size:10px;color:var(--md-muted);margin-top:12px;line-height:1.6;display:flex;align-items:center;gap:6px}
+#myDayPanel .md-refresh-note svg{width:13px;height:13px}
+#myDayPanel .md-empty{background:#fff;border:1px dashed #d4dfe9;border-radius:12px;padding:35px 20px;text-align:center;color:var(--md-muted)}
+#myDayPanel .md-empty>span{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#edf7f3;color:var(--md-teal);margin-bottom:12px}
+#myDayPanel .md-empty h3{font-size:14px;color:#42556e;margin-bottom:7px}
+#myDayPanel .md-empty p{font-size:12px;line-height:1.6}
+#myDayPanel .md-empty-small{border:0;border-radius:0;font-size:12px;padding:24px}
+#myDayPanel .md-schedule{border:1px solid var(--md-border);border-radius:12px;background:#fff;overflow:hidden}
+#myDayPanel .md-schedule-header{padding:20px 20px 16px}
+#myDayPanel .md-schedule-title>svg{width:24px;height:24px;color:#8666a2}
+#myDayPanel .md-schedule-title h2{font-size:17px}
+#myDayPanel .md-schedule-title p{font-size:11px}
+#myDayPanel .md-small-label{font-size:10px;padding:5px 8px;border-radius:5px;background:#f1eef6;color:#876c9c;flex-shrink:0}
+#myDayPanel .md-schedule-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:0 20px 20px}
+#myDayPanel .md-schedule-stats button{display:flex;align-items:center;gap:10px;background:#f7f8fc;padding:13px 12px;border:1px solid #edf0f6;border-radius:8px;text-align:left;min-width:0}
+#myDayPanel .md-schedule-stats button:hover,#myDayPanel .md-schedule-stats button.is-selected{background:#f1ecf8;border-color:#b7a4cc}
+#myDayPanel .md-schedule-stats button>svg{color:#9b85b0;width:16px;height:16px}
+#myDayPanel .md-schedule-stats button>span:not(.md-stat-arrow){display:flex;gap:8px;align-items:center;flex:1;min-width:0}
+#myDayPanel .md-schedule-stats strong{font-size:23px;line-height:1;font-weight:650;color:#75618d}
+#myDayPanel .md-schedule-stats button>span>span{font-size:10px;line-height:1.4;color:#718097}
+#myDayPanel .md-stat-arrow{font-size:17px;color:#9984ae}
+#myDayPanel .md-schedule-detail{border-top:1px solid var(--md-border)}
+#myDayPanel .md-schedule-detail-head{padding:17px 20px 12px;background:#faf9fc}
+#myDayPanel .md-schedule-detail-head h3{font-size:14px}
+#myDayPanel .md-schedule-detail-head p{font-size:11px}
+#myDayPanel .md-schedule-filters{padding:8px 20px 16px;background:#faf9fc;flex-wrap:wrap}
+#myDayPanel .md-schedule-filters>label:first-child{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--md-muted)}
+#myDayPanel .md-schedule-filters select{font-size:11px;max-width:300px;padding:8px}
+#myDayPanel .md-result-count{font-size:10px;color:var(--md-muted)}
+#myDayPanel .md-schedule-detail .md-item{padding:16px 20px}
+#myDayPanel .md-progress{width:90px;height:5px;background:#e6eaf1;display:block;border-radius:4px;margin-top:7px;overflow:hidden}
+#myDayPanel .md-progress>span{display:block;height:100%;background:#947bad}
+#myDayPanel .md-progress-label{font-size:10px;color:#8a749f}
+#myDayPanel .md-pagination{display:flex;align-items:center;justify-content:center;gap:20px;padding:13px;border-top:1px solid var(--md-border);font-size:11px;color:var(--md-muted)}
+#myDayPanel .md-pagination button{font-size:11px;padding:6px 8px;border:1px solid var(--md-border);background:#fff}
+#myDayPanel .md-footer{font-size:10px;color:#8d98a8;flex-wrap:wrap;margin-top:18px;gap:7px}
+#myDayPanel .md-footer>span:last-child{margin-left:auto}
+#myDayPanel .md-footer .md-text-button{font-size:10px;padding:3px 5px}
+#myDayPanel .md-dialog{border:1px solid var(--md-border);border-radius:15px;padding:0;background:#fff;color:var(--md-ink);max-width:min(600px,calc(100vw - 28px));width:560px;max-height:calc(100dvh - 36px);overflow:auto;box-shadow:0 24px 80px #14253635;font:13px Inter,'Segoe UI',system-ui,sans-serif}
+#myDayPanel .md-dialog::backdrop{background:#172a4366;backdrop-filter:blur(2px)}
+#myDayPanel .md-dialog-body>header{padding:22px 24px 18px;border-bottom:1px solid var(--md-border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+#myDayPanel .md-dialog-body>header h2{font-size:20px;margin-top:7px}
+#myDayPanel .md-dialog-body>header p{color:var(--md-muted);font-size:11px;line-height:1.5;margin-top:6px;overflow-wrap:anywhere}
+#myDayPanel .md-dialog-close{font-size:25px;color:var(--md-muted);width:30px;height:30px;flex-shrink:0}
+#myDayPanel .md-dialog-fields{padding:20px 24px;display:flex;flex-direction:column;gap:15px}
+#myDayPanel .md-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+#myDayPanel .md-field>span{font-size:11px;font-weight:600;color:#526780}
+#myDayPanel .md-field input,#myDayPanel .md-field select,#myDayPanel .md-field textarea{width:100%;font-size:12px;padding:9px 10px;line-height:1.5}
+#myDayPanel .md-field textarea{resize:vertical;min-height:80px}
+#myDayPanel .md-field-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+#myDayPanel .md-editor-hint{font-size:11px;line-height:1.6;color:var(--md-muted)}
+#myDayPanel .md-dialog-error{font-size:12px;color:#ae4b36;line-height:1.5}
+#myDayPanel .md-dialog-body>footer{display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid var(--md-border);background:#f8fafc}
+#myDayPanel .md-save-options{padding:20px 24px;display:flex;flex-direction:column;gap:10px}
+#myDayPanel .md-save-option{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:14px 16px!important;border:1px solid var(--md-border)!important;text-align:left;background:#fbfcfe!important;font-weight:650!important}
+#myDayPanel .md-save-option small{display:block;color:var(--md-muted);font-weight:400;font-size:10px;line-height:1.5;margin-top:4px}
+@media(max-width:1150px){#myDayPanel .md-shell{padding:24px 20px}#myDayPanel .md-work-grid{grid-template-columns:1fr}#myDayPanel .md-schedule-stats button>svg{display:none}#myDayPanel .md-schedule-stats button>span:not(.md-stat-arrow){display:block}#myDayPanel .md-schedule-stats strong{display:block;margin-bottom:5px}}
+@media(max-width:720px){#myDayPanel .md-shell{padding:20px 14px}#myDayPanel .md-header{align-items:flex-start;gap:12px}#myDayPanel .md-heading{gap:10px}#myDayPanel .md-heading p{font-size:11px;line-height:1.5}#myDayPanel .md-sun{width:36px;height:36px;border-radius:12px}#myDayPanel .md-sun svg{width:21px;height:21px}#myDayPanel h1{font-size:25px}#myDayPanel .md-eyebrow{font-size:8px;letter-spacing:1px}#myDayPanel .md-header-actions{gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:130px}#myDayPanel .md-header-actions .md-button{font-size:10px;padding:6px 8px;min-height:30px}#myDayPanel .md-header-actions .md-icon-button{height:30px;width:30px}#myDayPanel .md-date-bar{padding:10px;gap:8px;margin-top:18px}#myDayPanel .md-long-date{order:3;flex-basis:100%;font-size:11px}#myDayPanel .md-date-navigation{flex:1;gap:2px}#myDayPanel .md-date-navigation>button[data-md-day]{width:24px}#myDayPanel .md-date-input input{width:126px;font-size:12px}#myDayPanel #mdRefresh{font-size:10px;padding:8px;min-height:34px}#myDayPanel #mdRefresh svg{width:14px;height:14px}#myDayPanel .md-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:22px}#myDayPanel .md-metric{padding:13px 12px}#myDayPanel .md-metric-top{font-size:11px}#myDayPanel .md-metric strong{font-size:29px;margin:10px 0 7px}#myDayPanel .md-metric small{font-size:9px}#myDayPanel .md-focus-heading{gap:8px}#myDayPanel .md-focus-heading h2{font-size:18px}#myDayPanel .md-focus-heading p{font-size:11px}#myDayPanel .md-focus-heading>.md-text-button{font-size:10px;flex-shrink:0;padding:5px}#myDayPanel .md-filters{flex-wrap:wrap;gap:9px}#myDayPanel .md-search{flex-basis:100%}#myDayPanel .md-source-filter{flex:1}#myDayPanel .md-source-filter select{flex:1;min-width:0;padding:8px}#myDayPanel .md-work-section>header{padding:13px 14px}#myDayPanel .md-item{padding:14px 12px;gap:9px;flex-wrap:wrap}#myDayPanel .md-complete{width:25px;height:25px}#myDayPanel .md-item-content{flex-basis:calc(100% - 34px)}#myDayPanel .md-item h4{font-size:13px}#myDayPanel .md-item-controls{flex-direction:row;align-items:center;justify-content:flex-start;gap:9px;max-width:100%;width:100%;padding-left:34px;margin-top:2px}#myDayPanel .md-item-controls select{font-size:11px;width:126px;padding:7px 6px;min-height:34px}#myDayPanel .md-inline-date{flex-direction:row;align-items:center;gap:5px}#myDayPanel .md-inline-date>span{display:none}#myDayPanel .md-inline-date input{width:132px;font-size:11px;padding:6px;min-height:34px}#myDayPanel .md-item-controls>.md-icon-button{height:34px;width:30px;margin-left:auto}#myDayPanel .md-schedule-header{padding:16px 14px;gap:7px}#myDayPanel .md-schedule-title{gap:9px}#myDayPanel .md-schedule-title h2{font-size:16px}#myDayPanel .md-schedule-title p{font-size:10px}#myDayPanel .md-small-label{font-size:8px;padding:4px 5px}#myDayPanel .md-schedule-stats{grid-template-columns:repeat(2,minmax(0,1fr));padding:0 14px 14px;gap:8px}#myDayPanel .md-schedule-stats button{padding:12px}#myDayPanel .md-schedule-stats button>span:not(.md-stat-arrow){display:flex}#myDayPanel .md-schedule-stats strong{margin:0;font-size:25px}#myDayPanel .md-schedule-detail-head{padding:15px 14px 10px;align-items:flex-start}#myDayPanel .md-schedule-detail-head p{font-size:10px}#myDayPanel .md-schedule-filters{padding:8px 14px 14px;gap:9px}#myDayPanel .md-schedule-filters>label:first-child{width:100%}#myDayPanel .md-schedule-filters select{flex:1;max-width:100%}#myDayPanel .md-schedule-detail .md-item{padding:14px}#myDayPanel .md-footer>span:last-child{margin-left:0;flex-basis:100%}#myDayPanel .md-dialog-fields,#myDayPanel .md-dialog-body>header,#myDayPanel .md-dialog-body>footer{padding:18px}#myDayPanel .md-dialog{max-height:calc(100dvh - 20px);max-width:calc(100vw - 20px)}#myDayPanel .md-field-pair{gap:10px}}
+@media(max-width:380px){#myDayPanel .md-item-controls{gap:5px;padding-left:0}#myDayPanel .md-item-controls select{width:120px}#myDayPanel .md-inline-date input{width:127px}#myDayPanel .md-date-bar #mdRefresh{flex:1}#myDayPanel .md-date-navigation{flex-basis:100%}#myDayPanel .md-header-actions{max-width:100px}}
+/* Keep the first commitments within reach on a phone, with the schedule overview still visible. */
+@media(max-width:720px){
+  #myDayPanel .md-shell{padding-top:16px}
+  #myDayPanel .md-heading p{display:none}
+  #myDayPanel .md-header-actions{max-width:148px}
+  #myDayPanel .md-date-bar{margin:14px 0 16px}
+  #myDayPanel #mdRefresh{font-size:0;width:35px;min-width:35px;height:35px;padding:7px;flex:none}
+  #myDayPanel #mdRefresh svg{width:17px;height:17px}
+  #myDayPanel .md-metrics{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:20px}
+  #myDayPanel .md-metric{padding:10px 9px}
+  #myDayPanel .md-metric-top{font-size:9px;line-height:1.35;min-height:25px;align-items:flex-start}
+  #myDayPanel .md-metric-top svg,#myDayPanel .md-metric small{display:none}
+  #myDayPanel .md-metric strong{font-size:25px;margin:5px 0 0}
+  #myDayPanel .md-schedule-peek{gap:5px;margin:-5px 0 18px;padding:7px 8px;font-size:9px}
+  #myDayPanel .md-schedule-peek>span{flex-basis:100%;margin:0 0 2px}
+  #myDayPanel .md-schedule-peek button{font-size:8px;gap:3px;padding:2px 0;margin-right:5px}
+  #myDayPanel .md-schedule-peek button svg{width:10px;height:10px}
+  #myDayPanel .md-schedule-peek strong{font-size:11px}
+  #myDayPanel .md-filters>.md-search{flex-basis:auto;min-width:100px}
+  #myDayPanel .md-source-filter{flex:none;width:145px}
+  #myDayPanel .md-source-filter>span{display:none}
+  #myDayPanel .md-source-filter select{width:145px;font-size:10px;min-height:39px}
+  #myDayPanel .md-work-section>header p{display:none}
+  #myDayPanel .md-work-section>header{padding:13px 14px}
+}
+@media(max-width:380px){#myDayPanel .md-date-navigation{flex-basis:auto}#myDayPanel .md-date-bar #mdRefresh{flex:none}#myDayPanel .md-date-input svg{display:none}#myDayPanel .md-date-input input{width:115px}#myDayPanel .md-header-actions{max-width:130px}#myDayPanel .md-metric{padding:9px 7px}#myDayPanel .md-metric-top{font-size:8px}#myDayPanel .md-source-filter,#myDayPanel .md-source-filter select{width:124px}}
+@media(max-width:1024px) and (pointer:coarse){html[data-app-view="my-day"],html[data-app-view="my-day"] body,body[data-app-view="my-day"]{height:auto!important;min-height:100%;overflow:visible!important}html[data-app-view="my-day"] #app,body[data-app-view="my-day"] #app{height:auto!important;min-height:100dvh}#myDayPanel{touch-action:auto}html[data-app-view="my-day"] #myDayPanel,body[data-app-view="my-day"] #myDayPanel{flex:none;overflow:visible;height:auto;min-height:calc(100dvh - 70px)}}

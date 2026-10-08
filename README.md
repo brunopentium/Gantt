@@ -4,7 +4,7 @@ Aplicativo estático de cronogramas hospedado no GitHub Pages. Os cronogramas s�
 
 ## Todo novo integrado
 
-A ordem das guias é **Todo → Todo novo → Planos de ação → Cronogramas**. **Todo** continua abrindo o Google Apps Script e permanece como guia inicial. **Todo novo** executa o TaskMaster no próprio site, com os mesmos Dashboard, Conflitos, Planejamento, Configurações, filtros, edição direta, notas, subtarefas, recorrências, prioridades, projetos e reprogramação em massa. O status **Reserva** mantém o comportamento da versão publicada do Google.
+A ordem das guias é **Todo → Todo novo → Meu dia → Planos de ação → Cronogramas**. **Todo** continua abrindo o Google Apps Script e permanece como guia inicial. **Todo novo** executa o TaskMaster no próprio site, com os mesmos Dashboard, Conflitos, Planejamento, Configurações, filtros, edição direta, notas, subtarefas, recorrências, prioridades, projetos e reprogramação em massa. O status **Reserva** mantém o comportamento da versão publicada do Google.
 
 As tarefas e configurações do Todo novo são gravadas automaticamente neste navegador. **💾 Salvar** grava manualmente todo o Todo em `backups/todo.json`, no mesmo repositório privado e com o mesmo token dos cronogramas e planos. Ao abrir a guia conectado, a última versão é carregada. **Histórico** consulta apenas versões do Todo; restaurar baixa uma cópia local e cria uma nova versão. Conflitos entre dispositivos, falhas de autenticação e arquivos inválidos preservam a cópia local. Os três históricos e arquivos remotos permanecem separados.
 
@@ -55,6 +55,20 @@ Novas ações que atendem ao filtro aparecem imediatamente. Se uma ação visív
 **Excel** exporta o plano selecionado em um template `.xlsx` com abas **Resumo** e **Ações**; a aba **Contexto** é incluída quando participantes, agenda ou notas estão preenchidos. O resumo tem indicadores de total, status, atrasos e percentual concluído. A tabela tem filtros, cabeçalho congelado, linhas alternadas, responsáveis, datas reais do Excel, duração, status, prazo, vínculos e observações. Fórmulas recalculam duração, prazo e indicadores; status tem lista de seleção e atrasos recebem destaque. O arquivo usa layout de impressão em paisagem. Texto digitado pelo usuário permanece texto, mesmo quando começa com `=`.
 
 **PDF** abre a impressão do navegador com um relatório do plano, cabeçalho, seções opcionais preenchidas, indicadores e tabela; selecione Salvar como PDF. Excel e PDF são relatórios independentes da aba do cronograma. Alterações feitas no Excel não são sincronizadas com o app; o formato de reimportação é JSON.
+
+## Meu dia
+
+A guia **Meu dia**, depois de **Todo novo**, reúne todos os planos e subplanos, todos os cronogramas e o Todo integrado. A data inicial usa o dia local do dispositivo; as setas e o calendário permitem revisar outra data. O Todo antigo do Google continua independente.
+
+Os cartões **Para hoje**, **Atrasados**, **Próximos 7 dias** e **Bloqueados**, além da visão **Sem prazo**, abrem listas filtráveis por origem e busca. **Para fazer** reúne suas ações e seus Todos. **Para cobrar** mostra ações atribuídas a outras pessoas. Ações sem responsável ficam em uma seção própria. Em **Configurar meus nomes**, ajuste os nomes usados para identificar sua responsabilidade; os valores iniciais são Bruno e Bruno Souza. A identificação aceita acentos, variações de maiúsculas e responsáveis compartilhados, mas não considera Bruno Silva como Bruno.
+
+O Todo distingue **data programada** e **prazo final**, incluindo reagendamentos em dias úteis. Concluídos, cancelados e tarefas em reserva ficam fora das listas de trabalho. Uma ocorrência recorrente pode ser avançada seguindo as regras do Todo. As ações usam sua data de término como prazo. Os caminhos mostram o plano ou subplano de origem, e vínculos explícitos com o cronograma são identificados.
+
+**Cronogramas** tem uma área separada: **Iniciando no dia**, **Finalizando no dia**, **Previstas em andamento** e **Término atrasado**. Toque em um indicador para consultar as atividades, com busca, seleção de cronograma e páginas de 20 itens. Somente tarefas executáveis e marcos abertos entram nos indicadores; grupos e linhas de resumo não são contados novamente. A previsão de andamento considera o intervalo planejado, sem afirmar que houve execução real. Tarefas recolhidas no cronograma também são consideradas pelo painel do dia.
+
+Altere status ou data diretamente nas listas ou use **Editar** para título, responsável, datas, observações, prioridade do Todo ou progresso do cronograma. As alterações são aplicadas ao registro original e respeitam dependências, marcos e dias úteis. Clicar no caminho abre o item na guia de origem. Um item editado permanece na seleção até **Atualizar painel** ou mudar a data; novos itens que atendem às regras aparecem automaticamente.
+
+As alterações são salvas no navegador. Use **Salvar no GitHub** no painel e escolha a área alterada para manter o salvamento remoto e o histórico de cada área. **Backup geral** exporta o conteúdo completo das três áreas integradas. A tela se adapta ao celular, com rolagem da página e acesso a todas as listas.
 
 ## Conectar ao GitHub
 

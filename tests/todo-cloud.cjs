@@ -93,12 +93,41 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     await native(refused).getByRole('heading',{name:'TAREFA LOCAL PROTEGIDA',exact:true}).waitFor();
     await refused.waitForFunction(()=>document.getElementById('ntCloudStatus').textContent.includes('local mantido'));
     assert((await refused.locator('#ntCloudStatus').innerText()).includes('local mantido'));assert.equal(writes,3);await refused.close();
+    // An edit made in Meu dia while startup waits for the other cloud areas is protected.
+    const cleanStartup={version:1,type:'todo',tasks:initial.tasks,settings:initial.settings};
+    const raced=await open({seed:cleanStartup,meta:{repo:'brunopentium/gantt-backups',enabled:true,sha:remote.sha,fingerprint:JSON.stringify(cleanStartup)},accept:false});
+    await raced.evaluate(()=>TodoCloud.waitForConnection(new Promise(resolve=>window.releaseTodoConnection=resolve)));
+    const readsBeforeWait=reads;await raced.click('#tabMyDay');
+    assert.equal(reads,readsBeforeWait,'Todo must wait for the configured connection readiness');
+    const sameStart=await raced.evaluate(()=>{
+      const first=TodoCloud.start(),second=TodoCloud.start();
+      MyDayData.update({source:'todo',id:'remote'},{title:'ALTERADA NO MEU DIA ANTES DA CONEXÃO'});
+      return first===second;
+    });
+    assert(sameStart,'Repeated startup calls must await the same pending operation');
+    await raced.evaluate(()=>window.releaseTodoConnection());
+    await raced.waitForFunction(()=>document.getElementById('ntCloudStatus').textContent.includes('local mantido'));
+    assert.equal(await raced.evaluate(()=>NativeTodo.snapshot().tasks.find(t=>t.id==='remote').title),'ALTERADA NO MEU DIA ANTES DA CONEXÃO');
+    assert.equal(writes,3);await raced.close();
+    // A recent child render not yet committed to the parent is flushed before replacement.
+    const rendered=await open({seed:cleanStartup,meta:{repo:'brunopentium/gantt-backups',enabled:true,sha:remote.sha,fingerprint:JSON.stringify(cleanStartup)},accept:false});
+    await rendered.evaluate(()=>TodoCloud.waitForConnection(new Promise(resolve=>window.releaseTodoConnection=resolve)));
+    await rendered.click('#tabMyDay');
+    await rendered.evaluate(()=>{
+      const pending=NativeTodo.data();pending.tasks=pending.tasks.map(t=>t.id==='remote'?{...t,title:'EDIÇÃO RECENTE NO RENDER DO TODO'}:t);
+      document.getElementById('todoNativeFrame').contentWindow.TaskMaster={snapshot:()=>pending};
+    });
+    assert.equal(await rendered.evaluate(()=>NativeTodo.snapshot().tasks.find(t=>t.id==='remote').title),'TAREFA REMOTA');
+    await rendered.evaluate(()=>window.releaseTodoConnection());
+    await rendered.waitForFunction(()=>document.getElementById('ntCloudStatus').textContent.includes('local mantido'));
+    assert.equal(await rendered.evaluate(()=>NativeTodo.snapshot().tasks.find(t=>t.id==='remote').title),'EDIÇÃO RECENTE NO RENDER DO TODO');
+    assert.equal(writes,3);await rendered.close();
     // A malformed remote archive is rejected before replacing any local tasks.
     remote={sha:'invalid',content:Buffer.from(JSON.stringify({...initial,tasks:[initial.tasks[0],initial.tasks[0]]})).toString('base64')};
     const invalid=await open({seed:localOnly});await enter(invalid);
     await invalid.waitForFunction(()=>document.getElementById('ntCloudStatus').textContent.includes('ID inválido'));
     assert.equal(await invalid.evaluate(()=>NativeTodo.snapshot().tasks[0].title),'TAREFA LOCAL PROTEGIDA');assert.equal(writes,3);await invalid.close();
     assert.deepEqual(errors,[]);
-    console.log('PASS: lazy native startup, existing private credentials, manual-only scoped saves, cross-device loading, own history/restore as new commit/local backup, stale-render protection, source isolation, conflicts/auth/public/Pages guards, refused/invalid remote retention and credential-free archives');
+    console.log('PASS: lazy native startup, existing private credentials, manual-only scoped saves, cross-device loading, own history/restore as new commit/local backup, stale-render and delayed-start edit protection, shared startup promise, source isolation, conflicts/auth/public/Pages guards, refused/invalid remote retention and credential-free archives');
   }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});

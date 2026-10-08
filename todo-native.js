@@ -43,6 +43,7 @@ window.NativeTodo=(()=>{
     if(JSON.stringify(next)===JSON.stringify(state)&&hasLocalData)return;
     localStorage.setItem(KEY,JSON.stringify(next));state=next;hasLocalData=true;
     window.TodoCloud?.changed();
+    window.dispatchEvent(new CustomEvent('projectflow:datachange',{detail:{source:'todo'}}));
   }
   function flush(){
     const frame=document.getElementById('todoNativeFrame');
@@ -54,6 +55,7 @@ window.NativeTodo=(()=>{
     localStorage.setItem(KEY,JSON.stringify(next));state=next;loadError='';hasLocalData=true;revision++;
     for(const listener of listeners)listener(data());
     window.TodoCloud?.changed();
+    window.dispatchEvent(new CustomEvent('projectflow:datachange',{detail:{source:'todo'}}));
   }
   function backup(){flush();downloadJSON({...snapshot(),exportedAt:new Date().toISOString()},'todo-backup.json')}
   function init(){

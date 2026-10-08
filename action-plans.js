@@ -3,6 +3,8 @@ window.ActionPlans=(()=>{
   'use strict';
   let includeChildren=true,statusFilter='all',hideStatuses=false,retainedEntries=new Set(),visibleStatuses=new Map();
   let api,plans=[],activeId=null,view='table',shown=false,notice='',undo=[],zoom=1,notesShown=true,planTheme=null;
+  const changeListeners=new Set();
+  function changed(){for(const listener of changeListeners)listener()}
   const statuses={pending:'Pendente',doing:'Em andamento',done:'Concluída',blocked:'Bloqueada',cancelled:'Cancelada'};
   const statusFilters={all:'Todos os status',hide_done:'Ocultar concluídas',hide_blocked:'Ocultar bloqueadas',...statuses};
   const id=()=>crypto.randomUUID();
@@ -28,8 +30,8 @@ window.ActionPlans=(()=>{
       while(parent){if(ancestors.has(parent))throw new Error('Um plano não pode ser pai de si mesmo ou de um ancestral.');ancestors.add(parent);const ancestor=byId.get(parent);if(!ancestor)throw new Error('Plano pai inexistente ou inválido.');parent=ancestor.parentId}
     }
   }
-  function load(data){validate(data);undo=[];applyStatusFilter();plans=JSON.parse(JSON.stringify(data));activeId=plans.some(p=>p.id===activeId)?activeId:plans[0]?.id||null}
-  function checkpoint(taskChange){undo.push({plans:JSON.parse(JSON.stringify(plans)),activeId,taskChange});if(undo.length>50)undo.shift()}
+  function load(data){validate(data);undo=[];applyStatusFilter();plans=JSON.parse(JSON.stringify(data));activeId=plans.some(p=>p.id===activeId)?activeId:plans[0]?.id||null;changed()}
+  function checkpoint(taskChange,previousPlans){undo.push({plans:previousPlans||JSON.parse(JSON.stringify(plans)),activeId,taskChange});if(undo.length>50)undo.shift()}
   function undoPlan(){
     const previous=undo.at(-1);if(!previous)return;
     try{if(previous.taskChange){const {link,dates}=previous.taskChange,t=task(link);if(t&&!t.summary)api.updateTask(link.projectId,link.taskId,{...dates,start:t.pred?t.start:dates.start})}undo.pop();plans=previous.plans;activeId=previous.activeId;notice='Alteração desfeita';save()}catch(e){notice=e.message;refresh()}
@@ -90,7 +92,43 @@ window.ActionPlans=(()=>{
   }
   function task(link){return link&&api?api.task(link.projectId,link.taskId):null}
   function sync(){if(!api)return;for(const p of plans)for(const a of p.actions){const t=task(a.link);if(t){a.start=t.start;a.end=t.end}}}
-  function save(){api.save();refresh()}
+  function save(){api.save();refresh();changed()}
+  // Dashboard edits resolve the current owner plan instead of retaining a stale clone.
+  // Linked dates use the scheduler; action status never changes task progress.
+  function updateAction(planId,actionId,patch){
+    if(!api)throw new Error('Os planos ainda não estão disponíveis.');
+    api.flush();sync();
+    const p=plans.find(p=>p.id===planId),a=p?.actions.find(a=>a.id===actionId);
+    if(!a)throw new Error('A ação não está mais disponível neste plano.');
+    const allowed=['title','owner','start','end','status','notes'];
+    if(!patch||typeof patch!=='object'||Array.isArray(patch)||Object.keys(patch).some(k=>!allowed.includes(k)))throw new Error('Alteração de ação inválida.');
+    const updated={...a,...patch};
+    for(const k of ['title','owner','notes'])if(Object.hasOwn(patch,k)){if(typeof patch[k]!=='string')throw new Error('Texto inválido na ação.');updated[k]=patch[k].trim()}
+    if(!updated.title)throw new Error('Informe o nome da ação.');
+    const t=task(a.link),datesChanged=t&&(updated.start!==t.start||updated.end!==t.end);
+    if(datesChanged){
+      if(t.summary)throw new Error('As datas desta linha são calculadas pelas subtarefas.');
+      if(t.pred&&updated.start!==t.start)throw new Error('O início desta tarefa é calculado pelas dependências.');
+      if(t.mile){
+        if(t.pred)throw new Error('A data deste marco segue as dependências do cronograma.');
+        const chosen=Object.hasOwn(patch,'start')?updated.start:updated.end;updated.start=chosen;updated.end=chosen;
+      }
+      if(!updated.start||!updated.end)throw new Error('A ação vinculada precisa de início e término.');
+    }
+    const candidate=exportData(),candidateAction=candidate.find(p=>p.id===planId).actions.find(a=>a.id===actionId);Object.assign(candidateAction,updated);validate(candidate);
+    if(JSON.stringify(updated)===JSON.stringify(a))return JSON.parse(JSON.stringify(a));
+    const previous=datesChanged?{link:a.link,dates:{start:t.start,end:t.end}}:null,previousPlans=exportData();
+    // Rejected scheduler changes do not create a misleading undo entry.
+    if(datesChanged)api.updateTask(a.link.projectId,a.link.taskId,{start:updated.start,end:updated.end});
+    checkpoint(previous,previousPlans);
+    const actual=task(a.link);if(actual){updated.start=actual.start;updated.end=actual.end}
+    Object.assign(a,updated);notice=datesChanged&&actual&&(actual.start!==candidateAction.start||actual.end!==candidateAction.end)?'Datas ajustadas pelas regras do cronograma.':'';save();return JSON.parse(JSON.stringify(a));
+  }
+  function openAction(planId,actionId){
+    const p=plans.find(p=>p.id===planId),a=p?.actions.find(a=>a.id===actionId);if(!a)throw new Error('A ação não está mais disponível neste plano.');
+    activeId=planId;retainedEntries.add(entryKey({plan:p,action:a}));notice='';switchView(true);
+    setTimeout(()=>{const node=[...document.querySelectorAll('[data-plan-id]')].find(n=>n.dataset.planId===planId&&[...n.querySelectorAll('[data-action], [data-edit]')].some(b=>b.dataset.action===actionId||b.dataset.edit===actionId));node?.scrollIntoView({block:'center'});node?.querySelector('button')?.focus()},0);
+  }
   function format(value){return value?value.split('-').reverse().join('/'):'—'}
   function linkedHTML(link){const t=task(link);return t?`<button class="ap-link" data-open-project="${esc(link.projectId)}" data-open-task="${esc(link.taskId)}">↗ ${esc(t.projectTitle)} · ${esc(t.taskName)}</button>`:link?'<span class="ap-orphan">Vínculo indisponível — datas locais preservadas</span>':''}
   function late(a){const now=new Date(),day=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');return a.end&&a.end<day&&!['done','cancelled'].includes(a.status)}
@@ -251,7 +289,8 @@ window.ActionPlans=(()=>{
   }
   function switchView(value){
     api.flush();
-    const next=value==='todo'?'todo':value==='native-todo'?'native-todo':value?'actions':'gantt';
+    const next=value==='todo'?'todo':value==='native-todo'?'native-todo':value==='my-day'?'my-day':value?'actions':'gantt';
+    if(next!=='my-day')window.MyDay?.hide();
     shown=next==='actions';
     document.documentElement.dataset.theme=shown?(planTheme||api.getTheme()):api.getTheme();
     document.documentElement.dataset.appView=next;
@@ -260,14 +299,15 @@ window.ActionPlans=(()=>{
     document.getElementById('todoPanel').hidden=next!=='todo';
     document.getElementById('todoNativePanel').hidden=next!=='native-todo';
     document.getElementById('todoNativeToolbar').hidden=next!=='native-todo';
-    for(const [name,on]of [['tabGantt',next==='gantt'],['tabActions',shown],['tabTodo',next==='todo'],['tabTodoNative',next==='native-todo']]){
+    document.getElementById('myDayPanel').hidden=next!=='my-day';
+    for(const [name,on]of [['tabGantt',next==='gantt'],['tabActions',shown],['tabTodo',next==='todo'],['tabTodoNative',next==='native-todo'],['tabMyDay',next==='my-day']]){
       const b=document.getElementById(name);b.classList.toggle('act',on);b.setAttribute('aria-selected',on);
     }
     if(next==='todo'||next==='native-todo'){
       const frame=document.getElementById(next==='todo'?'todoFrame':'todoNativeFrame');
       if(!frame.getAttribute('src'))frame.src=frame.dataset.src;
       if(next==='native-todo')window.TodoCloud.start();
-    }else if(shown)refresh();else render();
+    }else if(next==='my-day'){window.MyDay.show();window.TodoCloud.start()}else if(shown)refresh();else render();
   }
   function init(adapter){
     const savedFilter=localStorage.getItem('pf_action_plan_filter'),savedHide=localStorage.getItem('pf_action_plan_hide_statuses');
@@ -285,10 +325,12 @@ window.ActionPlans=(()=>{
     document.getElementById('tabGantt').onclick=()=>switchView(false);document.getElementById('tabActions').onclick=()=>switchView(true);
     document.getElementById('tabTodo').onclick=()=>switchView('todo');
     document.getElementById('tabTodoNative').onclick=()=>switchView('native-todo');
+    document.getElementById('tabMyDay').onclick=()=>switchView('my-day');
     document.getElementById('btnActionFromTask').onclick=()=>{const link=api.selectedTask();if(link)fromTask(link.projectId,link.taskId);else alert('Selecione uma linha do cronograma para criar uma ação vinculada. Para ações independentes, abra Planos de ação.')};
     document.addEventListener('click',e=>{const picker=document.querySelector('.ap-tree-picker[open]');if(picker&&!picker.contains(e.target))picker.open=false});
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){const picker=document.querySelector('.ap-tree-picker[open]');if(picker){picker.open=false;picker.querySelector('summary').focus()}}});
     sync();
   }
-  return {init,load,validate,sync,refresh,fromTask,isVisible:()=>shown,exportData,backup,importData,restoreData};
+  return {init,load,validate,sync,refresh,fromTask,isVisible:()=>shown,exportData,backup,importData,restoreData,updateAction,openAction,switchView,
+    subscribe:listener=>{changeListeners.add(listener);return ()=>changeListeners.delete(listener)}};
 })();

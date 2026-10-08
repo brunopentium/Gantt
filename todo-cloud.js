@@ -3,7 +3,7 @@ window.TodoCloud=(()=>{
   'use strict';
   const ROOT='pf_github_backup_v1',TOKEN=ROOT+'_token',KEY='pf_github_todo_v1',PATH='backups/todo.json';
   let meta={},busy=false,ready=false,last='',startup='',hadLocalData=false;
-  let connectionReady=Promise.resolve(),started=false;
+  let connectionReady=Promise.resolve(),startPromise=null;
   const read=(store,key,fallback)=>{try{return JSON.parse(store.getItem(key))||fallback}catch{return fallback}};
   const connection=()=>({...read(localStorage,ROOT,{}),token:read(localStorage,TOKEN,'')||read(sessionStorage,TOKEN,'')});
   const status=text=>document.getElementById('ntCloudStatus').textContent=text;
@@ -42,7 +42,10 @@ window.TodoCloud=(()=>{
       await repository();const remote=await request(path(),{allowMissing:true});
       if(!remote){if(meta.sha)throw new Error('O arquivo remoto foi removido; as tarefas locais foram mantidas.');ready=true;status('Conectado — clique em 💾 Salvar para criar a primeira versão do Todo');return}
       const data=decode(remote);validate(data);
-      const dirty=meta.fingerprint?(initial?startup:fingerprint())!==meta.fingerprint:(initial?hadLocalData:window.NativeTodo.hasLocalData());
+      // Waiting for the other areas or the remote request can outlive a local edit.
+      // Include the mounted React render before deciding whether replacing it is safe.
+      window.NativeTodo.flush();const current=fingerprint();
+      const dirty=(meta.fingerprint?(initial?startup:current)!==meta.fingerprint:(initial?hadLocalData:window.NativeTodo.hasLocalData()))||(initial&&current!==startup);
       if((prompt||dirty)&&!confirm('Abrir a última versão do Todo e substituir as tarefas locais? Uma cópia local do Todo será baixada antes.')){status('Todo local mantido; abra a última versão para conectar');return}
       if(prompt||dirty)window.NativeTodo.backup();
       window.NativeTodo.restoreData(data);meta.sha=remote.sha;last=fingerprint();meta.fingerprint=last;persist();ready=true;status('Última versão do Todo aberta');
@@ -123,9 +126,13 @@ window.TodoCloud=(()=>{
     status('GitHub do Todo aguardando conexão');
     window.addEventListener('beforeunload',event=>{if(connection().enabled&&connection().token&&meta.enabled!==false&&fingerprint()!==last){event.preventDefault();event.returnValue=''}});
   }
-  async function start(){
-    if(started)return;started=true;await connectionReady;
-    const c=connection();if(c.repo&&c.token&&c.enabled&&meta.enabled!==false)return latest(false,true);status('GitHub do Todo desconectado');
+  function start(){
+    if(startPromise)return startPromise;
+    startPromise=(async()=>{
+      await connectionReady;
+      const c=connection();if(c.repo&&c.token&&c.enabled&&meta.enabled!==false)return latest(false,true);status('GitHub do Todo desconectado');
+    })();
+    return startPromise;
   }
   return {init,start,changed,waitForConnection:promise=>{connectionReady=promise}};
 })();

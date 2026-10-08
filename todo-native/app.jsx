@@ -357,6 +357,8 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
             // The original TaskMaster interface uses the Gantt's local store.
             useEffect(() => {
                 const applyData = (response) => {
+                    // A source restored by Meu dia must not leave an older form open.
+                    setModalOpen(false);setEditingTask(null);
                     const serverTasks = response.tasks.map(t => normalizeTask(t));
                     const storedSettings = response.settings || {};
                     const derivedProjects = ensureDefaultProject([
@@ -374,7 +376,16 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
             }, []);
 
             // A parent save/export can flush the latest committed React render.
-            if(initialLoad) window.TaskMaster={snapshot:()=>({tasks,settings:{config,projects},_revision:storageRevision})};
+            if(initialLoad) window.TaskMaster={
+                snapshot:()=>({tasks,settings:{config,projects},_revision:storageRevision}),
+                openTask:(id)=>{
+                    const task=tasks.find(t=>String(t.id)===String(id));
+                    if(!task)return false;
+                    setView('dashboard');
+                    setFilters({project:'Todos',status:'Todos',search:'',dateFilter:'Todos',startDate:'',endDate:''});
+                    setEditingTask(task);setModalOpen(true);return true;
+                }
+            };
             useEffect(() => {
                 if(!initialLoad)return;
                 try { TaskBackend.write({tasks,settings:{config,projects},_revision:storageRevision});setStorageError(''); }
