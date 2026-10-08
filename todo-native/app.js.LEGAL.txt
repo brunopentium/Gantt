@@ -1,0 +1,76 @@
+Bundled license information:
+
+react/cjs/react.production.min.js:
+  /**
+   * @license React
+   * react.production.min.js
+   *
+   * Copyright (c) Facebook, Inc. and its affiliates.
+   *
+   * This source code is licensed under the MIT license found in the
+   * LICENSE file in the root directory of this source tree.
+   */
+
+scheduler/cjs/scheduler.production.min.js:
+  /**
+   * @license React
+   * scheduler.production.min.js
+   *
+   * Copyright (c) Facebook, Inc. and its affiliates.
+   *
+   * This source code is licensed under the MIT license found in the
+   * LICENSE file in the root directory of this source tree.
+   */
+
+react-dom/cjs/react-dom.production.min.js:
+  /**
+   * @license React
+   * react-dom.production.min.js
+   *
+   * Copyright (c) Facebook, Inc. and its affiliates.
+   *
+   * This source code is licensed under the MIT license found in the
+   * LICENSE file in the root directory of this source tree.
+   */
+
+lucide-react/dist/esm/shared/src/utils.js:
+lucide-react/dist/esm/defaultAttributes.js:
+lucide-react/dist/esm/Icon.js:
+lucide-react/dist/esm/createLucideIcon.js:
+lucide-react/dist/esm/icons/bell.js:
+lucide-react/dist/esm/icons/calendar-check.js:
+lucide-react/dist/esm/icons/calendar-clock.js:
+lucide-react/dist/esm/icons/calendar-range.js:
+lucide-react/dist/esm/icons/calendar.js:
+lucide-react/dist/esm/icons/chevron-down.js:
+lucide-react/dist/esm/icons/chevron-right.js:
+lucide-react/dist/esm/icons/circle-alert.js:
+lucide-react/dist/esm/icons/clock-3.js:
+lucide-react/dist/esm/icons/database.js:
+lucide-react/dist/esm/icons/download.js:
+lucide-react/dist/esm/icons/fast-forward.js:
+lucide-react/dist/esm/icons/flag.js:
+lucide-react/dist/esm/icons/layers.js:
+lucide-react/dist/esm/icons/layout-dashboard.js:
+lucide-react/dist/esm/icons/list-ordered.js:
+lucide-react/dist/esm/icons/octagon-alert.js:
+lucide-react/dist/esm/icons/pen.js:
+lucide-react/dist/esm/icons/plus.js:
+lucide-react/dist/esm/icons/repeat.js:
+lucide-react/dist/esm/icons/settings.js:
+lucide-react/dist/esm/icons/skip-forward.js:
+lucide-react/dist/esm/icons/square-check-big.js:
+lucide-react/dist/esm/icons/square-plus.js:
+lucide-react/dist/esm/icons/sticky-note.js:
+lucide-react/dist/esm/icons/trash-2.js:
+lucide-react/dist/esm/icons/trending-up.js:
+lucide-react/dist/esm/icons/triangle-alert.js:
+lucide-react/dist/esm/icons/upload.js:
+lucide-react/dist/esm/icons/x.js:
+lucide-react/dist/esm/lucide-react.js:
+  /**
+   * @license lucide-react v0.468.0 - ISC
+   *
+   * This source code is licensed under the ISC license.
+   * See the LICENSE file in the root directory of this source tree.
+   */

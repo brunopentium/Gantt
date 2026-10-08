@@ -1,0 +1,9 @@
+#todoNativePanel[hidden],#todoNativeToolbar[hidden]{display:none}
+[data-app-view="native-todo"] #main,[data-app-view="native-todo"] #statusbar,[data-app-view="native-todo"] #toolbar,
+[data-app-view="native-todo"] #scheduleHierarchyBar,[data-app-view="native-todo"] #scheduleAggregate{display:none!important}
+#todoNativeToolbar{display:flex;align-items:center;flex-wrap:wrap;gap:6px;padding:8px 12px;background:var(--bg1);border-bottom:1px solid var(--border);flex:none}
+#todoNativeToolbar button{padding:7px 10px;font-size:12px}
+#ntCloudStatus{font-size:11px;color:var(--text2);overflow-wrap:anywhere}
+#todoNativePanel{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;background:#f1f5f9}
+#todoNativeFrame{display:block;width:100%;flex:1;min-height:0;border:0;background:#f1f5f9}
+@media(max-width:600px){#appTabs{flex-wrap:wrap}#appTabs button{flex:1;padding:6px 9px;min-width:135px}}

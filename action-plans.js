@@ -251,19 +251,22 @@ window.ActionPlans=(()=>{
   }
   function switchView(value){
     api.flush();
-    const next=value==='todo'?'todo':value?'actions':'gantt';
+    const next=value==='todo'?'todo':value==='native-todo'?'native-todo':value?'actions':'gantt';
     shown=next==='actions';
     document.documentElement.dataset.theme=shown?(planTheme||api.getTheme()):api.getTheme();
     document.documentElement.dataset.appView=next;
     document.getElementById('actionPanel').hidden=!shown;
     document.getElementById('actionToolbar').hidden=!shown;
     document.getElementById('todoPanel').hidden=next!=='todo';
-    for(const [name,on]of [['tabGantt',next==='gantt'],['tabActions',shown],['tabTodo',next==='todo']]){
+    document.getElementById('todoNativePanel').hidden=next!=='native-todo';
+    document.getElementById('todoNativeToolbar').hidden=next!=='native-todo';
+    for(const [name,on]of [['tabGantt',next==='gantt'],['tabActions',shown],['tabTodo',next==='todo'],['tabTodoNative',next==='native-todo']]){
       const b=document.getElementById(name);b.classList.toggle('act',on);b.setAttribute('aria-selected',on);
     }
-    if(next==='todo'){
-      const frame=document.getElementById('todoFrame');
+    if(next==='todo'||next==='native-todo'){
+      const frame=document.getElementById(next==='todo'?'todoFrame':'todoNativeFrame');
       if(!frame.getAttribute('src'))frame.src=frame.dataset.src;
+      if(next==='native-todo')window.TodoCloud.start();
     }else if(shown)refresh();else render();
   }
   function init(adapter){
@@ -281,6 +284,7 @@ window.ActionPlans=(()=>{
     for(const name of ['btnCloudSave','btnCloudHistory','btnBackupAll','btnCloudBackup','cloudBackupStatus'])document.getElementById(name).classList.add('global-control');
     document.getElementById('tabGantt').onclick=()=>switchView(false);document.getElementById('tabActions').onclick=()=>switchView(true);
     document.getElementById('tabTodo').onclick=()=>switchView('todo');
+    document.getElementById('tabTodoNative').onclick=()=>switchView('native-todo');
     document.getElementById('btnActionFromTask').onclick=()=>{const link=api.selectedTask();if(link)fromTask(link.projectId,link.taskId);else alert('Selecione uma linha do cronograma para criar uma ação vinculada. Para ações independentes, abra Planos de ação.')};
     document.addEventListener('click',e=>{const picker=document.querySelector('.ap-tree-picker[open]');if(picker&&!picker.contains(e.target))picker.open=false});
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){const picker=document.querySelector('.ap-tree-picker[open]');if(picker){picker.open=false;picker.querySelector('summary').focus()}}});

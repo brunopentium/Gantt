@@ -2,6 +2,18 @@
 
 Aplicativo estático de cronogramas hospedado no GitHub Pages. Os cronogramas são mantidos no navegador enquanto você edita. A integração opcional com GitHub oferece salvamento manual, abertura da última versão e histórico de versões.
 
+## Todo novo integrado
+
+A ordem das guias é **Todo → Todo novo → Planos de ação → Cronogramas**. **Todo** continua abrindo o Google Apps Script e permanece como guia inicial. **Todo novo** executa o TaskMaster no próprio site, com os mesmos Dashboard, Conflitos, Planejamento, Configurações, filtros, edição direta, notas, subtarefas, recorrências, prioridades, projetos e reprogramação em massa. O status **Reserva** mantém o comportamento da versão publicada do Google.
+
+As tarefas e configurações do Todo novo são gravadas automaticamente neste navegador. **💾 Salvar** grava manualmente todo o Todo em `backups/todo.json`, no mesmo repositório privado e com o mesmo token dos cronogramas e planos. Ao abrir a guia conectado, a última versão é carregada. **Histórico** consulta apenas versões do Todo; restaurar baixa uma cópia local e cria uma nova versão. Conflitos entre dispositivos, falhas de autenticação e arquivos inválidos preservam a cópia local. Os três históricos e arquivos remotos permanecem separados.
+
+**Backup do Todo** baixa todas as tarefas e configurações, incluindo concluídas, canceladas e reservas. **Configurações → Exportar Backup / Restaurar Backup** mantém o formato JSON do Todo original (`tasks`, `projects`, `config`) e também aceita o backup novo. Assim é possível transferir tarefas do Google usando o botão existente. Após a migração, as duas guias têm dados independentes; alterações em uma não são propagadas para a outra.
+
+**Backup geral**, na barra do Todo novo, baixa um único JSON com todos os cronogramas e grupos, todos os planos e subplanos e todas as tarefas/configurações do Todo novo. Inclui os dados completos, independentemente dos filtros e níveis recolhidos, e não inclui credenciais. **Restaurar geral** valida as três áreas antes de aplicar, pede confirmação e baixa um backup geral da versão atual. A restauração é local; use Salvar em cada área para gravar a versão restaurada no GitHub. A guia do Google continua independente desse arquivo.
+
+Para reconstruir os arquivos estáticos do Todo, rode `npm ci` e `npm run build:todo`. O código da interface está em `todo-native/app.jsx`; React, os ícones e o CSS são incluídos nos arquivos gerados, sem dependência de CDNs durante o uso. A origem e os ajustes estão documentados em `todo-native/README.md`.
+
 ## Planos de ação
 
 A guia **Planos de ação** permite criar vários planos, com ações, responsáveis, início, término, status e observações. **Tabela** e **Cards** mostram os mesmos dados. Ações independentes podem ter suas próprias datas, sem criar tarefas no Gantt.

@@ -154,10 +154,11 @@ input{font-family:inherit}
 <link rel="stylesheet" href="action-plans.css?v=20261007-live-status-flag">
 <link rel="stylesheet" href="schedule-groups.css?v=20261007-task-folding">
 <link rel="stylesheet" href="gantt-mobile.css?v=20261007-mobile-navigation">
+<link rel="stylesheet" href="todo-native.css?v=20261008-integrated-todo">
 </head>
 <body>
 <div id="app">
-<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabTodo" aria-controls="todoPanel" class="act" role="tab" aria-selected="true">✅ Todo</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button></nav>
+<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabTodo" aria-controls="todoPanel" class="act" role="tab" aria-selected="true">✅ Todo</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">✅ Todo novo</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button></nav>
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
   <div class="tsep"></div>
@@ -225,10 +226,18 @@ input{font-family:inherit}
   <div class="todo-header"><span>Todo List · Google Apps Script</span><a href="https://script.google.com/macros/s/AKfycbxz130g31jZd9no5MiH97NvhChrM9W5gUBubJfseSp_Ke_y0RHe8KR7TP6I3p5FnAVL/exec" target="_blank" rel="noopener noreferrer">Abrir em outra aba ↗</a></div>
   <iframe id="todoFrame" title="Todo List — TaskMaster" data-src="https://script.google.com/macros/s/AKfycbxz130g31jZd9no5MiH97NvhChrM9W5gUBubJfseSp_Ke_y0RHe8KR7TP6I3p5FnAVL/exec" allow="fullscreen"></iframe>
 </section>
+<div id="todoNativeToolbar" hidden>
+  <button id="ntCloudSave">💾 Salvar</button><button id="ntCloudHistory">Histórico</button><button id="ntCloudSettings">☁ GitHub</button><button id="ntBackup">📥 Backup do Todo</button>
+  <span class="tsep"></span><button id="ntBackupAll">📥 Backup geral</button><button id="ntRestoreAll">📤 Restaurar geral</button>
+  <span id="ntCloudStatus" role="status" aria-live="polite"></span>
+</div>
+<section id="todoNativePanel" hidden aria-label="Todo novo integrado">
+  <iframe id="todoNativeFrame" title="TaskMaster — Todo novo integrado" data-src="todo-native/index.html?v=20261008-integrated-todo"></iframe>
+</section>
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
-<script src="action-plans.js?v=20261007-live-status-flag"></script>
+<script src="action-plans.js?v=20261008-integrated-todo"></script>
 <script src="schedule-groups.js?v=20261007-filtered-pdf"></script>
 <script src="plan-exports.js?v=20261007-live-status-flag"></script>
 <script src="plan-cloud.js?v=20261007-plan-document"></script>
@@ -236,6 +245,9 @@ input{font-family:inherit}
 <script src="gantt-print.js?v=20261007-filtered-pdf"></script>
 <script src="plan-print.js?v=20261007-filtered-pdf"></script>
 <script src="gantt-mobile.js?v=20261007-mobile-navigation"></script>
+<script src="todo-native.js?v=20261008-integrated-todo"></script>
+<script src="todo-cloud.js?v=20261008-integrated-todo"></script>
+<script src="workspace-backup.js?v=20261008-integrated-todo"></script>
 <script>
 // ========== STATE ==========
 let T=[], sel=new Set(), lastSel=null, undo=[], fmt={}, cpOn=false, labelsOn=true, statusOn=false, theme='dark', res='weeks', cw=36;
@@ -999,7 +1011,7 @@ document.getElementById('thead').addEventListener('mousedown',function(e){
 // ========== KEYBOARD ==========
 document.addEventListener('keydown',function(e){
   if(e.target.closest?.('#appTabs'))return;
-  if(window.ScheduleGroups?.isAggregate()||document.documentElement.dataset.appView==='todo'||window.ActionPlans?.isVisible()||document.querySelector('.ap-modal'))return;
+  if(window.ScheduleGroups?.isAggregate()||['todo','native-todo'].includes(document.documentElement.dataset.appView)||window.ActionPlans?.isVisible()||document.querySelector('.ap-modal'))return;
   if(editing)return;
   let ae=document.activeElement;if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT')&&ae.id!=='ptitle')return;
   if(e.key==='Delete'&&sel.size>0){e.preventDefault();deleteSelected()}
@@ -1419,7 +1431,13 @@ try{const stored=JSON.parse(localStorage.getItem('pf_github_backup_v1')||'{}'),p
   if(JSON.parse(localStorage.getItem('pf_github_action_plans_v1')||'{}').repo)legacyPlansMayLoad=false;
 }catch{}
 window.PlanCloud.init({snapshot:()=>({version:1,type:'action-plans',actionPlans:window.ActionPlans.exportData()}),restore:(d,applyDates)=>window.ActionPlans.restoreData(d.actionPlans,applyDates),flush:()=>{commitEdit();save()},localBackup:()=>window.ActionPlans.backup()});
-Promise.resolve(window.GanttBackup.init({
+window.NativeTodo.init();window.TodoCloud.init();
+window.WorkspaceBackup.init({flush:()=>{commitEdit();save()},snapshot:()=>JSON.parse(JSON.stringify({activeProjectId,projects})),restore:d=>{
+  projects=d.projects.map(normalizeProject);
+  activeProjectId=projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:projects[0].id;
+  window.ActionPlans.load(d.actionPlans);loadProject(activeProjectId,true);saveStore();
+}});
+window.TodoCloud.waitForConnection(Promise.resolve(window.GanttBackup.init({
   flush:()=>{commitEdit();save()},
   snapshot:()=>JSON.parse(JSON.stringify({version:1,activeProjectId,projects})),
   restore:d=>{
@@ -1429,7 +1447,7 @@ Promise.resolve(window.GanttBackup.init({
     loadProject(activeProjectId,true);saveStore();
   },
   localBackup:downloadAllProjects
-})).then(()=>{planScopeInitialized=true;window.PlanCloud.start()});
+})).then(async()=>{planScopeInitialized=true;await window.PlanCloud.start()}));
 function calculateSchedule(p){
   const previous=T,previousCP=cpOn;
   try{
