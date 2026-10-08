@@ -2,9 +2,11 @@
 
 Aplicativo estático de cronogramas hospedado no GitHub Pages. Os cronogramas são mantidos no navegador enquanto você edita. A integração opcional com GitHub oferece salvamento manual, abertura da última versão e histórico de versões.
 
-## Todo novo integrado
+## Task e navegação
 
-A ordem das guias é **Todo → Todo novo → Meu dia → Planos de ação → Cronogramas**. **Todo** continua abrindo o Google Apps Script e permanece como guia inicial. **Todo novo** executa o TaskMaster no próprio site, com os mesmos Dashboard, Conflitos, Planejamento, Configurações, filtros, edição direta, notas, subtarefas, recorrências, prioridades, projetos e reprogramação em massa. O status **Reserva** mantém o comportamento da versão publicada do Google.
+A ordem das guias é **Meu dia → Task → Planos de ação → Cronogramas**. **Meu dia** é sempre a tela inicial. **Task** é o nome da antiga guia Todo novo e executa o TaskMaster no próprio site, com os mesmos Dashboard, Conflitos, Planejamento, Configurações, filtros, edição direta, notas, subtarefas, recorrências, prioridades, projetos e reprogramação em massa. O status **Reserva** mantém o comportamento da versão publicada do Google.
+
+O **Todo antigo** do Google está oculto, com seu código e endereço preservados. Para reativá-lo, abra **Meu dia → Configurar meus nomes**, marque **Mostrar a guia Todo antigo (Google)** e clique em **Salvar configurações**. A preferência fica neste navegador; o Google só é carregado quando você abre essa guia. Desmarcar a opção volta a ocultá-la.
 
 As tarefas e configurações do Todo novo são gravadas automaticamente neste navegador. **💾 Salvar** grava manualmente todo o Todo em `backups/todo.json`, no mesmo repositório privado e com o mesmo token dos cronogramas e planos. Ao abrir a guia conectado, a última versão é carregada. **Histórico** consulta apenas versões do Todo; restaurar baixa uma cópia local e cria uma nova versão. Conflitos entre dispositivos, falhas de autenticação e arquivos inválidos preservam a cópia local. Os três históricos e arquivos remotos permanecem separados.
 
@@ -15,6 +17,8 @@ As tarefas e configurações do Todo novo são gravadas automaticamente neste na
 Para reconstruir os arquivos estáticos do Todo, rode `npm ci` e `npm run build:todo`. O código da interface está em `todo-native/app.jsx`; React, os ícones e o CSS são incluídos nos arquivos gerados, sem dependência de CDNs durante o uso. A origem e os ajustes estão documentados em `todo-native/README.md`.
 
 ## Planos de ação
+
+As áreas de **Planos de ação** e **Cronogramas** usam textos gerados em inglês para permitir capturas de tela e impressão: cabeçalhos, status, indicadores, filtros, controles, PDFs e Excel. Títulos, responsáveis, descrições e observações cadastrados pelo usuário permanecem como foram escritos; os códigos internos de status e os formatos dos backups continuam compatíveis. A interface do Task permanece em português.
 
 A guia **Planos de ação** permite criar vários planos, com ações, responsáveis, início, término, status e observações. **Tabela** e **Cards** mostram os mesmos dados. Ações independentes podem ter suas próprias datas, sem criar tarefas no Gantt.
 
@@ -52,13 +56,13 @@ Novas ações que atendem ao filtro aparecem imediatamente. Se uma ação visív
 
 ### Excel e PDF dos planos
 
-**Excel** exporta o plano selecionado em um template `.xlsx` com abas **Resumo** e **Ações**; a aba **Contexto** é incluída quando participantes, agenda ou notas estão preenchidos. O resumo tem indicadores de total, status, atrasos e percentual concluído. A tabela tem filtros, cabeçalho congelado, linhas alternadas, responsáveis, datas reais do Excel, duração, status, prazo, vínculos e observações. Fórmulas recalculam duração, prazo e indicadores; status tem lista de seleção e atrasos recebem destaque. O arquivo usa layout de impressão em paisagem. Texto digitado pelo usuário permanece texto, mesmo quando começa com `=`.
+**Excel** exporta o plano selecionado em um template `.xlsx` com abas **Summary** e **Actions**; a aba **Context** é incluída quando participantes, agenda ou notas estão preenchidos. O resumo tem indicadores de total, status, atrasos e percentual concluído. A tabela tem filtros, cabeçalho congelado, linhas alternadas, responsáveis, datas reais do Excel, duração, status, prazo, vínculos e observações. Fórmulas recalculam duração, prazo e indicadores; status tem lista de seleção e atrasos recebem destaque. O arquivo usa layout de impressão em paisagem. Texto digitado pelo usuário permanece texto, mesmo quando começa com `=`.
 
 **PDF** abre a impressão do navegador com um relatório do plano, cabeçalho, seções opcionais preenchidas, indicadores e tabela; selecione Salvar como PDF. Excel e PDF são relatórios independentes da aba do cronograma. Alterações feitas no Excel não são sincronizadas com o app; o formato de reimportação é JSON.
 
 ## Meu dia
 
-A guia **Meu dia**, depois de **Todo novo**, reúne todos os planos e subplanos, todos os cronogramas e o Todo integrado. A data inicial usa o dia local do dispositivo; as setas e o calendário permitem revisar outra data. O Todo antigo do Google continua independente.
+A guia **Meu dia**, primeira guia e tela inicial, reúne todos os planos e subplanos, todos os cronogramas e o Todo integrado. A data inicial usa o dia local do dispositivo; as setas e o calendário permitem revisar outra data. O Todo antigo do Google continua independente.
 
 Os cartões **Para hoje**, **Atrasados**, **Próximos 7 dias** e **Bloqueados**, além da visão **Sem prazo**, abrem listas filtráveis por origem e busca. **Para fazer** reúne suas ações e seus Todos. **Para cobrar** mostra ações atribuídas a outras pessoas. Ações sem responsável ficam em uma seção própria. Em **Configurar meus nomes**, ajuste os nomes usados para identificar sua responsabilidade; os valores iniciais são Bruno e Bruno Souza. A identificação aceita acentos, variações de maiúsculas e responsáveis compartilhados, mas não considera Bruno Silva como Bruno.
 

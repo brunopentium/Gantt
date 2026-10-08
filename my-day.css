@@ -164,6 +164,8 @@ html[data-app-view="my-day"] :is(#main,#toolbar,#statusbar,#scheduleHierarchyBar
 #myDayPanel .md-field-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
 #myDayPanel .md-editor-hint{font-size:11px;line-height:1.6;color:var(--md-muted)}
 #myDayPanel .md-dialog-error{font-size:12px;color:#ae4b36;line-height:1.5}
+#myDayPanel .md-legacy-option{display:flex;align-items:center;gap:9px;font-size:12px;line-height:1.5}
+#myDayPanel .md-legacy-option input{width:18px;height:18px;flex:none;accent-color:var(--md-teal)}
 #myDayPanel .md-dialog-body>footer{display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid var(--md-border);background:#f8fafc}
 #myDayPanel .md-save-options{padding:20px 24px;display:flex;flex-direction:column;gap:10px}
 #myDayPanel .md-save-option{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:14px 16px!important;border:1px solid var(--md-border)!important;text-align:left;background:#fbfcfe!important;font-weight:650!important}

@@ -10,18 +10,25 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
   const browser=await chromium.launch({headless:true});
   let remote={sha:'todo0',content:Buffer.from(JSON.stringify(initial)).toString('base64')},writes=0,reads=0,fail=false,isPrivate=true,hasPages=false;
   let commits=[];const versions=new Map([['initial',{...remote}]]),errors=[];
-  async function open({seed,meta,accept=true}={}){
+  async function open({seed,meta,accept=true,pauseConnection=false}={}){
     const page=await browser.newPage();page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
     page.on('dialog',d=>d.type()==='confirm'&&!accept?d.dismiss():d.accept());
     await page.route('https://script.google.com/**',r=>r.abort());
-    await page.addInitScript(({fixture,seed,meta})=>{
+    await page.addInitScript(({fixture,seed,meta,pauseConnection})=>{
       if(window!==window.top)return;
+      if(pauseConnection){
+        // Install the readiness gate before the default dashboard starts TodoCloud.
+        const gate=new Promise(resolve=>window.releaseTodoConnection=resolve);let cloud;
+        Object.defineProperty(window,'TodoCloud',{configurable:true,get:()=>cloud,set:api=>{
+          cloud=api;const wait=api.waitForConnection;api.waitForConnection=promise=>wait(Promise.all([promise,gate]));
+        }});
+      }
       if(!localStorage.getItem('pf_projects_v1'))localStorage.setItem('pf_projects_v1',JSON.stringify(fixture));
       localStorage.setItem('pf_github_backup_v1',JSON.stringify({repo:'brunopentium/gantt-backups',enabled:true}));
       localStorage.setItem('pf_github_backup_v1_token',JSON.stringify('test-token'));
       if(seed&&!localStorage.getItem('pf_todo_v1'))localStorage.setItem('pf_todo_v1',JSON.stringify(seed));
       if(meta&&!localStorage.getItem('pf_github_todo_v1'))localStorage.setItem('pf_github_todo_v1',JSON.stringify(meta));
-    },{fixture,seed,meta});
+    },{fixture,seed,meta,pauseConnection});
     await page.route('https://api.github.com/repos/**',async route=>{
       const request=route.request(),apiUrl=new URL(request.url());assert.equal(request.headers().authorization,'Bearer test-token');
       if(fail)return route.fulfill({status:401,json:{}});
@@ -45,13 +52,16 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
       return route.fulfill(file?{json:file}:{status:404,json:{}});
     });
     await page.goto(url);await page.waitForFunction(()=>!document.getElementById('app').inert);
+    if(!pauseConnection)await page.evaluate(()=>TodoCloud.start());
     return page;
   }
   const native=page=>page.frameLocator('#todoNativeFrame');
   async function enter(page){await page.click('#tabTodoNative');await native(page).getByRole('button',{name:'Nova Tarefa',exact:true}).waitFor();await page.waitForFunction(()=>!document.getElementById('app').inert && document.getElementById('todoNativeFrame').contentWindow.TaskMaster)}
   const source=page=>page.evaluate(()=>JSON.stringify({projects,plans:ActionPlans.exportData()},(k,v)=>k==='updatedAt'?undefined:v));
   try{
-    const page=await open();assert.equal(reads,0);assert.equal(writes,0);
+    const page=await open();assert.equal(reads,1,'The default Meu dia loads the configured Task cloud data');assert.equal(writes,0);
+    assert.equal(await page.locator('#tabMyDay').getAttribute('aria-selected'),'true');
+    assert.equal(await page.locator('#todoFrame').getAttribute('src'),null);
     const protectedSource=await source(page);await enter(page);
     await native(page).getByRole('heading',{name:'TAREFA REMOTA',exact:true}).waitFor();assert.equal(writes,0);
     await native(page).getByRole('button',{name:'Nova Tarefa',exact:true}).click();
@@ -95,8 +105,7 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     assert((await refused.locator('#ntCloudStatus').innerText()).includes('local mantido'));assert.equal(writes,3);await refused.close();
     // An edit made in Meu dia while startup waits for the other cloud areas is protected.
     const cleanStartup={version:1,type:'todo',tasks:initial.tasks,settings:initial.settings};
-    const raced=await open({seed:cleanStartup,meta:{repo:'brunopentium/gantt-backups',enabled:true,sha:remote.sha,fingerprint:JSON.stringify(cleanStartup)},accept:false});
-    await raced.evaluate(()=>TodoCloud.waitForConnection(new Promise(resolve=>window.releaseTodoConnection=resolve)));
+    const raced=await open({seed:cleanStartup,meta:{repo:'brunopentium/gantt-backups',enabled:true,sha:remote.sha,fingerprint:JSON.stringify(cleanStartup)},accept:false,pauseConnection:true});
     const readsBeforeWait=reads;await raced.click('#tabMyDay');
     assert.equal(reads,readsBeforeWait,'Todo must wait for the configured connection readiness');
     const sameStart=await raced.evaluate(()=>{
@@ -110,8 +119,7 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     assert.equal(await raced.evaluate(()=>NativeTodo.snapshot().tasks.find(t=>t.id==='remote').title),'ALTERADA NO MEU DIA ANTES DA CONEXÃO');
     assert.equal(writes,3);await raced.close();
     // A recent child render not yet committed to the parent is flushed before replacement.
-    const rendered=await open({seed:cleanStartup,meta:{repo:'brunopentium/gantt-backups',enabled:true,sha:remote.sha,fingerprint:JSON.stringify(cleanStartup)},accept:false});
-    await rendered.evaluate(()=>TodoCloud.waitForConnection(new Promise(resolve=>window.releaseTodoConnection=resolve)));
+    const rendered=await open({seed:cleanStartup,meta:{repo:'brunopentium/gantt-backups',enabled:true,sha:remote.sha,fingerprint:JSON.stringify(cleanStartup)},accept:false,pauseConnection:true});
     await rendered.click('#tabMyDay');
     await rendered.evaluate(()=>{
       const pending=NativeTodo.data();pending.tasks=pending.tasks.map(t=>t.id==='remote'?{...t,title:'EDIÇÃO RECENTE NO RENDER DO TODO'}:t);
@@ -128,6 +136,6 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     await invalid.waitForFunction(()=>document.getElementById('ntCloudStatus').textContent.includes('ID inválido'));
     assert.equal(await invalid.evaluate(()=>NativeTodo.snapshot().tasks[0].title),'TAREFA LOCAL PROTEGIDA');assert.equal(writes,3);await invalid.close();
     assert.deepEqual(errors,[]);
-    console.log('PASS: lazy native startup, existing private credentials, manual-only scoped saves, cross-device loading, own history/restore as new commit/local backup, stale-render and delayed-start edit protection, shared startup promise, source isolation, conflicts/auth/public/Pages guards, refused/invalid remote retention and credential-free archives');
+    console.log('PASS: default Meu dia loads Task cloud data with lazy local UI, existing private credentials, manual-only scoped saves, cross-device loading, own history/restore as new commit/local backup, stale-render and delayed-start edit protection, shared startup promise, source isolation, conflicts/auth/public/Pages guards, refused/invalid remote retention and credential-free archives');
   }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});

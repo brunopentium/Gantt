@@ -16,7 +16,7 @@ const assert=require('node:assert/strict');
  await page.locator('[data-action="a1"][data-field="owner"]').click();assert.equal(await page.locator('.ap-choice').count(),4);await page.click('#apCancel');
  await page.selectOption('#apPlanSelect','p-plain');assert.equal(await page.locator('[data-document-section]').count(),0);await page.selectOption('#apPlanSelect','p-doc');
  await page.locator('[data-section-remove="agenda"]').click();assert.equal(await page.locator('.ap-section-agenda').count(),0);await page.click('#apUndo');assert.equal(await page.locator('.ap-section-agenda').count(),1);
- await page.locator('[data-complete="a2"]').click();assert((await page.locator('[data-action="a2"][data-field="status"]').innerText()).includes('Concluída'));await page.click('#apUndo');
+ await page.locator('[data-complete="a2"]').click();assert((await page.locator('[data-action="a2"][data-field="status"]').innerText()).includes('Completed'));await page.click('#apUndo');
  const before=await page.evaluate(()=>ActionPlans.exportData());await page.reload();await page.click('#tabActions');assert.deepEqual(await page.evaluate(()=>ActionPlans.exportData()),before);
  await page.setViewportSize({width:1440,height:1800});await page.screenshot({path:'/tmp/gantt-plan-document-desktop.png',fullPage:true});await page.setViewportSize({width:1440,height:1050});
  await page.click('#apCards');assert.equal(await page.locator('.ap-card').count(),4);await page.screenshot({path:'/tmp/gantt-plan-document-cards.png',fullPage:true});

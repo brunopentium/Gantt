@@ -7,7 +7,7 @@ window.GanttPrint=(()=>{
     const cfg=settings(value),portrait=cfg.orientation==='portrait',width=portrait?733:1062,height=portrait?1040:711;
     const rows=data.tasks,pages=Math.min(cfg.pages,Math.max(1,rows.length)),tableWidth=Math.round(width*(portrait?.65:.60)),chartX=tableWidth+8,chartWidth=width-chartX-8;
     const top=66,header=30,bottom=height-28,available=bottom-top-header;
-    const columns=[['id','#',4],['wbs','WBS',7],['name','Tarefa',39],['dur','Dur.',6],['unit','Un.',5],['start','Início',11],['end','Fim',11],['pred','Pred.',10],['pct','%',7]];
+    const columns=[['id','#',4],['wbs','WBS',7],['name','Task',39],['dur','Dur.',6],['unit','Unit',5],['start','Start',11],['end','Finish',11],['pred','Pred.',10],['pct','%',7]];
     let cursor=0;const cells=columns.map(([key,label,weight])=>{const c={key,label,x:cursor,w:tableWidth*weight/100};cursor+=c.w;return c});
     function text(x,y,value,size=9,attrs=''){return `<text x="${x}" y="${y}" font-size="${size}" ${attrs}>${esc(value)}</text>`}
     function lines(value,maxChars,maxLines){const words=String(value??'').split(/\s+/),out=[''];for(const word of words){let rest=word;while(rest.length>maxChars){if(out.at(-1))out.push('');out[out.length-1]=rest.slice(0,maxChars);out.push('');rest=rest.slice(maxChars)}if((out.at(-1)+' '+rest).trim().length>maxChars&&out.at(-1))out.push(rest);else out[out.length-1]=(out.at(-1)+' '+rest).trim()}if(out.length>maxLines){out.length=maxLines;out[maxLines-1]=out[maxLines-1].slice(0,Math.max(1,maxChars-1))+'…'}return out.filter(Boolean)}
@@ -15,7 +15,7 @@ window.GanttPrint=(()=>{
     for(let page=0;page<pages;page++){
       const first=Math.floor(page*rows.length/pages),last=Math.floor((page+1)*rows.length/pages),part=rows.slice(first,last),rowHeight=Math.min(30,available/Math.max(1,part.length)),font=Math.min(10,rowHeight*.52),bodyEnd=top+header+part.length*rowHeight;
       const titleLines=lines(data.title,Math.floor(width/(17*.55)),2),infoY=titleLines.length>1?55:40;
-      let defs='',svg=titleLines.map((line,n)=>text(0,19+n*19,line,17,'font-weight="700"')).join('')+text(0,infoY,`${data.start} → ${data.end} · ${rows.length} tarefas · 1 página na largura`,10,'fill="#526074"')+text(width,infoY,`Página ${page+1} de ${pages}`,10,'text-anchor="end" fill="#526074"');
+      let defs='',svg=titleLines.map((line,n)=>text(0,19+n*19,line,17,'font-weight="700"')).join('')+text(0,infoY,`${data.start} → ${data.end} · ${rows.length} tasks · 1 page wide`,10,'fill="#526074"')+text(width,infoY,`Page ${page+1} of ${pages}`,10,'text-anchor="end" fill="#526074"');
       svg+=`<rect x="0" y="${top}" width="${tableWidth}" height="${header}" fill="#2d3541"/><rect x="${chartX}" y="${top}" width="${chartWidth}" height="${header}" fill="#eef1f6"/>`;
       for(const c of cells)svg+=text(c.x+3,top+header/2+3,c.label,portrait?8:9,'fill="white" font-weight="700"');
       const ticks=Math.max(2,Math.floor(chartWidth/72));
@@ -50,15 +50,15 @@ window.GanttPrint=(()=>{
         }
         svg+='</g>';
       }
-      if(!rows.length)svg+=text(0,top+header+30,'Nenhuma tarefa neste cronograma.',12);
-      svg+=text(0,height-6,'Visão atual do cronograma · cabeçalho e período repetidos em cada página',9,'fill="#526074"');
-      sheets+=`<section class="sheet"><svg class="report" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMinYMin meet" role="img" aria-label="${esc(data.title)} — página ${page+1}"><defs>${defs}</defs>${svg}</svg></section>`;
+      if(!rows.length)svg+=text(0,top+header+30,'No tasks in this schedule.',12);
+      svg+=text(0,height-6,'Current schedule view · header and date range repeated on every page',9,'fill="#526074"');
+      sheets+=`<section class="sheet"><svg class="report" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMinYMin meet" role="img" aria-label="${esc(data.title)} — page ${page+1}"><defs>${defs}</defs>${svg}</svg></section>`;
     }
     // size:auto preserves the browser's portrait/landscape controls. Both components scale together.
-    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(data.title)} PDF</title><style>@page{size:auto;margin:8mm}*{box-sizing:border-box}html,body{margin:0;padding:0;font-family:Arial,Segoe UI,sans-serif;color:#20242b}svg{font-family:Arial,Segoe UI,sans-serif}.sheet{width:100%;height:calc(100vh - 18mm);break-after:page;break-inside:avoid;page-break-after:always;page-break-inside:avoid}.sheet:last-child{break-after:auto;page-break-after:auto}.report{display:block;width:100%;height:100%}@media print{html,body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}@media screen{body{background:#e8ebf0}.sheet{background:white;width:${portrait?194:281}mm;height:${portrait?281:194}mm;margin:12px auto;padding:4px;box-shadow:0 1px 8px #0002}}</style></head><body data-print-orientation="${cfg.orientation}" data-print-pages="${pages}">${sheets}</body></html>`;
+    return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(data.title)} PDF</title><style>@page{size:auto;margin:8mm}*{box-sizing:border-box}html,body{margin:0;padding:0;font-family:Arial,Segoe UI,sans-serif;color:#20242b}svg{font-family:Arial,Segoe UI,sans-serif}.sheet{width:100%;height:calc(100vh - 18mm);break-after:page;break-inside:avoid;page-break-after:always;page-break-inside:avoid}.sheet:last-child{break-after:auto;page-break-after:auto}.report{display:block;width:100%;height:100%}@media print{html,body{print-color-adjust:exact;-webkit-print-color-adjust:exact}}@media screen{body{background:#e8ebf0}.sheet{background:white;width:${portrait?194:281}mm;height:${portrait?281:194}mm;margin:12px auto;padding:4px;box-shadow:0 1px 8px #0002}}</style></head><body data-print-orientation="${cfg.orientation}" data-print-pages="${pages}">${sheets}</body></html>`;
   }
   function print(html){
-    const frame=document.createElement('iframe');frame.dataset.ganttPrint='';frame.title='Impressão do cronograma';frame.style.cssText='position:fixed;width:0;height:0;border:0';document.body.append(frame);
+    const frame=document.createElement('iframe');frame.dataset.ganttPrint='';frame.title='Schedule print preview';frame.style.cssText='position:fixed;width:0;height:0;border:0';document.body.append(frame);
     const doc=frame.contentDocument;doc.open();doc.write(html);doc.close();
     frame.contentWindow.addEventListener('afterprint',()=>setTimeout(()=>frame.remove(),1000),{once:true});
     Promise.resolve(doc.fonts?.ready).then(()=>setTimeout(()=>{if(frame.isConnected){frame.contentWindow.focus();frame.contentWindow.print()}},100));

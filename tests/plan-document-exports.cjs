@@ -33,9 +33,9 @@ function entries(bytes){
    const data={...plan,...(document?{document}:{})};
    const result=await page.evaluate(async p=>({bytes:Array.from(new Uint8Array(await PlanExports.build(p,()=>null).arrayBuffer())),html:PlanExports.pdfHTML(p,()=>null)}),data);
    const files=entries(result.bytes),hasContext=['context','safe','agenda-only'].includes(name);
-   assert.equal(files['xl/workbook.xml'].includes('<sheet name="Contexto"'),hasContext);
+   assert.equal(files['xl/workbook.xml'].includes('<sheet name="Context"'),hasContext);
    assert.equal(!!files['xl/worksheets/sheet3.xml'],hasContext);
-   assert(files['xl/worksheets/sheet1.xml'].includes('COUNT(&apos;Ações&apos;!A7:A8)'));
+   assert(files['xl/worksheets/sheet1.xml'].includes('COUNT(&apos;Actions&apos;!A7:A8)'));
    assert(files['xl/worksheets/sheet2.xml'].includes('topLeftCell="C7"'));
    assert(files['xl/worksheets/sheet2.xml'].includes('ISNUMBER(D7)'));
    assert(files['xl/tables/table1.xml'].includes('ref="A6:K8"'));
@@ -46,15 +46,15 @@ function entries(bytes){
    assert.equal(await page.locator('.document-section.agenda').count(),hasContext?1:0);
    assert.equal(await page.locator('.document-section.notes').count(),['context','safe'].includes(name)?1:0);
    assert.equal(await page.locator('.participants').count(),['context','safe'].includes(name)?1:0);
-   assert.equal(await page.locator('.status.pending').textContent(),'Pendente');
-   assert.equal(await page.locator('.status.done').textContent(),'Concluída');
+   assert.equal(await page.locator('.status.pending').textContent(),'Pending');
+   assert.equal(await page.locator('.status.done').textContent(),'Completed');
    if(name==='safe'){
     assert.equal(await page.locator('script').count(),0);
     assert.equal(await page.locator('.participants .person > span:last-child').textContent(),'<script>unsafe</script>');
     assert(files['xl/worksheets/sheet3.xml'].includes('=HYPERLINK(&quot;https://example.invalid&quot;)'));
     assert(!files['xl/worksheets/sheet3.xml'].includes('<f>'));
    }
-   if(name==='agenda-only')assert(!files['xl/worksheets/sheet3.xml'].includes('PARTICIPANTES')&&!files['xl/worksheets/sheet3.xml'].includes('NOTAS'));
+   if(name==='agenda-only')assert(!files['xl/worksheets/sheet3.xml'].includes('PARTICIPANTS')&&!files['xl/worksheets/sheet3.xml'].includes('NOTES'));
    fs.writeFileSync('/tmp/action-plan-document-'+name+'.xlsx',Buffer.from(result.bytes));
    if(name==='context'){
     await page.setViewportSize({width:1300,height:900});await page.screenshot({path:'/tmp/action-plan-document-export.png',fullPage:true});

@@ -12,7 +12,7 @@ const fs=require('node:fs');
   // Modal options reach the printer and include only rows visible through the current folding state.
   await page.evaluate(()=>{window.originalPrint=GanttPrint.print;GanttPrint.print=html=>window.printCapture=html});
   await page.click('#btnPDF');assert.equal(await page.locator('#pdfPages').inputValue(),'3');await page.selectOption('#pdfOrientation','portrait');await page.fill('#pdfPages','3');await page.locator('.modal [data-a=ok]').click();
-  let html=await page.evaluate(()=>printCapture);assert(html.includes('data-print-orientation="portrait"'));assert(html.includes('data-print-pages="3"'));assert.equal((html.match(/data-print-task=/g)||[]).length,76);assert(html.includes('@page{size:auto;'));assert(!html.includes('@page{size:A4 landscape'));assert(html.includes('05/10/26'));
+  let html=await page.evaluate(()=>printCapture);assert(html.includes('data-print-orientation="portrait"'));assert(html.includes('data-print-pages="3"'));assert.equal((html.match(/data-print-task=/g)||[]).length,76);assert(html.includes('@page{size:auto;'));assert(!html.includes('@page{size:A4 landscape'));assert(html.includes('05 Oct 2026'));
   const report=await browser.newPage();
   await report.setContent(html);assert.equal(await report.locator('[data-print-task]').count(),76);assert.equal(await report.locator('[data-print-task="print-1"]').count(),0);assert.equal(await report.locator('[data-print-task="print-45"]').count(),1);assert((await report.locator('[data-print-task="print-0"]').textContent()).includes('▸'));
   fs.writeFileSync('/tmp/gantt-pdf-folded.pdf',await report.pdf({format:'A4',landscape:false,printBackground:true}));
@@ -26,7 +26,7 @@ const fs=require('node:fs');
    fs.writeFileSync(`/tmp/gantt-pdf-${orientation}-${nativeLandscape?'landscape':'portrait'}-${pages}.pdf`,pdf);
   }
   // Empty schedules print once, and excessive page counts do not create blank sheets.
-  await page.evaluate(()=>{T=[]});html=await page.evaluate(()=>buildPDFHTML({pages:3,orientation:'portrait'}));await report.setContent(html);assert.equal(await report.locator('.sheet').count(),1);assert(html.includes('Nenhuma tarefa'));
+  await page.evaluate(()=>{T=[]});html=await page.evaluate(()=>buildPDFHTML({pages:3,orientation:'portrait'}));await report.setContent(html);assert.equal(await report.locator('.sheet').count(),1);assert(html.includes('No tasks'));
   // Consolidated groups share the same pagination path, preserving original schedules and local dependencies.
   await page.evaluate(()=>{
    const task=(id,name,pred='')=>taskOut(mkTask({id,name,pred,dur:3}));

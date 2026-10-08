@@ -2,7 +2,7 @@
   "name": "projectflow-gantt",
   "private": true,
   "scripts": {
-    "test": "node tests/my-day-data.cjs && node tests/github-backup.cjs && node tests/action-plans.cjs && node tests/plan-controls.cjs && node tests/plan-migration.cjs && node tests/action-inline-edit.cjs && node tests/plan-document.cjs && node tests/plan-document-exports.cjs && node tests/plan-hierarchy.cjs && node tests/schedule-groups.cjs && node tests/schedule-expand.cjs && node tests/schedule-members.cjs && node tests/schedule-group-backup.cjs && node tests/gantt-pdf.cjs && node tests/plan-pdf.cjs && node tests/view-filter-pdf.cjs && node tests/action-status-flag.cjs && node tests/gantt-mobile.cjs && node tests/todo-native.cjs && node tests/todo-cloud.cjs && node tests/my-day.cjs",
+    "test": "node tests/my-day-data.cjs && node tests/github-backup.cjs && node tests/action-plans.cjs && node tests/plan-controls.cjs && node tests/plan-migration.cjs && node tests/action-inline-edit.cjs && node tests/plan-document.cjs && node tests/plan-document-exports.cjs && node tests/plan-hierarchy.cjs && node tests/schedule-groups.cjs && node tests/schedule-expand.cjs && node tests/schedule-members.cjs && node tests/schedule-group-backup.cjs && node tests/gantt-pdf.cjs && node tests/plan-pdf.cjs && node tests/view-filter-pdf.cjs && node tests/action-status-flag.cjs && node tests/gantt-mobile.cjs && node tests/todo-native.cjs && node tests/todo-cloud.cjs && node tests/my-day.cjs && node tests/english-navigation.cjs",
     "build:todo": "node scripts/build-todo.cjs"
   },
   "devDependencies": {

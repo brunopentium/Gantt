@@ -32,7 +32,7 @@ const assert=require('node:assert/strict');
   await page.selectOption('#selProject','outside');assert.equal(await page.locator('#scheduleAggregate .sg-row').count(),1);await page.selectOption('#selProject','group');
   await page.setViewportSize({width:390,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);assert(await page.locator('#sgExpandAll').isVisible());assert(await page.locator('#sgCollapseAll').isVisible());await page.click('#sgCollapseAll');await page.click('#sgExpandAll');assert.equal(await page.locator('#scheduleAggregate .sg-row').count(),rows);
   await fold('one','nested-summary').click();assert.equal(await taskRow('one','leaf').count(),0);await fold('one','nested-summary').click();assert.equal(await taskRow('one','leaf').count(),1);await page.screenshot({path:'/tmp/gantt-group-task-folding-mobile.png',fullPage:true});
-  await page.click('#tabActions');assert(await page.locator('#sgExpandAll').isHidden());await page.click('#tabTodo');assert(await page.locator('#sgCollapseAll').isHidden());assert.deepEqual(errors,[]);
+  await page.click('#tabActions');assert(await page.locator('#sgExpandAll').isHidden());await page.click('#tabTodoNative');assert(await page.locator('#sgCollapseAll').isHidden());assert.deepEqual(errors,[]);
   console.log('PASS: individual folding unchanged; grouped task levels, sibling/project isolation, keyboard toggles, search, full bulk folding, source/report/metric isolation and mobile controls');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});

@@ -31,7 +31,7 @@ window.MyDayData=(()=>{
   }
   function flush(){api?.flush?.();window.NativeTodo?.flush()}
   function chain(record,byId){const out=[],seen=new Set();while(record&&!seen.has(record.id)){seen.add(record.id);out.unshift(record);record=byId.get(record.parentId)}return out}
-  function base(ref,raw,extra){return {key:key(ref),ref,title:raw.title||raw.name||'Sem título',source:ref.source,sourceLabel:{todo:'Todo novo',action:'Plano de ação',gantt:'Cronograma'}[ref.source],owner:'',audience:'mine',status:'',statusLabel:'',open:true,date:'',deadline:'',start:'',end:'',pct:null,priority:null,notes:raw.notes||'',link:null,path:'',context:'',pathIds:[],raw:clone(raw),flags:{},editableFields:[],...extra}}
+  function base(ref,raw,extra){return {key:key(ref),ref,title:raw.title||raw.name||'Sem título',source:ref.source,sourceLabel:{todo:'Task',action:'Plano de ação',gantt:'Cronograma'}[ref.source],owner:'',audience:'mine',status:'',statusLabel:'',open:true,date:'',deadline:'',start:'',end:'',pct:null,priority:null,notes:raw.notes||'',link:null,path:'',context:'',pathIds:[],raw:clone(raw),flags:{},editableFields:[],...extra}}
   function classify(row,day){
     const dates=[row.date,row.deadline].filter(Boolean),past=dates.filter(d=>d<day).sort(),future=dates.filter(d=>d>day&&d<=addDays(day,7)).sort();
     row.flags={today:dates.includes(day),overdue:past.length>0,upcoming:future.length>0,undated:dates.length===0,blocked:row.status==='blocked',starting:row.start===day,finishing:row.end===day,ongoing:!!(row.start&&row.end&&row.start<=day&&row.end>=day)};
@@ -77,7 +77,7 @@ window.MyDayData=(()=>{
         const statuses=[...todoStatuses];if(task.status&&!statuses.includes(task.status))statuses.unshift(task.status);
         rows.push(classify(base({source:'todo',id:String(task.id)},task,{path:task.project||'Sem projeto',context:task.project||'Sem projeto',date:effectiveDate(task),deadline:date(task.deadline),status:task.status||'Em Andamento',statusLabel:task.status||'Em Andamento',open:!['Concluída','Cancelada','Reserva'].includes(task.status),priority:task.priority??null,statusOptions:statuses.map(value=>({value,label:value})),editableFields:['title','date','deadline','status','priority','notes'],recurring:task.status==='Recorrente',nextOccurrence:nextRecurrence(task,day)}),day));
       }
-    }catch(e){errors.push('Todo novo: '+e.message)}
+    }catch(e){errors.push('Task: '+e.message)}
     rows.sort(compare);
     const work={today:[],overdue:[],upcoming:[],undated:[],blocked:[]},schedule={starting:[],finishing:[],ongoing:[],overdue:[]};
     for(const row of rows){

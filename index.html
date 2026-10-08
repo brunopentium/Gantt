@@ -150,16 +150,17 @@ input{font-family:inherit}
 .cp-reset:hover{background:var(--bg4)}
 
 #statusbar{display:flex;align-items:center;justify-content:space-between;padding:1px 10px;background:var(--bg1);border-top:1px solid var(--border);font-size:10px;color:var(--text3);height:20px;flex-shrink:0}
+#appTabs button[hidden]{display:none!important}
 </style>
 <link rel="stylesheet" href="action-plans.css?v=20261007-live-status-flag">
 <link rel="stylesheet" href="schedule-groups.css?v=20261007-task-folding">
 <link rel="stylesheet" href="gantt-mobile.css?v=20261007-mobile-navigation">
 <link rel="stylesheet" href="todo-native.css?v=20261008-integrated-todo">
-<link rel="stylesheet" href="my-day.css?v=20261008-my-day">
+<link rel="stylesheet" href="my-day.css?v=20261008-english-navigation">
 </head>
 <body>
 <div id="app">
-<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabTodo" aria-controls="todoPanel" class="act" role="tab" aria-selected="true">✅ Todo</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">✅ Todo novo</button><button id="tabMyDay" aria-controls="myDayPanel" role="tab" aria-selected="false">☀ Meu dia</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button></nav>
+<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabMyDay" aria-controls="myDayPanel" class="act" role="tab" aria-selected="true">☀ Meu dia</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">Task</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button><button id="tabTodo" aria-controls="todoPanel" role="tab" aria-selected="false" hidden>✅ Todo</button></nav>
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
   <div class="tsep"></div>
@@ -169,13 +170,13 @@ input{font-family:inherit}
   <button id="btnDupProj">⧉</button>
   <button id="btnRenProj">✎</button>
   <button id="btnDelProj" class="del">✕</button>
-  <button id="btnCloudSave">💾 Salvar</button>
-  <button id="btnCloudHistory">Histórico</button>
-  <button id="btnBackupAll">📥 Backup local</button>
+  <button id="btnCloudSave">💾 Save</button>
+  <button id="btnCloudHistory">History</button>
+  <button id="btnBackupAll">📥 Local backup</button>
   <button id="btnCloudBackup">☁ GitHub</button>
   <span id="cloudBackupStatus" role="status" aria-live="polite" style="font-size:10px;max-width:260px"></span>
   <div class="tsep"></div>
-  <button id="btnActionFromTask" data-schedule-edit>＋ Plano / ação vinculada</button>
+  <button id="btnActionFromTask" data-schedule-edit>＋ Linked plan / action</button>
   <button id="btnAdd" data-schedule-edit>＋ Task</button>
   <button id="btnMile" data-schedule-edit>◆ Mile</button>
   <button id="btnDel" data-schedule-edit class="del">✕ Del</button>
@@ -200,11 +201,11 @@ input{font-family:inherit}
   <button id="btnPDF">🖨 PDF</button>
 </div>
 <div id="scheduleHierarchyBar"></div>
-<div id="scheduleMobileNav" aria-label="Navegação do cronograma no celular">
-  <button id="mobileShowTable" type="button">Tabela</button><button id="mobileShowGantt" type="button">Barras</button>
-  <span>Arraste para os lados. Use dois dedos para ampliar.</span>
+<div id="scheduleMobileNav" aria-label="Mobile schedule navigation">
+  <button id="mobileShowTable" type="button">Table</button><button id="mobileShowGantt" type="button">Bars</button>
+  <span>Swipe sideways. Pinch with two fingers to zoom.</span>
 </div>
-<section id="scheduleAggregate" hidden aria-label="Análise consolidada dos cronogramas"></section>
+<section id="scheduleAggregate" hidden aria-label="Consolidated schedule analysis"></section>
 <div id="main">
   <div id="tpanel">
     <div id="thead"></div>
@@ -217,12 +218,12 @@ input{font-family:inherit}
   </div>
 </div>
 <div id="actionToolbar" hidden>
-  <button id="apCloudSave">💾 Salvar</button><button id="apCloudHistory">Histórico</button><button id="apCloudSettings">☁ GitHub</button><button id="apBackup">📥 Backup dos planos</button>
-  <span class="tsep"></span><button id="apExport">📤 Exportar JSON</button><button id="apImport">📥 Importar JSON</button><button id="apExcel">Excel</button><button id="apPDF">🖨 PDF</button>
-  <span class="tsep"></span><button id="apUndo">↩ Desfazer</button><button id="apTheme">Tema</button><button id="apToggleNotes">Observações: sim</button><button id="apZoomIn">＋Z</button><button id="apZoomOut">－Z</button>
+  <button id="apCloudSave">💾 Save</button><button id="apCloudHistory">History</button><button id="apCloudSettings">☁ GitHub</button><button id="apBackup">📥 Plans backup</button>
+  <span class="tsep"></span><button id="apExport">📤 Export JSON</button><button id="apImport">📥 Import JSON</button><button id="apExcel">Excel</button><button id="apPDF">🖨 PDF</button>
+  <span class="tsep"></span><button id="apUndo">↩ Undo</button><button id="apTheme">Theme</button><button id="apToggleNotes">Notes: on</button><button id="apZoomIn">＋Z</button><button id="apZoomOut">－Z</button>
   <span id="apCloudStatus" role="status" aria-live="polite"></span>
 </div>
-<section id="actionPanel" hidden aria-label="Planos de ação"></section>
+<section id="actionPanel" hidden aria-label="Action plans"></section>
 <section id="todoPanel" hidden aria-label="Todo List">
   <div class="todo-header"><span>Todo List · Google Apps Script</span><a href="https://script.google.com/macros/s/AKfycbxz130g31jZd9no5MiH97NvhChrM9W5gUBubJfseSp_Ke_y0RHe8KR7TP6I3p5FnAVL/exec" target="_blank" rel="noopener noreferrer">Abrir em outra aba ↗</a></div>
   <iframe id="todoFrame" title="Todo List — TaskMaster" data-src="https://script.google.com/macros/s/AKfycbxz130g31jZd9no5MiH97NvhChrM9W5gUBubJfseSp_Ke_y0RHe8KR7TP6I3p5FnAVL/exec" allow="fullscreen"></iframe>
@@ -232,26 +233,27 @@ input{font-family:inherit}
   <span class="tsep"></span><button id="ntBackupAll">📥 Backup geral</button><button id="ntRestoreAll">📤 Restaurar geral</button>
   <span id="ntCloudStatus" role="status" aria-live="polite"></span>
 </div>
-<section id="todoNativePanel" hidden aria-label="Todo novo integrado">
-  <iframe id="todoNativeFrame" title="TaskMaster — Todo novo integrado" data-src="todo-native/index.html?v=20261008-my-day"></iframe>
+<section id="todoNativePanel" hidden aria-label="Task integrado">
+  <iframe id="todoNativeFrame" title="Task — TaskMaster integrado" data-src="todo-native/index.html?v=20261008-my-day"></iframe>
 </section>
 <section id="myDayPanel" hidden role="tabpanel" aria-labelledby="tabMyDay"></section>
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
-<script src="action-plans.js?v=20261008-my-day"></script>
-<script src="schedule-groups.js?v=20261007-filtered-pdf"></script>
-<script src="plan-exports.js?v=20261007-live-status-flag"></script>
-<script src="plan-cloud.js?v=20261007-plan-document"></script>
-<script src="github-backup.js?v=20261007-groups"></script>
-<script src="gantt-print.js?v=20261007-filtered-pdf"></script>
-<script src="plan-print.js?v=20261007-filtered-pdf"></script>
+<script src="action-plans.js?v=20261008-english-navigation"></script>
+<script src="schedule-groups.js?v=20261008-english-navigation"></script>
+<script src="plan-exports.js?v=20261008-english-navigation"></script>
+<script src="plan-cloud.js?v=20261008-english-navigation"></script>
+<script src="github-backup.js?v=20261008-english-navigation"></script>
+<script src="gantt-print.js?v=20261008-english-navigation"></script>
+<script src="plan-print.js?v=20261008-english-navigation"></script>
 <script src="gantt-mobile.js?v=20261007-mobile-navigation"></script>
 <script src="todo-native.js?v=20261008-my-day"></script>
-<script src="todo-cloud.js?v=20261008-my-day"></script>
+<script src="todo-cloud.js?v=20261008-english-navigation"></script>
 <script src="workspace-backup.js?v=20261008-integrated-todo"></script>
-<script src="my-day-data.js?v=20261008-my-day"></script>
-<script src="my-day.js?v=20261008-my-day"></script>
+<script src="my-day-data.js?v=20261008-english-navigation"></script>
+<script src="my-day.js?v=20261008-english-navigation"></script>
+<script src="app-navigation.js?v=20261008-english-navigation"></script>
 <script>
 // ========== STATE ==========
 let T=[], sel=new Set(), lastSel=null, undo=[], fmt={}, cpOn=false, labelsOn=true, statusOn=false, theme='dark', res='weeks', cw=36;
@@ -730,7 +732,7 @@ function showTaskCtx(x,y,tid){
   closePopups();
   let ov=document.createElement('div');ov.className='popup-overlay';document.body.appendChild(ov);
   let m=document.createElement('div');m.className='ctx-menu';
-  m.innerHTML=`<div class="ctx-item" data-a="rbg">🎨 Row Background</div><div class="ctx-item" data-a="rfc">🖊 Row Font Color</div><div class="ctx-item" data-a="rbold">𝐁 Toggle Row Bold</div><div class="ctx-sep"></div><div class="ctx-item" data-a="action">＋ Plano / ação vinculada</div><div class="ctx-item" data-a="add">＋ Add Task</div><div class="ctx-item" data-a="mile">◆ Add Milestone</div><div class="ctx-sep"></div><div class="ctx-item" data-a="in">→ Indent</div><div class="ctx-item" data-a="out">← Outdent</div><div class="ctx-sep"></div><div class="ctx-item red" data-a="del">✕ Delete</div>`;
+  m.innerHTML=`<div class="ctx-item" data-a="rbg">🎨 Row Background</div><div class="ctx-item" data-a="rfc">🖊 Row Font Color</div><div class="ctx-item" data-a="rbold">𝐁 Toggle Row Bold</div><div class="ctx-sep"></div><div class="ctx-item" data-a="action">＋ Linked plan / action</div><div class="ctx-item" data-a="add">＋ Add Task</div><div class="ctx-item" data-a="mile">◆ Add Milestone</div><div class="ctx-sep"></div><div class="ctx-item" data-a="in">→ Indent</div><div class="ctx-item" data-a="out">← Outdent</div><div class="ctx-sep"></div><div class="ctx-item red" data-a="del">✕ Delete</div>`;
   m.style.left=Math.min(x,window.innerWidth-210)+'px';m.style.top=Math.min(y,window.innerHeight-300)+'px';
   document.body.appendChild(m);
   m.addEventListener('click',function(e2){let it=e2.target.closest('.ctx-item');if(!it)return;let a=it.dataset.a;
@@ -886,7 +888,7 @@ function showPdfModal(){
   let ov=document.createElement('div');ov.className='popup-overlay';document.body.appendChild(ov);
   let m=document.createElement('div');m.className='modal';
   const taskCount=window.ScheduleGroups?.isAggregate()?window.ScheduleGroups.pdfTasks().length:visible().length;
-  m.innerHTML=`<h3>Imprimir / salvar PDF</h3><p>A visão atual do cronograma: níveis recolhidos permanecem recolhidos e os filtros da visão agrupada são respeitados. Tabela e barras usam a mesma escala.</p><label style="display:block;margin:12px 0">Orientação do relatório<select id="pdfOrientation" style="display:block;width:100%;margin-top:6px;padding:8px"><option value="landscape">Paisagem</option><option value="portrait">Retrato</option></select></label><label style="display:block;margin:12px 0">Páginas na altura<input id="pdfPages" type="number" min="1" max="50" value="${Math.max(1,Math.min(50,Math.ceil(taskCount/32)))}" style="margin-top:6px"></label><p>1 página na largura × o número escolhido na altura. Mais páginas deixam as linhas maiores. Na janela de impressão, escolha a mesma orientação para aproveitar melhor o papel.</p><div class="modal-actions"><button data-a="cancel">Cancelar</button><button class="act" data-a="ok">Imprimir / PDF</button></div>`;
+  m.innerHTML=`<h3>Print / save PDF</h3><p>The current schedule view is used: collapsed levels stay collapsed and grouped-view filters are respected. The table and bars share the same scale.</p><label style="display:block;margin:12px 0">Report orientation<select id="pdfOrientation" style="display:block;width:100%;margin-top:6px;padding:8px"><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select></label><label style="display:block;margin:12px 0">Vertical pages<input id="pdfPages" type="number" min="1" max="50" value="${Math.max(1,Math.min(50,Math.ceil(taskCount/32)))}" style="margin-top:6px"></label><p>One page wide × the chosen number of vertical pages. More pages make the rows larger. Choose the same orientation in the print dialog to use the page space effectively.</p><div class="modal-actions"><button data-a="cancel">Cancel</button><button class="act" data-a="ok">Print / PDF</button></div>`;
   document.body.appendChild(m);
   let inp=m.querySelector('input');
   function ok(){const options=GanttPrint.settings({pages:inp.value,orientation:m.querySelector('#pdfOrientation').value});closePopups();exportPDF(options)}
@@ -1199,7 +1201,7 @@ function printCellStyle(t,cid){
 }
 function buildPDFHTML(options){
   const rng=dateRange(),tw=Math.max(totalW(rng),1),days=Math.max(1,daysBtw(rng.mn,rng.mx));
-  const printDate=d=>d?d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'';
+  const printDate=d=>d?d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
   return GanttPrint.build({
     title:cleanTitle(document.getElementById('ptitle').value),start:fdi(rng.mn),end:fdi(rng.mx),days,
     today:d2x(today(),rng)/tw,status:statusOn,labels:labelsOn,format:fmt,
@@ -1349,7 +1351,7 @@ function importProjectFile(d){
     },'Import');return;
   }
   if(d.tasks&&Array.isArray(d.tasks)){
-    if(window.ScheduleGroups?.isAggregate()){alert('Selecione um cronograma individual para importar tarefas. Para importar uma árvore, use um backup com cronogramas.');return}
+    if(window.ScheduleGroups?.isAggregate()){alert('Select an individual schedule to import tasks. To import a hierarchy, use a schedules backup.');return}
     document.getElementById('ptitle').value=cleanTitle(d.title||document.getElementById('ptitle').value);
     T=d.tasks.map(t=>taskIn({...t}));fmt=d.fmt||{};
     if(d.view){res=d.view.res||res;cw=d.view.cw||cw;cpOn=!!d.view.cpOn;labelsOn=d.view.labelsOn!==false;statusOn=!!d.view.statusOn;theme=d.view.theme==='light'?'light':'dark'}else{if(d.res)res=d.res;if(d.cw)cw=d.cw}
@@ -1406,15 +1408,15 @@ function actionTask(projectId,taskId){
   return {projectTitle:p.title,taskName:t.name,start:fdi(pd(t.start)),end:fdi(pd(t.end)),summary,pred:t.pred||'',mile:!!t.mile};
 }
 function updateActionTask(projectId,taskId,dates){
-  const p=projects.find(p=>p.id===projectId);if(!p)throw new Error('Cronograma não encontrado');
+  const p=projects.find(p=>p.id===projectId);if(!p)throw new Error('Schedule not found');
   const coveredTicket=window.GanttBackup?.planEditStart();
   const previous=T,active=projectId===activeProjectId;
   if(!active){T=p.tasks.map(t=>taskIn({...t}));compWBS();schedule()}
   try{
-    const t=T.find(t=>t.id===taskId);if(!t)throw new Error('Tarefa não encontrada');
-    if(isSummary(t))throw new Error('As datas desta linha são calculadas a partir das subtarefas.');
-    if(t.pred&&dates.start!==fdi(t.start))throw new Error('O início desta tarefa é calculado pelas dependências.');
-    if(!dates.start||!dates.end||dates.end<dates.start)throw new Error('Informe início e término válidos.');
+    const t=T.find(t=>t.id===taskId);if(!t)throw new Error('Task not found');
+    if(isSummary(t))throw new Error('Dates for this row are calculated from its subtasks.');
+    if(t.pred&&dates.start!==fdi(t.start))throw new Error('This task’s start date is calculated from its dependencies.');
+    if(!dates.start||!dates.end||dates.end<dates.start)throw new Error('Enter valid start and end dates.');
     if(active)snap();
     t.start=pd(dates.start);t.end=pd(dates.end);
     t.dur=t.mile?0:durBtw(t.start,t.end,t.unit);
@@ -1557,8 +1559,9 @@ window.MyDay.init(window.MyDayData,{
   },
   status:source=>document.getElementById({todo:'ntCloudStatus',action:'apCloudStatus',gantt:'cloudBackupStatus'}[source])?.textContent||''
 });
-// Always open the Todo view when the app starts.
-document.getElementById('tabTodo').click();
+window.AppNavigation.init();
+// Meu dia is always the first view, including when the legacy Todo is enabled.
+document.getElementById('tabMyDay').click();
 </script>
 </body>
 </html>

@@ -33,7 +33,7 @@ const assert=require('node:assert/strict');
  await page.click('#apAddAction');await page.selectOption('#apLinkProject','p2');await page.selectOption('#apLinkTask','mile');await page.fill('#apStart','2026-10-19');await page.locator('#apOwner').focus();await page.locator('.ap-modal button[type=submit]').click();
  assert.equal(await page.evaluate(()=>projects.find(p=>p.id==='p2').tasks[2].end),'2026-10-19');
  // Invalid date ranges leave both the plan and the Gantt unchanged.
- await page.click('#apAddAction');await page.fill('#apActionTitle','Inválida');await page.fill('#apStart','2026-10-20');await page.fill('#apEnd','2026-10-10');await page.locator('.ap-modal button[type=submit]').click();assert((await page.locator('#apError').innerText()).includes('posterior'));await page.click('#apCancel');
+ await page.click('#apAddAction');await page.fill('#apActionTitle','Inválida');await page.fill('#apStart','2026-10-20');await page.fill('#apEnd','2026-10-10');await page.locator('.ap-modal button[type=submit]').click();assert((await page.locator('#apError').innerText()).includes('on or after the start date'));await page.click('#apCancel');
  assert.equal(await page.locator('.ap-card').count(),6);
  // Native Tab/Enter in the action view do not trigger the Gantt shortcuts.
  const count=await page.evaluate(()=>T.length);await page.click('#apAddAction');await page.fill('#apActionTitle','Ação por teclado');await page.locator('#apActionTitle').press('Tab');await page.locator('#apOwner').press('Enter');assert.equal(await page.evaluate(()=>T.length),count);
@@ -42,7 +42,7 @@ const assert=require('node:assert/strict');
  // Unlink freezes the current dates and allows independent scheduling.
  await page.locator('[data-edit]').first().click();await page.selectOption('#apLinkProject','');await page.fill('#apStart','2026-11-02');await page.fill('#apEnd','2026-11-03');await page.locator('.ap-modal button[type=submit]').click();assert.equal(await page.evaluate(()=>fdi(T.find(t=>t.id==='child').start)),'2026-10-26');
  // Missing tasks preserve the action and its last dates.
- await page.click('#tabGantt');await page.evaluate(()=>{projects.find(p=>p.id==='p2').tasks=projects.find(p=>p.id==='p2').tasks.filter(t=>t.id!=='mile');save();render()});await page.click('#tabActions');assert((await page.locator('.ap-table').innerText()).includes('Vínculo indisponível'));assert((await page.locator('.ap-table').innerText()).includes('19/10/2026'));
+ await page.click('#tabGantt');await page.evaluate(()=>{projects.find(p=>p.id==='p2').tasks=projects.find(p=>p.id==='p2').tasks.filter(t=>t.id!=='mile');save();render()});await page.click('#tabActions');assert((await page.locator('.ap-table').innerText()).includes('Link unavailable'));assert((await page.locator('.ap-table').innerText()).includes('19/10/2026'));
  // Reload persists all plans and actions.
  const before=await page.evaluate(()=>ActionPlans.exportData());await page.reload();await page.click('#tabActions');assert.deepEqual(await page.evaluate(()=>ActionPlans.exportData()),before);
  // Create a second independent plan, rename it, delete one action without deleting a task.

@@ -7,8 +7,8 @@ const assert=require('node:assert/strict');
   page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
   await page.route('https://script.google.com/**',r=>r.abort());
   await page.goto('http://127.0.0.1:8765');
-  assert.equal(await page.evaluate(()=>document.documentElement.dataset.appView),'todo');
-  assert.deepEqual(await page.locator('#appTabs button').allTextContents(),['✅ Todo','✅ Todo novo','☀ Meu dia','Planos de ação','Cronogramas']);
+  assert.equal(await page.evaluate(()=>document.documentElement.dataset.appView),'my-day');
+  assert.deepEqual(await page.locator('#appTabs button:visible').allTextContents(),['☀ Meu dia','Task','Planos de ação','Cronogramas']);
   await page.evaluate(()=>{
    const a=(title,status='pending')=>({id:'same-id',title,owner:'Bruno',start:'2026-10-05',end:'2026-10-30',status,notes:'',link:null});
    ActionPlans.load([
@@ -20,7 +20,7 @@ const assert=require('node:assert/strict');
    ]);save();
   });await page.click('#tabActions');
   const rows=()=>page.locator('.ap-table tbody tr');
-  assert.equal(await rows().count(),4);assert((await page.locator('.ap-tools').innerText()).includes('4 ações · 1 concluídas'));
+  assert.equal(await rows().count(),4);assert((await page.locator('.ap-tools').innerText()).includes('4 of 4 actions · 1 completed'));
   // Hover reveals each next level, and a click selects exactly that branch.
   await page.locator('.ap-tree-picker summary').click();
   await page.locator('.ap-tree-menu [data-select-plan="grand"]').hover();

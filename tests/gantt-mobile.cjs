@@ -123,7 +123,7 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     // The scrolling changes are scoped to the schedule view, not the other tabs.
     await page.click('#tabActions');assert(await page.locator('#scheduleMobileNav').isHidden());
     assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).overflow),'hidden');
-    await page.click('#tabTodo');assert(await page.locator('#scheduleMobileNav').isHidden());
+    await page.click('#tabTodoNative');assert(await page.locator('#scheduleMobileNav').isHidden());
     await page.click('#tabGantt');assert(await page.locator('#scheduleMobileNav').isVisible());
 
     const desktop=await open({viewport:{width:1320,height:900}});

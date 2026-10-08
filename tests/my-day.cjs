@@ -67,7 +67,7 @@ const schedules=[
     await page.route('https://script.google.com/**',r=>r.abort());
     await page.addInitScript(data=>{if(window!==window.top)return;if(!localStorage.getItem('pf_todo_v1'))localStorage.setItem('pf_todo_v1',JSON.stringify(data))},todo);
     await page.goto(url);
-    assert.equal(await page.locator('#tabTodo').getAttribute('aria-selected'),'true');
+    assert.equal(await page.locator('#tabMyDay').getAttribute('aria-selected'),'true');
     const originalGoogle=await page.locator('#todoFrame').getAttribute('src');
     await page.evaluate(data=>{
       projects=data.schedules.map(normalizeProject);loadProject('one',true);
@@ -324,9 +324,8 @@ const schedules=[
       return route.fulfill({json:{sha:shas[file],content:Buffer.from(JSON.stringify(files[file])).toString('base64')}});
     });
     await cloud.goto(url);await cloud.waitForFunction(()=>!document.getElementById('app').inert);
-    assert(!gets.includes('todo.json'),'Old default Todo does not start the new native cloud scope');
-    await cloud.click('#tabMyDay');
     await cloud.waitForFunction(()=>document.getElementById('ntCloudStatus').textContent.includes('Última versão do Todo aberta'));
+    assert(gets.includes('todo.json'),'The default Meu dia must load the native Task cloud scope without switching tabs');
     await cloud.locator('#mdDate').fill(reference);await cloud.locator('#mdDate').dispatchEvent('change');
     assert.equal(puts.length,0);
     const cloudItem=cloud.locator('[data-my-day-item][data-source="todo"]').filter({hasText:'ASSUNTO COM MESMO NOME'}).first();

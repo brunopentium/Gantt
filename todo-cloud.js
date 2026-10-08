@@ -82,7 +82,7 @@ window.TodoCloud=(()=>{
       await repository();closePopups();closeEditor();
       const overlay=document.createElement('div');overlay.className='popup-overlay';
       const modal=document.createElement('div');modal.className='modal ap-modal';
-      modal.innerHTML='<h3>Histórico do Todo novo</h3><p>Restaurar cria uma nova versão e mantém as versões anteriores.</p><div id="ntVersions" style="max-height:45vh;overflow:auto"></div><div class="modal-actions"><button id="ntMoreVersions">Mais versões</button><button id="ntCloseVersions">Fechar</button></div>';
+      modal.innerHTML='<h3>Histórico do Task</h3><p>Restaurar cria uma nova versão e mantém as versões anteriores.</p><div id="ntVersions" style="max-height:45vh;overflow:auto"></div><div class="modal-actions"><button id="ntMoreVersions">Mais versões</button><button id="ntCloseVersions">Fechar</button></div>';
       document.body.append(overlay,modal);let page=1;
       const list=modal.querySelector('#ntVersions'),more=modal.querySelector('#ntMoreVersions');
       async function addPage(){
@@ -106,7 +106,7 @@ window.TodoCloud=(()=>{
     if(busy)return;closePopups();closeEditor();const c=connection();
     const overlay=document.createElement('div');overlay.className='popup-overlay';
     const modal=document.createElement('div');modal.className='modal ap-modal';
-    modal.innerHTML='<h3>GitHub do Todo novo</h3><p>O Todo tem salvamento e histórico próprios. Use o mesmo repositório privado e token dos cronogramas e planos.</p><label>Repositório<input id="ntRepo" autocomplete="off"></label><label>Token<input id="ntToken" type="password" autocomplete="off"></label><label><input id="ntRemember" type="checkbox" style="display:inline;width:auto"> Lembrar no navegador pessoal</label><div class="modal-actions"><button id="ntDisconnect">Desconectar Todo</button><button id="ntCancelCloud">Fechar</button><button class="act" id="ntConnect">Conectar / abrir última versão</button></div>';
+    modal.innerHTML='<h3>GitHub do Task</h3><p>O Todo tem salvamento e histórico próprios. Use o mesmo repositório privado e token dos cronogramas e planos.</p><label>Repositório<input id="ntRepo" autocomplete="off"></label><label>Token<input id="ntToken" type="password" autocomplete="off"></label><label><input id="ntRemember" type="checkbox" style="display:inline;width:auto"> Lembrar no navegador pessoal</label><div class="modal-actions"><button id="ntDisconnect">Desconectar Todo</button><button id="ntCancelCloud">Fechar</button><button class="act" id="ntConnect">Conectar / abrir última versão</button></div>';
     document.body.append(overlay,modal);const field=id=>modal.querySelector('#'+id);
     field('ntRepo').value=c.repo||'';field('ntToken').value=c.token||'';field('ntRemember').checked=!!localStorage.getItem(TOKEN);
     field('ntConnect').onclick=()=>{
