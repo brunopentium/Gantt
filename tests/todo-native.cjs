@@ -15,7 +15,7 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     await page.route('https://script.google.com/**',r=>r.abort());
     await page.addInitScript(data=>{if(window===window.top && !localStorage.getItem('pf_todo_v1'))localStorage.setItem('pf_todo_v1',JSON.stringify(data))},fixture);
     page.on('request',r=>{if(!r.url().startsWith(new URL(url).origin)&&!r.url().includes('script.google.com'))external.push(r.url())});
-    await page.goto(url);assert.equal(await page.locator('#appTabs button:visible').allTextContents().then(a=>a.join('|')),'☀ Meu dia|Task|Planos de ação|Cronogramas');
+    await page.goto(url);assert.equal(await page.locator('#appTabs button:visible').allTextContents().then(a=>a.join('|')),'☀ Meu dia|Tarefas|Planos de ação|Cronogramas');
     assert.equal(await page.locator('#tabMyDay').getAttribute('aria-selected'),'true');
     assert(await page.locator('#tabTodo').isHidden());assert.equal(await page.locator('#todoFrame').getAttribute('src'),null);
     const originalUrl=await page.locator('#todoFrame').getAttribute('data-src');assert(originalUrl.includes('script.google.com'));

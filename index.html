@@ -161,7 +161,7 @@ input{font-family:inherit}
 </head>
 <body>
 <div id="app">
-<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabMyDay" aria-controls="myDayPanel" class="act" role="tab" aria-selected="true">☀ Meu dia</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">Task</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button><button id="tabTodo" aria-controls="todoPanel" role="tab" aria-selected="false" hidden>✅ Todo</button></nav>
+<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabMyDay" aria-controls="myDayPanel" class="act" role="tab" aria-selected="true">☀ Meu dia</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">Tarefas</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button><button id="tabTodo" aria-controls="todoPanel" role="tab" aria-selected="false" hidden>✅ Todo</button></nav>
 <div class="workspace-save-bar" aria-label="Salvamento e recuperação"><label><input id="autosaveToggle" type="checkbox" checked> Salvar automaticamente</label><span id="autosaveStatus" role="status" aria-live="polite">Abrindo dados…</span><button id="autosaveResolve" type="button" hidden>Resolver sincronização</button><button id="autosaveCheckpoint" type="button">Criar ponto de restauração</button><button id="autosaveRecovery" type="button">Restaurações</button></div>
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
@@ -235,8 +235,8 @@ input{font-family:inherit}
   <span class="tsep"></span><button id="ntBackupAll">📥 Backup geral</button><button id="ntRestoreAll">📤 Restaurar geral</button>
   <span id="ntCloudStatus" role="status" aria-live="polite"></span>
 </div>
-<section id="todoNativePanel" hidden aria-label="Task integrado">
-  <iframe id="todoNativeFrame" title="Task — TaskMaster integrado" data-src="todo-native/index.html?v=20261009-date-picker"></iframe>
+<section id="todoNativePanel" hidden aria-label="Tarefas">
+  <iframe id="todoNativeFrame" title="Tarefas — TaskMaster integrado" data-src="todo-native/index.html?v=20261009-date-picker"></iframe>
 </section>
 <section id="myDayPanel" hidden role="tabpanel" aria-labelledby="tabMyDay"></section>
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>

@@ -25,7 +25,7 @@ function entries(bytes){
     await page.route('https://script.google.com/**',r=>{legacyRequests++;return r.abort()});
     await page.goto(url);
     const tabs=()=>page.locator('#appTabs [role=tab]:visible');
-    assert.deepEqual(await tabs().allTextContents(),['☀ Meu dia','Task','Planos de ação','Cronogramas']);
+    assert.deepEqual(await tabs().allTextContents(),['☀ Meu dia','Tarefas','Planos de ação','Cronogramas']);
     assert.equal(await page.evaluate(()=>document.documentElement.dataset.appView),'my-day');
     assert.equal(await page.locator('#tabMyDay').getAttribute('aria-selected'),'true');
     assert(await page.locator('#myDayPanel').isVisible());assert(await page.locator('#tabTodo').isHidden());
@@ -53,7 +53,7 @@ function entries(bytes){
     await page.click('#tabGantt');await page.reload();
     assert.equal(await page.locator('#tabMyDay').getAttribute('aria-selected'),'true','Reloading starts on Meu dia even after visiting another tab');
     assert.equal(await page.locator('#todoFrame').getAttribute('src'),null);assert.equal(legacyRequests,1);
-    assert.deepEqual(await tabs().allTextContents(),['☀ Meu dia','Task','Planos de ação','Cronogramas']);
+    assert.deepEqual(await tabs().allTextContents(),['☀ Meu dia','Tarefas','Planos de ação','Cronogramas']);
 
     const plan={id:'language-plan',title:'Plano de ação em português',description:'Descrição preservada, sem tradução.',document:{participants:['João Pereira'],agenda:'Pauta do usuário',notes:'Notas do usuário'},actions:statuses.map((status,i)=>({id:'a'+i,title:'Ação do usuário '+i,owner:'Bruno Souza',start:'2026-10-05',end:'2026-10-09',status,notes:'Observação em português',link:i===0?{projectId:'language-schedule',taskId:'leaf'}:null}))};
     await page.evaluate(p=>{
