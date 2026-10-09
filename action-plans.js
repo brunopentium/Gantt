@@ -100,8 +100,9 @@ window.ActionPlans=(()=>{
     api.flush();sync();
     const p=plans.find(p=>p.id===planId),a=p?.actions.find(a=>a.id===actionId);
     if(!a)throw new Error('This action is no longer available in this plan.');
-    const allowed=['title','owner','start','end','status','notes'];
+    const allowed=['title','owner','start','end','status','notes','myDay'];
     if(!patch||typeof patch!=='object'||Array.isArray(patch)||Object.keys(patch).some(k=>!allowed.includes(k)))throw new Error('Invalid action change.');
+    if(Object.hasOwn(patch,'myDay'))window.MyDayData.validateDaily(patch.myDay);
     const updated={...a,...patch};
     for(const k of ['title','owner','notes'])if(Object.hasOwn(patch,k)){if(typeof patch[k]!=='string')throw new Error('Invalid action text.');updated[k]=patch[k].trim()}
     if(!updated.title)throw new Error('Enter the action name.');

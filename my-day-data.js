@@ -112,12 +112,13 @@ window.MyDayData=(()=>{
   function update(ref,patch){
     if(!ref||!['todo','action','gantt'].includes(ref.source))throw new Error('Origem do item inválida.');
     if(!patch||typeof patch!=='object'||Array.isArray(patch))throw new Error('Alteração inválida.');
+    if(Object.hasOwn(patch,'myDay'))validateDaily(patch.myDay);
     flush();
     if(ref.source==='action')window.ActionPlans.updateAction(ref.planId,String(ref.id),patch);
     else if(ref.source==='gantt'){
       const changes={...patch};if(Object.hasOwn(changes,'title')){changes.name=changes.title;delete changes.title}api.updateTask(ref.projectId,String(ref.id),changes);
     }else{
-      const allowed=['title','date','deadline','status','priority','notes'];if(Object.keys(patch).some(k=>!allowed.includes(k)))throw new Error('Campo de tarefa inválido.');
+      const allowed=['title','date','deadline','status','priority','notes','myDay'];if(Object.keys(patch).some(k=>!allowed.includes(k)))throw new Error('Campo de tarefa inválido.');
       const data=window.NativeTodo.data(),task=data.tasks.find(t=>String(t.id)===String(ref.id));if(!task)throw new Error('A tarefa não está mais disponível.');
       const updated={...task,...patch};
       for(const field of ['title','notes'])if(Object.hasOwn(patch,field)){if(typeof patch[field]!=='string')throw new Error('Texto inválido no Todo.');updated[field]=field==='title'?patch[field].trim():patch[field]}
@@ -130,6 +131,19 @@ window.MyDayData=(()=>{
       window.NativeTodo.validate(data);window.NativeTodo.restoreData(data);
     }
     notify();return find(ref);
+  }
+  function validateDaily(value){
+    if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length>30)throw new Error('Avaliação diária inválida.');
+    for(const [day,entry] of Object.entries(value)){
+      if(!validDate(day)||!entry||typeof entry!=='object'||Array.isArray(entry)||Object.keys(entry).some(k=>!['priority','difficulty','order','handled'].includes(k)))throw new Error('Avaliação diária inválida.');
+      for(const field of ['priority','difficulty'])if(entry[field]!=null&&(!Number.isInteger(entry[field])||entry[field]<1||entry[field]>5))throw new Error('Use notas de 1 a 5.');
+      if(entry.order!=null&&(!Number.isInteger(entry.order)||entry.order<1||entry.order>99999))throw new Error('A ordem deve ser um número inteiro entre 1 e 99999.');
+      if(entry.handled!=null&&typeof entry.handled!=='boolean')throw new Error('Foco diário inválido.');
+    }
+  }
+  function dailyPatch(item,day,changes){
+    const entries={...(item.raw?.myDay||{}),[day]:{...(item.raw?.myDay?.[day]||{}),...changes}};
+    const result=Object.fromEntries(Object.keys(entries).filter(d=>d!==day).sort().slice(-29).concat(day).sort().map(d=>[d,entries[d]]));validateDaily(result);return {myDay:result};
   }
   function complete(ref){flush();const row=find(ref);if(!row)throw new Error('O item não está mais disponível.');if(row.recurring)throw new Error('Use Avançar para registrar a próxima ocorrência desta tarefa recorrente.');return update(ref,ref.source==='todo'?{status:'Concluída'}:ref.source==='action'?{status:'done'}:{pct:100})}
   function advance(ref){
@@ -144,5 +158,6 @@ window.MyDayData=(()=>{
     }
   }
   return {init,read,flush,update,complete,advance,open,key,today,effectiveDate,nextRecurrence,audience,
+    validateDaily,dailyPatch,
     subscribe:listener=>{listeners.add(listener);return ()=>listeners.delete(listener)}};
 })();

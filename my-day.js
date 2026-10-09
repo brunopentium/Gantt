@@ -14,6 +14,33 @@ window.MyDay=(()=>{
   const scheduleLabels={starting:'Iniciando',finishing:'Finalizando',ongoing:'Previstas em andamento',overdue:'Com término atrasado'};
   let api,services={},panel,root,editor,settingsDialog,unsubscribe,day=localDate(),scope='today',source='all',search='',scheduleScope='',scheduleProject='',scheduleSearch='',schedulePage=0,shown=false,busy=false,notice='',noticeError=false,renderQueued=false,settings={aliases:['Bruno','Bruno Souza']},snapshot={rows:[],work:{},schedule:{}},retained=new Map(),editing=null,focusBefore=null,workPages={mine:0,followup:0,unassigned:0};
   try{const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'null');if(saved?.aliases?.length&&saved.aliases.every(x=>typeof x==='string'))settings.aliases=saved.aliases}catch(_){/* Defaults also work when storage is unavailable. */}
+  const ORDER_KEY='pf_my_day_order_v1';
+  let ordering={automatic:true,first:'priority',hardFirst:false},focusKey='',ranks=new Map();
+  try{const saved=JSON.parse(localStorage.getItem(ORDER_KEY)||'null');if(saved)ordering={automatic:saved.automatic!==false,first:saved.first==='difficulty'?'difficulty':'priority',hardFirst:saved.hardFirst===true}}catch{}
+  function saveOrdering(){try{localStorage.setItem(ORDER_KEY,JSON.stringify(ordering))}catch(error){message('Não foi possível guardar a preferência de ordenação.',true)}}
+  const daily=row=>row.raw?.myDay?.[day]||{};
+  const eligible=row=>row.open!==false&&!daily(row).handled;
+  function ordered(list){
+    const baseOrder=new Map(list.map((row,i)=>[row.key,i]));
+    return [...list].sort((a,b)=>{
+      const active=Number(!eligible(a))-Number(!eligible(b));if(active)return active;
+      const x=daily(a),y=daily(b);
+      const priority=(x.priority||3)-(y.priority||3),difficulty=((x.difficulty||3)-(y.difficulty||3))*(ordering.hardFirst?-1:1);
+      const result=ordering.automatic?(ordering.first==='priority'?priority||difficulty:difficulty||priority):(x.order||Infinity)-(y.order||Infinity);
+      return (Number.isNaN(result)?0:result)||baseOrder.get(a.key)-baseOrder.get(b.key);
+    });
+  }
+  function dailyControls(row){
+    const value=daily(row),option=(number,label,selected)=>`<option value="${number}" ${selected===number?'selected':''}>${label}</option>`;
+    return `<div class="md-daily-rating"><span class="md-daily-position">${ranks.has(row.key)?`#${ranks.get(row.key)}`:'Fora do foco'}</span><label><span>Prioridade do dia</span><select data-md-rating="priority" data-key="${escape(row.key)}" aria-label="Prioridade do dia de ${escape(row.title)}">${[1,2,3,4,5].map(n=>option(n,`${n}${n===1?' · Alta':n===5?' · Baixa':''}`,value.priority||3)).join('')}</select></label><label><span>Dificuldade do dia</span><select data-md-rating="difficulty" data-key="${escape(row.key)}" aria-label="Dificuldade do dia de ${escape(row.title)}">${[1,2,3,4,5].map(n=>option(n,`${n}${n===1?' · Fácil':n===5?' · Difícil':''}`,value.difficulty||3)).join('')}</select></label>${!ordering.automatic?`<label><span>Ordem manual</span><input type="number" min="1" max="99999" step="1" data-md-rating="order" data-key="${escape(row.key)}" aria-label="Ordem manual de ${escape(row.title)}" value="${value.order||''}" placeholder="Sem ordem"></label>`:''}${value.handled&&row.open!==false?`<button class="md-text-button" data-md-refocus="${escape(row.key)}">Voltar à fila</button>`:''}</div>`;
+  }
+  function orderControls(){return `<div class="md-ordering"><label class="md-order-toggle"><input id="mdAutomaticOrder" type="checkbox" ${ordering.automatic?'checked':''}><span>Ordenar automaticamente</span></label><label><span>Primeiro critério</span><select id="mdOrderFirst" ${!ordering.automatic?'disabled':''}><option value="priority" ${ordering.first==='priority'?'selected':''}>Prioridade → dificuldade</option><option value="difficulty" ${ordering.first==='difficulty'?'selected':''}>Dificuldade → prioridade</option></select></label><label><span>Dificuldade</span><select id="mdHardFirst" ${!ordering.automatic?'disabled':''}><option value="easy" ${!ordering.hardFirst?'selected':''}>Fáceis primeiro</option><option value="hard" ${ordering.hardFirst?'selected':''}>Difíceis primeiro</option></select></label><p>${ordering.automatic?'Notas de 1 a 5; prioridade 1 é a mais alta. Sem avaliação, a nota é 3.':'Ordem manual: 1 vem primeiro, depois 2, 3… Itens sem número ficam por último.'} Avaliações apenas do Meu dia para ${fmt(day)}. O amarelo indica seu próximo foco.</p></div>`}
+  function withHandled(item,patch){
+    const dateFields=item.source==='todo'?['date','deadline']:['start','end'];
+    const changedDate=dateFields.some(field=>Object.hasOwn(patch,field)&&String(patch[field]||'')!==String(item[field]||''));
+    const closed=['done','cancelled','Concluída','Cancelada','Reserva'].includes(patch.status);
+    return changedDate||closed?{...patch,...api.dailyPatch(item,day,{handled:true})}:patch;
+  }
   function read(){try{snapshot=api.read(day,settings.aliases);snapshot.rows||=[];snapshot.work||={};snapshot.schedule||={}}catch(error){snapshot={rows:[],work:{},schedule:{},errors:[error.message]}}}
   function rowsFor(group,isSchedule=false){
     const list=[...(isSchedule?snapshot.schedule[group]:snapshot.work[group])||[]],keys=new Set(list.map(row=>row.key));
@@ -50,11 +77,11 @@ window.MyDay=(()=>{
     const dateValue=row.source==='todo'?row.date:row.end||row.deadline||'';
     const dateLabel=row.source==='todo'?'Programada':'Prazo';
     const statusControl=row.source==='gantt'?`<span class="md-progress"><span style="width:${Math.min(100,Math.max(0,Number(row.pct)||0))}%"></span></span><span class="md-progress-label">${Math.round(Number(row.pct)||0)}%</span>`:`<select data-md-status="${escape(row.key)}" aria-label="Status de ${escape(row.title)}">${selectOptions(row)}</select>`;
-    return `<article class="md-item ${retainedRow(row)?'md-retained':''} ${late?'md-item-late':''}" data-my-day-item="${escape(row.key)}" data-source="${escape(row.source)}" data-audience="${escape(row.audience)}">
+    return `<article class="md-item ${retainedRow(row)?'md-retained':''} ${late?'md-item-late':''} ${!isSchedule&&row.key===focusKey?'md-daily-focus':''}" data-my-day-item="${escape(row.key)}" data-source="${escape(row.source)}" data-audience="${escape(row.audience)}">
       <button class="md-complete ${row.open===false?'is-done':''}" data-md-complete="${escape(row.key)}" ${recurring?`data-md-advance="${escape(row.key)}"`:''} aria-label="${escape(completeLabel)}" title="${escape(recurring?'Concluir esta ocorrência e avançar para a próxima':row.open===false?'Já concluído ou encerrado':'Marcar como concluído')}" ${busy||row.open===false?'disabled':''}>${icon('check')}</button>
-      <div class="md-item-content"><div class="md-item-tags">${badge(row)}${late?'<span class="md-badge md-badge-late">Atrasado</span>':''}${row.link?'<span class="md-badge md-badge-linked" title="Ação vinculada a uma atividade do cronograma">Vinculada ao cronograma</span>':''}${recurring?'<span class="md-badge">Recorrente</span>':''}${retainedRow(row)?'<span class="md-badge md-badge-updated">Atualizado nesta sessão</span>':''}</div>
+      <div class="md-item-content"><div class="md-item-tags">${badge(row)}${!isSchedule?`<span class="md-badge">${row.audience==='followup'?'Para cobrar':row.audience==='unassigned'?'Definir responsável':'Para fazer'}</span>${row.key===focusKey?'<span class="md-badge md-focus-badge">Foco agora</span>':''}`:''}${late?'<span class="md-badge md-badge-late">Atrasado</span>':''}${row.link?'<span class="md-badge md-badge-linked" title="Ação vinculada a uma atividade do cronograma">Vinculada ao cronograma</span>':''}${recurring?'<span class="md-badge">Recorrente</span>':''}${retainedRow(row)?'<span class="md-badge md-badge-updated">Atualizado nesta sessão</span>':''}</div>
       <h4>${escape(row.title||'Sem título')}</h4><button class="md-context" data-md-open="${escape(row.key)}" aria-label="Abrir ${escape(row.title)} na guia de origem">${icon('folder')}<span>${escape(row.path||row.context||'Sem projeto')}</span>${icon('external')}</button>${linkedActivity(row)?`<button class="md-context md-linked-context" data-md-open="${escape(linkedActivity(row).key)}" aria-label="Abrir atividade vinculada ${escape(linkedActivity(row).title)}">${icon('external')}<span>Cronograma: ${escape(linkedActivity(row).path)} · ${escape(linkedActivity(row).title)}</span></button>`:''}
-      <div class="md-item-meta"><span class="${late?'md-late-text':''}">${icon('calendar')}${escape(dueText(row))}</span>${row.source==='action'?`<span class="md-owner">${escape(row.owner||'Responsável não informado')}</span>`:''}${row.priority?`<span>Prioridade ${escape(row.priority)}</span>`:''}</div>${row.notes?`<p class="md-note">${escape(row.notes)}</p>`:''}
+      <div class="md-item-meta"><span class="${late?'md-late-text':''}">${icon('calendar')}${escape(dueText(row))}</span>${row.source==='action'?`<span class="md-owner">${escape(row.owner||'Responsável não informado')}</span>`:''}${row.priority?`<span>Prioridade original ${escape(row.priority)}</span>`:''}</div>${row.notes?`<p class="md-note">${escape(row.notes)}</p>`:''}${!isSchedule?dailyControls(row):''}
       </div><div class="md-item-controls">${statusControl}${!isSchedule?`<label class="md-inline-date"><span>${dateLabel}</span><input type="date" data-md-date="${escape(row.key)}" aria-label="${dateLabel} de ${escape(row.title)}" value="${escape(dateValue)}" ${row.source==='action'&&row.endLocked?'disabled':''} title="${escape(row.dateHint||'')}"></label>`:''}<button class="md-icon-button" data-md-edit="${escape(row.key)}" aria-label="Editar ${escape(row.title)}" title="Editar detalhes">${icon('edit')}</button></div>
       </article>`;
   }
@@ -75,7 +102,8 @@ window.MyDay=(()=>{
   }
   function render(){
     if(!root||!shown)return;
-    const list=filtered(rowsFor(scope)),mine=list.filter(row=>row.audience==='mine'||row.source==='todo'),followup=list.filter(row=>row.source!=='todo'&&row.audience==='followup'),unassigned=list.filter(row=>row.source!=='todo'&&row.audience==='unassigned');
+    const list=ordered(filtered(rowsFor(scope)));
+    const active=list.filter(eligible);focusKey=active[0]?.key||'';ranks=new Map(active.map((row,i)=>[row.key,i+1]));
     const longDate=new Date(day+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
     const errors=(snapshot.errors||[]).map(error=>`<div class="md-alert md-alert-error" role="alert">${escape(typeof error==='string'?error:error.message||error)}</div>`).join('');
     const todayRows=rowsFor('today'),ownToday=todayRows.filter(row=>row.audience==='mine'||row.source==='todo').length,followToday=todayRows.filter(row=>row.audience==='followup').length;
@@ -85,7 +113,7 @@ window.MyDay=(()=>{
     <div class="md-metrics">${[['today','Para hoje',rowsFor('today').length,'sun',`${ownToday} para fazer · ${followToday} para cobrar`],['overdue','Atrasados',rowsFor('overdue').length,'clock','Prazos que precisam de atenção'],['upcoming','Próximos 7 dias',rowsFor('upcoming').length,'calendar','Antecipe as próximas entregas'],['blocked','Bloqueados',rowsFor('blocked').length,'flag','Decisões e intervenções']].map(([name,label,count,ico,note])=>`<button class="md-metric md-metric-${name} ${scope===name?'is-selected':''}" data-md-scope="${name}" aria-pressed="${scope===name}"><span class="md-metric-top"><span>${label}</span>${icon(ico)}</span><strong>${count}</strong><small>${escape(note)}</small></button>`).join('')}</div>
     <div class="md-schedule-peek"><span>${icon('calendar')}Cronogramas</span>${[['starting','iniciando'],['finishing','finalizando'],['ongoing','previstas em andamento']].map(([name,label])=>`<button data-md-jump-schedule="${name}"><strong>${rowsFor(name,true).length}</strong> ${label} ${icon('arrow')}</button>`).join('')}</div>
     <section class="md-focus"><div class="md-focus-heading"><div><span class="md-eyebrow">Todo e planos de ação</span><h2>${labels[scope]} <span class="md-total">${list.length}</span></h2><p>${descriptions[scope]}</p></div><button class="md-text-button ${scope==='undated'?'is-selected':''}" data-md-scope="undated" aria-pressed="${scope==='undated'}">Sem prazo <span class="md-count">${rowsFor('undated').length}</span></button></div><div class="md-filters"><label class="md-search">${icon('search')}<input id="mdSearch" type="search" aria-label="Buscar tarefas e ações" placeholder="Buscar assunto, projeto ou responsável" value="${escape(search)}"></label><label class="md-source-filter"><span>Origem</span><select id="mdSource" aria-label="Origem das tarefas e ações"><option value="all" ${source==='all'?'selected':''}>Todo e planos de ação</option><option value="todo" ${source==='todo'?'selected':''}>Todo</option><option value="action" ${source==='action'?'selected':''}>Planos de ação</option></select></label></div>
-    ${list.length?`<div class="md-work-grid">${mine.length?sectionHTML('Para fazer','Suas tarefas e as ações sob sua responsabilidade.',mine,'mine'):''}${followup.length?sectionHTML('Para cobrar','Entregas de outras pessoas que você acompanha.',followup,'followup'):''}${unassigned.length?sectionHTML('Definir responsável','Ações sem responsável informado.',unassigned,'unassigned'):''}</div>`:`<div class="md-empty"><span>${icon('check')}</span><h3>${search||source!=='all'?'Nenhum resultado para este filtro':scope==='today'?'Nenhum compromisso marcado para esta data':'Nenhum item nesta seleção'}</h3><p>${scope==='today'&&!search?'Veja os atrasados ou os próximos dias para organizar sua atenção.':'Ajuste a busca ou escolha outro bloco do painel.'}</p></div>`}
+    ${orderControls()}${focusKey?'<button id="mdGoToFocus" class="md-text-button">Ir para o foco agora ↓</button>':''}${list.length?`<div class="md-work-grid md-priority-queue">${sectionHTML('Fila de atenção','Tarefas e ações na ordem escolhida. Os rótulos distinguem o que fazer e o que cobrar.',list,'mine')}</div>`:`<div class="md-empty"><span>${icon('check')}</span><h3>Nenhum item nesta seleção</h3><p>Ajuste os filtros ou veja os atrasados.</p></div>`}
     <p class="md-refresh-note">${icon('refresh')}Alterações são aplicadas na guia de origem. Itens alterados permanecem nesta seleção até você atualizar o painel.</p></section>${scheduleHTML()}
     <footer class="md-footer"><span>Responsabilidades pessoais: ${escape(settings.aliases.join(' · '))}</span><button class="md-text-button" data-md-settings>Editar meus nomes</button><span>Concluídos, cancelados e itens em reserva ficam fora das listas abertas.</span></footer></div>`;
     bind();
@@ -103,6 +131,16 @@ window.MyDay=(()=>{
   function refresh(){retained.clear();notice='';try{api?.flush?.()}catch(error){message(error.message,true)}read();render()}
   function debounceInput(input,callback){let timer;input.addEventListener('input',()=>{const value=input.value;clearTimeout(timer);timer=setTimeout(()=>{const start=input.selectionStart;callback(value);const current=document.getElementById(input.id);current?.focus();if(current?.type==='search')current.setSelectionRange(start,start)},160)})}
   function bind(){
+    document.getElementById('mdAutomaticOrder').onchange=e=>{ordering.automatic=e.target.checked;saveOrdering();workPages.mine=0;render()};
+    document.getElementById('mdOrderFirst').onchange=e=>{ordering.first=e.target.value;saveOrdering();workPages.mine=0;render()};
+    document.getElementById('mdHardFirst').onchange=e=>{ordering.hardFirst=e.target.value==='hard';saveOrdering();workPages.mine=0;render()};
+    document.getElementById('mdGoToFocus')?.addEventListener('click',()=>{workPages.mine=0;render();root.querySelector('.md-daily-focus')?.scrollIntoView({block:'center',behavior:'smooth'})});
+    root.querySelectorAll('[data-md-rating]').forEach(input=>input.onchange=()=>{
+      const item=row(input.dataset.key),field=input.dataset.mdRating,value=input.value===''?null:Number(input.value);
+      try{const patch=api.dailyPatch(item,day,{[field]:value});mutate(item,()=>api.update(item.ref,patch))}catch(error){message(error.message,true);render()}
+    });
+    root.querySelectorAll('[data-md-refocus]').forEach(button=>button.onclick=()=>{const item=row(button.dataset.mdRefocus);mutate(item,()=>api.update(item.ref,api.dailyPatch(item,day,{handled:false})))});
+
     root.querySelectorAll('[data-md-day]').forEach(button=>button.onclick=()=>changeDate(stepDate(day,Number(button.dataset.mdDay))));
     document.getElementById('mdDate').onchange=e=>changeDate(e.target.value);
     document.getElementById('mdToday').onclick=()=>changeDate(localDate());
@@ -117,9 +155,9 @@ window.MyDay=(()=>{
     const scheduleInput=document.getElementById('mdScheduleSearch');if(scheduleInput)debounceInput(scheduleInput,value=>{scheduleSearch=value;schedulePage=0;render()});
     root.querySelectorAll('[data-md-page]').forEach(button=>button.onclick=()=>{schedulePage+=Number(button.dataset.mdPage);render();document.querySelector('.md-schedule-detail-head')?.scrollIntoView({block:'nearest'})});
     root.querySelectorAll('[data-md-work-page]').forEach(button=>button.onclick=()=>{const name=button.dataset.mdWorkPage;workPages[name]+=Number(button.dataset.step);render();root.querySelector('.md-'+name)?.scrollIntoView({block:'nearest'})});
-    root.querySelectorAll('[data-md-complete]').forEach(button=>button.onclick=()=>{const item=row(button.dataset.mdComplete);mutate(item,()=>isRecurring(item)&&api.advance?api.advance(item.ref):api.complete(item.ref))});
-    root.querySelectorAll('[data-md-status]').forEach(select=>select.onchange=()=>{const item=row(select.dataset.mdStatus);mutate(item,()=>api.update(item.ref,{status:select.value}))});
-    root.querySelectorAll('[data-md-date]').forEach(input=>input.onchange=()=>{const item=row(input.dataset.mdDate);mutate(item,()=>api.update(item.ref,{[item.source==='todo'?'date':'end']:input.value}))});
+    root.querySelectorAll('[data-md-complete]').forEach(button=>button.onclick=()=>{const item=row(button.dataset.mdComplete);mutate(item,()=>isRecurring(item)&&api.advance?api.update(item.ref,withHandled(item,{date:api.nextRecurrence(item.raw,day)})):api.complete(item.ref))});
+    root.querySelectorAll('[data-md-status]').forEach(select=>select.onchange=()=>{const item=row(select.dataset.mdStatus);mutate(item,()=>api.update(item.ref,withHandled(item,{status:select.value})))});
+    root.querySelectorAll('[data-md-date]').forEach(input=>input.onchange=()=>{const item=row(input.dataset.mdDate);mutate(item,()=>api.update(item.ref,withHandled(item,{[item.source==='todo'?'date':'end']:input.value})))});
     root.querySelectorAll('[data-md-edit]').forEach(button=>button.onclick=()=>openEditor(row(button.dataset.mdEdit),button));
     root.querySelectorAll('[data-md-open]').forEach(button=>button.onclick=()=>{try{api.open(row(button.dataset.mdOpen).ref)}catch(error){message(error.message,true);render()}});
     document.getElementById('mdSettings').onclick=openSettings;root.querySelectorAll('[data-md-settings]').forEach(button=>button.onclick=openSettings);
@@ -147,7 +185,7 @@ window.MyDay=(()=>{
       for(const key of Object.keys(patch))if(String(patch[key]??'')===String(initial[key]??'')||(item.editableFields?.length&&!item.editableFields.includes(key)))delete patch[key];
       if(!Object.keys(patch).length){closeDialog(editor);return}
       const button=document.getElementById('mdEditSave');button.disabled=true;retain(item);
-      try{await api.update(item.ref,patch);closeDialog(editor);message('Alterações aplicadas na guia de origem.');read();render()}
+      try{await api.update(item.ref,item.source==='gantt'?patch:withHandled(item,patch));closeDialog(editor);message('Alterações aplicadas na guia de origem.');read();render()}
       catch(error){document.getElementById('mdEditError').textContent=error.message||'Não foi possível salvar.'}
       finally{button.disabled=false}
     };
