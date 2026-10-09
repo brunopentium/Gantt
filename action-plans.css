@@ -40,6 +40,8 @@
 .ap-person-3{background:var(--ap-yellow-bg);color:var(--ap-yellow)}.ap-person-3 .ap-avatar{background:var(--ap-yellow)}
 .ap-person-4{background:var(--ap-teal-bg);color:var(--ap-teal)}.ap-person-4 .ap-avatar{background:var(--ap-teal)}
 .ap-person-5{background:var(--ap-red-bg);color:var(--ap-red)}.ap-person-5 .ap-avatar{background:var(--ap-red)}
+.ap-person-colored{background:var(--person-bg);color:var(--person-ink)}.ap-person-colored .ap-avatar{background:var(--person-ink);color:#fff}
+.ap-owner-dot{display:inline-block;width:13px;height:13px;border-radius:50%;flex:none}.ap-choice:has(.ap-owner-dot){display:flex;align-items:center;gap:9px}.ap-owner-options{display:grid;gap:5px;max-height:160px;overflow:auto}.ap-owner-options .ap-choice{min-height:36px}
 .ap-unassigned{background:transparent;border:1px dashed var(--ap-line);color:var(--ap-muted);padding:8px 13px}
 .ap-icon{width:19px;height:19px;vertical-align:middle;flex-shrink:0}
 .ap-section-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}.ap-section-head h2{display:flex;align-items:center;gap:12px;font-size:1.5em;letter-spacing:-.025em;font-weight:700}

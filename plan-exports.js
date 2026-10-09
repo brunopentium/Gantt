@@ -8,14 +8,14 @@ window.PlanExports=(()=>{
   function today(){const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
   const deadline=a=>a.status==='done'?'Completed':a.status==='cancelled'?'Cancelled':!a.end?'No due date':a.end<today()?'Overdue':a.end===today()?'Due today':'On track';
   function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-  const ownerPalette=[{fill:'EEE4FF',ink:'6940B5'},{fill:'E8F2FF',ink:'2768B1'},{fill:'E6F7E6',ink:'267238'},{fill:'FFF9E7',ink:'866114'},{fill:'E2F4F2',ink:'206C69'},{fill:'FFF0F0',ink:'AE3548'}];
-  function ownerColor(name){let hue=0;for(const c of String(name||'').trim().toLocaleLowerCase('pt-BR'))hue=(hue*31+c.charCodeAt(0))>>>0;return ownerPalette[hue%ownerPalette.length]}
+  function people(p){return window.ActionPlans.peopleColors([...(p.document?.participants||[]),...p.actions.map(a=>a.owner)])}
   const initials=name=>String(name||'').trim().split(/[\s,]+/).filter(Boolean).map((part,i,all)=>i===0||i===all.length-1?part[0]:'').join('').slice(0,2).toLocaleUpperCase('pt-BR');
   function documentParts(p){
     const d=p.document||{};
     return {agenda:typeof d.agenda==='string'?d.agenda.trim():'',notes:typeof d.notes==='string'?d.notes.trim():'',participants:Array.isArray(d.participants)?d.participants.filter(name=>typeof name==='string'&&name.trim()).map(name=>name.trim()):[]};
   }
   function build(p,task){
+    const {palette:ownerPalette,color:ownerColor}=people(p);
     const end=Math.max(7,p.actions.length+6),range=col=>`'Actions'!${col}7:${col}${end}`;
     let styles=[],fonts=[],fills=['FFFFFF','ECE7F8','7051CF','ECF5FF','E4F6E9','FFE8EC','FFF6DC','F5F6FA',...ownerPalette.map(c=>c.fill),'EDF0F4'],fontMap=new Map();
     function style(fill=0,color='26384B',bold=false,size=11,numFmt=0,align='left',border=0){const key=[color,bold,size].join('|');if(!fontMap.has(key)){fontMap.set(key,fonts.length);fonts.push({color,bold,size})}styles.push({fill:fill+2,font:fontMap.get(key),numFmt,align,border});return styles.length-1}
@@ -70,6 +70,7 @@ window.PlanExports=(()=>{
   }
   function excel(p,task){try{download(build(p,task),cleanFileName(p.title)+'.xlsx')}catch(e){alert('Excel export failed: '+e.message)}}
   function pdfHTML(p,task){
+    const {color:ownerColor}=people(p);
     const fmt=d=>d?d.split('-').reverse().join('/'):'—',context=documentParts(p);
     const person=name=>{const color=ownerColor(name);return `<span class="person" style="--person-bg:#${color.fill};--person-ink:#${color.ink}"><span class="avatar">${xml(initials(name))}</span><span>${xml(name)}</span></span>`};
     const optional=[

@@ -30,7 +30,7 @@ window.ActionPlans=(()=>{
       while(parent){if(ancestors.has(parent))throw new Error('A plan cannot be the parent of itself or an ancestor.');ancestors.add(parent);const ancestor=byId.get(parent);if(!ancestor)throw new Error('Parent plan is missing or invalid.');parent=ancestor.parentId}
     }
   }
-  function load(data){validate(data);undo=[];applyStatusFilter();plans=JSON.parse(JSON.stringify(data));activeId=plans.some(p=>p.id===activeId)?activeId:plans[0]?.id||null;changed()}
+  function load(data){validate(data);peopleCache=null;undo=[];applyStatusFilter();plans=JSON.parse(JSON.stringify(data));activeId=plans.some(p=>p.id===activeId)?activeId:plans[0]?.id||null;changed()}
   function checkpoint(taskChange,previousPlans){undo.push({plans:previousPlans||JSON.parse(JSON.stringify(plans)),activeId,taskChange});if(undo.length>50)undo.shift()}
   function undoPlan(){
     const previous=undo.at(-1);if(!previous)return;
@@ -92,7 +92,7 @@ window.ActionPlans=(()=>{
   }
   function task(link){return link&&api?api.task(link.projectId,link.taskId):null}
   function sync(){if(!api)return;for(const p of plans)for(const a of p.actions){const t=task(a.link);if(t){a.start=t.start;a.end=t.end}}}
-  function save(){api.save();refresh();changed()}
+  function save(){peopleCache=null;api.save();refresh();changed()}
   // Dashboard edits resolve the current owner plan instead of retaining a stale clone.
   // Linked dates use the scheduler; action status never changes task progress.
   function updateAction(planId,actionId,patch){
@@ -134,11 +134,29 @@ window.ActionPlans=(()=>{
   function late(a){const now=new Date(),day=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');return a.end&&a.end<day&&!['done','cancelled'].includes(a.status)}
   const icons={plan:'<path d="M9 5H6a2 2 0 0 0-2 2v13h16V7a2 2 0 0 0-2-2h-3M9 3h6v4H9zM8 14l3 3 5-6"/>',people:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6M21 21v-3a6 6 0 0 0-4-5"/>',agenda:'<path d="M4 3h16v18H4zM8 8h8M8 12h8M8 16h5"/>',notes:'<path d="M4 3h16v14l-4 4H4zM8 8h8M8 12h8M8 16h4"/>',calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 11h18M8 15h2M14 15h2"/>',edit:'<path d="m15 4 5 5M4 20l5-1L21 7l-5-5L4 14z"/>',copy:'<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/>',trash:'<path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/>'};
   const icon=name=>`<svg class="ap-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||icons.plan}</svg>`;
+  const personKey=name=>String(name||'').trim().replace(/\s+/g,' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
+  function uniquePeople(names){const seen=new Set();return names.map(name=>String(name||'').trim()).filter(name=>{const key=personKey(name);if(!key||seen.has(key))return false;seen.add(key);return true})}
+  let peopleCache=null,peopleCacheKey='';
+  function peopleColors(extra=[]){
+    if(!extra.length&&peopleCache)return peopleCache;
+    const names=uniquePeople([...plans.flatMap(p=>[...(p.document?.participants||[]),...p.actions.map(a=>a.owner)]),...extra]).map(personKey).sort();
+    const key=JSON.stringify(names);if(peopleCache&&key===peopleCacheKey)return peopleCache;
+    const palette=[{fill:'EEE4FF',ink:'6940B5'},{fill:'E8F2FF',ink:'2768B1'},{fill:'E6F7E6',ink:'267238'},{fill:'FFF9E7',ink:'866114'},{fill:'E2F4F2',ink:'206C69'},{fill:'FFF0F0',ink:'AE3548'}];
+    function hex(h,s,l){s/=100;l/=100;const a=s*Math.min(l,1-l),channel=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)))).toString(16).padStart(2,'0')};return (channel(0)+channel(8)+channel(4)).toUpperCase()}
+    for(let i=6;i<Math.max(36,names.length);i++){const hue=(i*137.508+23)%360;palette.push({fill:hex(hue,65,94),ink:hex(hue,65,32)})}
+    const colors=new Map(),used=new Set();
+    const hash=name=>{let n=0;for(const c of personKey(name))n=(n*31+c.charCodeAt(0))>>>0;return n};
+    for(const name of names){let slot=hash(name)%palette.length;while(used.has(slot))slot=(slot+1)%palette.length;used.add(slot);colors.set(name,palette[slot])}
+    const registry={palette,color:name=>colors.get(personKey(name))||palette[hash(name)%palette.length]};if(!extra.length){peopleCacheKey=key;peopleCache=registry}return registry;
+  }
+  function ownerOptions(p){return uniquePeople([...path(p).flatMap(plan=>plan.document?.participants||[]),...p.actions.map(a=>a.owner)]).sort((a,b)=>a.localeCompare(b,'pt-BR'))}
+  function ownerChoiceHTML(name){const c=peopleColors().color(name);return `<span class="ap-owner-dot" style="background:#${c.ink}" aria-hidden="true"></span><span>${esc(name)}</span>`}
+  function ownerChoiceStyle(name){const c=peopleColors().color(name);return `background:#${c.fill};color:#${c.ink}`}
   function ownerHTML(name){
     if(!name)return '<span class="ap-person ap-unassigned">＋ Assign</span>';
     const parts=name.trim().split(/[\s,]+/),initials=((parts[0]?.[0]||'')+(parts.length>1?parts.at(-1)[0]:'')).toLocaleUpperCase('pt-BR');
-    let hue=0;for(const c of name.trim().toLocaleLowerCase('pt-BR'))hue=(hue*31+c.charCodeAt(0))>>>0;
-    return `<span class="ap-person ap-person-${hue%6}"><span class="ap-avatar" aria-hidden="true">${esc(initials)}</span><span>${esc(name)}</span></span>`;
+    const color=peopleColors().color(name);
+    return `<span class="ap-person ap-person-colored" style="--person-bg:#${color.fill};--person-ink:#${color.ink}"><span class="ap-avatar" aria-hidden="true">${esc(initials)}</span><span>${esc(name)}</span></span>`;
   }
   function dateHTML(a){return `<span class="ap-date ${late(a)?'ap-date-late':''}">${icon('calendar')}<span>${a.end?format(a.end):'Set date'}</span></span>`}
   const sectionLabels={participants:'Participants',agenda:'Agenda',notes:'Notes'};
@@ -153,7 +171,7 @@ window.ActionPlans=(()=>{
   function addSection(p){const m=modal('Add section','<div class="ap-section-choices">'+Object.entries(sectionLabels).map(([key,label])=>`<button type="button" data-add-section="${key}">${icon(key==='participants'?'people':key)}<span>${label}${p.document?.[key]?.length?' · edit':''}</span></button>`).join('')+'</div>');m.querySelector('button[type=submit]').hidden=true;m.querySelectorAll('[data-add-section]').forEach(b=>b.onclick=()=>editSection(p,b.dataset.addSection))}
   function badge(a){return `<span class="ap-badge ${a.status}"><span class="ap-status-dot" aria-hidden="true">${a.status==='done'?'✓':''}</span>${statuses[a.status]}<span class="ap-chevron" aria-hidden="true">⌄</span></span>${late(a)?' <span class="ap-late">Overdue</span>':''}`}
   function field(a,name,label){return `<button class="ap-inline" data-field="${name}" data-action="${esc(a.id)}" aria-label="Change ${name==='owner'?'owner':name==='end'?'end date':'status'} for ${esc(a.title)}" title="Click to change">${label}</button>`}
-  function inlineEdit(a,name){
+  function inlineEdit(a,name,ownerPlan=current()){
     api.flush();sync();const t=task(a.link);
     if(name==='end'&&t&&(t.summary||(t.mile&&t.pred))){notice=t.summary?'This row\'s end date is calculated from its subtasks.':'This milestone\'s date follows schedule dependencies.';refresh();return}
     const title={owner:'Owner',end:'End',status:'Status'}[name];
@@ -175,11 +193,11 @@ window.ActionPlans=(()=>{
         closePopups();save();document.querySelector(`[data-action="${a.id}"][data-field="${name}"]`)?.focus();
       }catch(e){error.textContent=e.message}
     }
-    function choice(label,value){const b=document.createElement('button');b.type='button';b.className='ap-choice';b.textContent=label;b.setAttribute('aria-pressed',String(a[name]===value));b.onclick=()=>apply(value);options.append(b)}
+    function choice(label,value){const b=document.createElement('button');b.type='button';b.className='ap-choice';if(name==='owner'&&value){b.innerHTML=ownerChoiceHTML(label);b.style.cssText=ownerChoiceStyle(label)}else b.textContent=label;b.setAttribute('aria-pressed',String(a[name]===value));b.onclick=()=>apply(value);options.append(b)}
     if(name==='status'){for(const [key,label]of Object.entries(statuses))choice(label,key);m.querySelector('button[type=submit]').hidden=true}
     if(name==='owner'){
       choice('Unassigned','');
-      for(const owner of [...new Set(scopeEntries().map(({action})=>action.owner.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')))choice(owner,owner);
+      for(const owner of ownerOptions(ownerPlan))choice(owner,owner);
       options.insertAdjacentHTML('beforeend','<label>Add a new owner<input id="apInlineOwner" maxlength="200" placeholder="Owner name" autocomplete="off"></label>');
       m.querySelector('form').onsubmit=e=>{e.preventDefault();const value=m.querySelector('input').value.trim();if(!value){error.textContent='Enter a name or choose an owner above.';return}apply(value)};
     }
@@ -225,7 +243,7 @@ window.ActionPlans=(()=>{
     else content.innerHTML=`<div class="ap-cards">${entries.map(({plan,action:a},i)=>`<article class="ap-card ap-row-${a.status} ${late(a)?'ap-row-late':''}" data-plan-id="${esc(plan.id)}" data-action-id="${esc(a.id)}"><div class="ap-card-top"><span class="ap-card-number">${String(i+1).padStart(2,'0')}</span>${field(a,'status',badge(a))}</div><div class="ap-task-cell"><button class="ap-complete ${a.status==='done'?'is-done':''}" data-complete="${esc(a.id)}" aria-label="${a.status==='done'?'Reopen':'Complete'} ${esc(a.title)}" aria-pressed="${a.status==='done'}">${a.status==='done'?'✓':''}</button><div class="ap-title">${esc(a.title)}</div>${scope.length>1?`<button class="ap-origin-plan" data-select-plan="${esc(plan.id)}">${esc(path(plan).map(p=>p.title).join(' / '))}</button>`:''}</div>${linkedHTML(a.link)}<div class="ap-meta"><span class="ap-meta-label">Owner</span>${field(a,'owner',ownerHTML(a.owner))}</div><div class="ap-meta"><span class="ap-meta-label">End</span>${field(a,'end',dateHTML(a))}</div><div class="ap-start">Start: ${format(a.start)}</div>${a.notes?`<div class="ap-note">${esc(a.notes)}</div>`:''}<div class="ap-card-footer">${buttons(a)}</div></article>`).join('')}</div>`;
     content.querySelectorAll('[data-select-plan]').forEach(b=>b.onclick=()=>{activeId=b.dataset.selectPlan;notice='';refresh()});
     panel.querySelectorAll('[data-complete]').forEach(b=>b.onclick=()=>{const {action:a}=entryFor(b);checkpoint();a.status=a.status==='done'?'pending':'done';notice='';save()});
-    panel.querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>inlineEdit(entryFor(b).action,b.dataset.field));
+    panel.querySelectorAll('[data-field]').forEach(b=>b.onclick=()=>{const entry=entryFor(b);inlineEdit(entry.action,b.dataset.field,entry.plan)});
     panel.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const entry=entryFor(b);editAction(entry.action,null,entry.plan)});
     panel.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>{const {plan,action:a}=entryFor(b);checkpoint();plan.actions.push({...JSON.parse(JSON.stringify(a)),id:id(),title:a.title+' — copy'});save()});
     panel.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{if(confirm('Delete this action? The linked schedule task will be kept.')){const {plan,action}=entryFor(b);checkpoint();plan.actions=plan.actions.filter(a=>a!==action);save()}});
@@ -247,6 +265,13 @@ window.ActionPlans=(()=>{
     const m=modal(existing?'Edit action':'New action',`<p class="ap-hint">Plan: ${esc(path(p).map(p=>p.title).join(' / '))}</p><label>Action<input id="apActionTitle" required maxlength="300"></label><label>Owner<input id="apOwner" maxlength="200" placeholder="Owner name"></label><label>Linked schedule<select id="apLinkProject"><option value="">Independent action</option></select></label><label id="apTaskLabel">Schedule row<select id="apLinkTask"></select></label><div class="ap-dates"><label>Start<input type="date" id="apStart"></label><label>End<input type="date" id="apEnd"></label></div><p class="ap-hint" id="apDateHint"></p><label>Status<select id="apStatus">${Object.entries(statuses).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></label><label>Notes<textarea id="apNotes"></textarea></label>`);
     const f=k=>m.querySelector('#'+k),projects=api.projects();
     f('apActionTitle').value=a.title||task(a.link)?.taskName||'';f('apOwner').value=a.owner;f('apStart').value=a.start;f('apEnd').value=a.end;f('apStatus').value=a.status;f('apNotes').value=a.notes;
+    const people=ownerOptions(p);
+    if(people.length){
+      const choices=document.createElement('div');choices.className='ap-owner-options';choices.setAttribute('role','group');choices.setAttribute('aria-label','Participants and existing owners');
+      f('apOwner').parentElement.after(choices);
+      function renderOwners(query=''){const filter=personKey(query),selected=personKey(f('apOwner').value);choices.innerHTML=people.filter(name=>!filter||personKey(name).includes(filter)).map(name=>`<button type="button" class="ap-choice" style="${ownerChoiceStyle(name)}" data-select-owner="${esc(name)}" aria-pressed="${personKey(name)===selected}">${ownerChoiceHTML(name)}</button>`).join('');choices.querySelectorAll('button').forEach(button=>button.onclick=()=>{f('apOwner').value=button.dataset.selectOwner;renderOwners();f('apOwner').focus();f('apOwner').select()})}
+      f('apOwner').placeholder='Choose a participant or type a name';f('apOwner').addEventListener('input',()=>renderOwners(f('apOwner').value));renderOwners();
+    }
     for(const project of projects){const o=new Option(project.title,project.id);f('apLinkProject').add(o)}
     if(a.link&&!projects.some(p=>p.id===a.link.projectId))f('apLinkProject').add(new Option('Schedule unavailable',a.link.projectId));
     f('apLinkProject').value=a.link?.projectId||'';
@@ -331,6 +356,6 @@ window.ActionPlans=(()=>{
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){const picker=document.querySelector('.ap-tree-picker[open]');if(picker){picker.open=false;picker.querySelector('summary').focus()}}});
     sync();
   }
-  return {init,load,validate,sync,refresh,fromTask,isVisible:()=>shown,exportData,backup,importData,restoreData,updateAction,openAction,switchView,
+  return {init,load,validate,sync,refresh,fromTask,isVisible:()=>shown,exportData,backup,importData,restoreData,updateAction,openAction,switchView,peopleColors,
     subscribe:listener=>{changeListeners.add(listener);return ()=>changeListeners.delete(listener)}};
 })();
