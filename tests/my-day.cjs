@@ -90,7 +90,8 @@ const schedules=[
       }
       assert(await item(title,'gantt').isVisible());return item(title,'gantt');
     };
-    const edit=async(title,source)=>{await item(title,source).locator('[data-md-edit]').click();await page.locator('#mdEditor').waitFor()};
+    const expand=async node=>{const toggle=node.locator('[data-md-toggle-handled]');if(await toggle.count()&&await toggle.getAttribute('aria-expanded')==='false')await toggle.click()};
+    const edit=async(title,source)=>{await expand(item(title,source));await item(title,source).locator('[data-md-edit]').click();await page.locator('#mdEditor').waitFor()};
     const saveEdit=async()=>{await page.locator('#mdEditSave').click();await page.locator('#mdEditor').waitFor({state:'hidden'})};
     const {model,unchanged}=await page.evaluate(day=>{
       const snapshot=()=>JSON.stringify({projects,plans:ActionPlans.exportData(),todo:NativeTodo.snapshot()});
@@ -167,7 +168,7 @@ const schedules=[
     assert.equal(linkedAfter.action.end,linkedAfter.task.end);assert.equal(linkedAfter.task.end,'2026-10-09');
     assert.equal(await page.evaluate(()=>projects.find(p=>p.id==='two').tasks.find(t=>t.id==='dependent').pred),'1FS');
     await scope('upcoming');
-    await item('AÇÃO COM DEPENDÊNCIA','action').locator('[data-md-complete]').click();
+    await expand(item('AÇÃO COM DEPENDÊNCIA','action')); await item('AÇÃO COM DEPENDÊNCIA','action').locator('[data-md-complete]').click();
     assert.equal(await page.evaluate(()=>ActionPlans.exportData().find(p=>p.id==='child').actions.find(a=>a.id==='linked').status),'done');
     assert.equal(await page.evaluate(()=>projects.find(p=>p.id==='two').tasks.find(t=>t.id==='dependent').pct),0,'A linked action status must not invent schedule progress');
     assert(await item('AÇÃO COM DEPENDÊNCIA','action').isVisible());
@@ -203,10 +204,10 @@ const schedules=[
     await native.getByRole('button',{name:'Cancelar',exact:true}).click();
     await page.click('#tabMyDay');await scope('today');
 
-    await item('TODO DO DIA','todo').locator('[data-md-complete]').click();
+    await expand(item('TODO DO DIA','todo')); await item('TODO DO DIA','todo').locator('[data-md-complete]').click();
     assert.equal(await page.evaluate(()=>NativeTodo.snapshot().tasks.find(t=>t.id==='today').status),'Concluída');
     assert(await item('TODO DO DIA','todo').isVisible());assert(await item('TODO DO DIA','todo').evaluate(el=>el.classList.contains('md-retained')));
-    await item('AÇÃO DO PLANO PAI','action').locator('[data-md-complete]').click();
+    await expand(item('AÇÃO DO PLANO PAI','action')); await item('AÇÃO DO PLANO PAI','action').locator('[data-md-complete]').click();
     assert.equal(await page.evaluate(()=>ActionPlans.exportData().find(p=>p.id==='parent').actions.find(a=>a.id==='same').status),'done');
     assert(await item('AÇÃO DO PLANO PAI','action').isVisible());
     await page.locator('#mdRefresh').click();

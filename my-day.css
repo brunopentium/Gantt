@@ -214,3 +214,21 @@ html[data-app-view="my-day"] :is(#main,#toolbar,#statusbar,#scheduleHierarchyBar
 #myDayPanel .md-daily-rating select,#myDayPanel .md-daily-rating input{width:110px;padding:6px;font-size:12px}
 #myDayPanel .md-daily-position{font-weight:750;color:#087f83;align-self:center;min-width:30px}
 @media(max-width:720px){#myDayPanel .md-ordering>label{max-width:100%}#myDayPanel .md-ordering select{width:100%}#myDayPanel .md-daily-rating{gap:8px}#myDayPanel .md-daily-rating select,#myDayPanel .md-daily-rating input{width:100px}}
+
+#myDayPanel .md-rating-group{display:flex;flex-direction:column;gap:5px;max-width:100%;font-size:11px;color:var(--md-muted)}
+#myDayPanel .md-rating-buttons{display:flex;gap:4px;flex-wrap:wrap}
+#myDayPanel .md-rating-buttons button{width:30px;min-height:32px;border:1px solid #c8d4e1;background:#fff;color:var(--md-ink);font-weight:650;border-radius:6px}
+#myDayPanel .md-rating-buttons button:hover{background:#e5f5f3;border-color:var(--md-teal)}
+#myDayPanel .md-rating-buttons button[aria-pressed="true"]{background:var(--md-teal);color:#fff;border-color:var(--md-teal);box-shadow:0 0 0 1px var(--md-teal)}
+#myDayPanel .md-handled-item{display:block;background:#f5f7fa}
+#myDayPanel .md-handled-summary{display:flex;justify-content:space-between;gap:12px;align-items:center;width:100%}
+#myDayPanel .md-handled-summary>div{min-width:0;flex:1}
+#myDayPanel .md-handled-summary h4{overflow-wrap:anywhere}
+#myDayPanel .md-handled-summary span{font-size:11px;color:var(--md-muted);line-height:1.7}
+#myDayPanel .md-handled-summary>.md-button{flex-shrink:0;font-size:11px}
+#myDayPanel .md-handled-body{display:flex;gap:12px;margin-top:14px;min-width:0}
+#myDayPanel .md-handled-body[hidden]{display:none!important}
+#myDayPanel .md-handled-tail{grid-column:1/-1}
+@media(max-width:720px){#myDayPanel .md-handled-body{flex-wrap:wrap;gap:9px}#myDayPanel .md-rating-buttons button{width:29px;min-height:34px}#myDayPanel .md-handled-summary{align-items:flex-start}}
+
+@media(max-width:720px){#myDayPanel .md-rating-order{gap:2px}#myDayPanel .md-rating-order button{width:26px}}
