@@ -7,3 +7,5 @@ Interface adaptada de [brunopentium/Todo-list](https://github.com/brunopentium/T
 A compilação usa React 18.3.1, Lucide React 0.468.0, Tailwind 3.4.19 e esbuild 0.25.12. Os SVGs são componentes React, com os mesmos ícones do original. JSX e CSS são compilados antecipadamente, com dependências incluídas no site. `app.js.LEGAL.txt` contém os avisos de licença das dependências.
 
 Execute `npm run build:todo` na raiz para atualizar `app.js`, `app.css` e os avisos de licença. `tests/todo-native.cjs` verifica os controles e a persistência; `tests/todo-cloud.cjs` verifica salvamento manual, carregamento entre dispositivos, histórico e proteção contra conflitos.
+
+As datas de execução e deadline nos cartões abrem o calendário nativo no primeiro clique ou toque. `tests/todo-date-picker.cjs` verifica a abertura imediata, persistência e compatibilidade quando o navegador não oferece `showPicker`.

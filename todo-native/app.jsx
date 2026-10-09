@@ -1,7 +1,8 @@
 // Adapted from brunopentium/Todo-list, deployed TaskMaster interface (2026-10-08).
 // Dashboard, conflicts, planning, configuration and task logic retain the original behavior.
-import React, {useState, useEffect, useMemo} from "react";
+import React, {useState, useEffect, useMemo, useRef} from "react";
 import {createRoot} from "react-dom/client";
+import {flushSync} from "react-dom";
 import {AlertCircle, AlertOctagon, AlertTriangle, Bell, Calendar, CalendarCheck, CalendarClock, CalendarRange, CheckSquare, ChevronDown, ChevronRight, Clock3, Database, Download, Edit2, FastForward, Flag, Layers, LayoutDashboard, ListOrdered, Plus, PlusSquare, Repeat, Settings, SkipForward, StickyNote, Trash2, TrendingUp, Upload, X} from "lucide-react";
         // --- UTILS ---
         const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -249,6 +250,20 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
             const [expandedNotes, setExpandedNotes] = useState({});
             const [editingDateId, setEditingDateId] = useState(null);
             const [editingDeadlineId, setEditingDeadlineId] = useState(null);
+            const inlineDateInput = useRef(null);
+            const inlineDeadlineInput = useRef(null);
+            const showDatePicker = (input) => {
+                if (!input) return;
+                try { input.showPicker?.(); } catch { /* Keep the native date input usable in browsers without picker access. */ }
+            };
+            const openInlineDate = (taskId, field) => {
+                // Mount the input inside the original click, preserving the user activation required by showPicker.
+                flushSync(() => {
+                    setEditingDateId(field === 'date' ? taskId : null);
+                    setEditingDeadlineId(field === 'deadline' ? taskId : null);
+                });
+                showDatePicker(field === 'date' ? inlineDateInput.current : inlineDeadlineInput.current);
+            };
             const [editingTitleId, setEditingTitleId] = useState(null);
             const [titleDrafts, setTitleDrafts] = useState({});
             const [statusMenuTask, setStatusMenuTask] = useState(null);
@@ -1092,10 +1107,14 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                                 {editingDateId === task.id ? (
                                     <input
                                         type="date"
+                                        ref={inlineDateInput}
+                                        aria-label={`Data de execução de ${task.title}`}
+                                        data-inline-date="date"
                                         className="border rounded px-2 py-1 text-[11px]"
                                         value={task.date}
                                         onChange={e => { updateTaskField(task.id, 'date', e.target.value); setEditingDateId(null); }}
                                         onBlur={() => setEditingDateId(null)}
+                                        onClick={e => showDatePicker(e.currentTarget)}
                                         autoFocus
                                     />
                                 ) : (
@@ -1103,7 +1122,8 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                                         <button
                                             type="button"
                                             className={`${executionDate === todayStr ? 'font-bold text-blue-600' : (executionDate === tomorrowStr ? 'font-bold text-indigo-600' : 'hover:underline')}`}
-                                            onClick={() => setEditingDateId(task.id)}
+                                            onClick={() => openInlineDate(task.id, 'date')}
+                                            aria-label={`Alterar data de execução de ${task.title}`}
                                             title={postponeDays ? `Data base: ${baseDateLabel}` : undefined}
                                         >
                                             {executionLabel}
@@ -1117,15 +1137,20 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                                     {editingDeadlineId === task.id ? (
                                         <input
                                             type="date"
+                                            ref={inlineDeadlineInput}
+                                            aria-label={`Deadline de ${task.title}`}
+                                            data-inline-date="deadline"
                                             className="border rounded px-2 py-1 text-[11px]"
                                             value={task.deadline}
                                             onChange={e => { updateTaskField(task.id, 'deadline', e.target.value); setEditingDeadlineId(null); }}
                                             onBlur={() => setEditingDeadlineId(null)}
+                                            onClick={e => showDatePicker(e.currentTarget)}
                                             autoFocus
                                         />
                                     ) : (
                                         <button type="button" className="hover:underline"
-                                            onClick={() => setEditingDeadlineId(task.id)}>
+                                            onClick={() => openInlineDate(task.id, 'deadline')}
+                                            aria-label={`Alterar deadline de ${task.title}`}>
                                             {task.deadline.split('-').reverse().join('/')}
                                         </button>
                                     )}
