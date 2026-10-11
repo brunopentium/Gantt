@@ -168,3 +168,5 @@ O primeiro item aberto da seleção fica amarelo. Reagendar, concluir, cancelar 
 ## Instalação como aplicativo
 
 O ProjectFlow tem manifest e ícones PWA para Android e Windows, com janela própria. Uma caixa pergunta se você deseja instalar; Sim ou Não fica guardado por navegador e endereço e impede perguntas nas próximas visitas. Chrome e Edge podem abrir a instalação nativa; outros navegadores recebem instruções pelo menu. Uma instalação já aberta como aplicativo não recebe a pergunta. Ainda é possível instalar pelo menu depois de escolher Não. O app carrega arquivos atuais pela rede e não cria cache de dados privados nem de chamadas ao GitHub; é necessário estar conectado para abrir o aplicativo. O armazenamento e os salvamentos continuam pertencendo ao mesmo endereço.
+
+No celular, o gesto de dois dedos sobre a tabela ou as barras ajusta as duas partes juntas entre 40% e 250%, incluindo cronogramas agrupados. Os botões − e + ajustam o zoom e o percentual retorna a 100%. Reduzir amplia a quantidade de colunas, datas e linhas visíveis sem modificar os dados, a impressão ou a visualização de desktop. A rolagem com um dedo continua disponível.

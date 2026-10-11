@@ -44,3 +44,14 @@
     -webkit-overflow-scrolling:touch;
   }
 }
+
+/* Scale the shared viewport, not only the time axis, down to 40%. */
+@media(max-width:1024px) and (pointer:coarse){
+  [data-app-view="gantt"] #main,[data-app-view="gantt"] .sg-chart{
+    zoom:var(--mobile-schedule-scale,1);width:100%;max-width:100%;
+    touch-action:pan-x pan-y;
+  }
+  [data-schedule-aggregate="on"] #scheduleMobileNav .mobile-zoom-button{display:inline-block}
+  #scheduleMobileNav .mobile-zoom-button{min-width:36px}
+}
+@media print{#main,.sg-chart{zoom:1!important}}

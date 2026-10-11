@@ -24,8 +24,7 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     await page.waitForFunction(()=>document.getElementById('tbody').children.length===80);
     return page;
   }
-  // Real touch events exercise Chromium's native scrolling/pinch recognition,
-  // rather than merely assigning scroll offsets or applying a CSS transform.
+  // Real touch events exercise one-finger scrolling and the chart pinch handler.
   async function swipe(page,cdp,from,to){
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...from,id:0}]});
     for(let i=1;i<=15;i++){
@@ -65,18 +64,34 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     await page.click('#mobileShowTable');await page.waitForFunction(()=>document.getElementById('main').scrollLeft<1);
     await page.click('#mobileShowGantt');await page.waitForFunction(()=>Math.abs(document.getElementById('main').scrollLeft-572)<1);
     assert.equal(Math.round(await page.locator('#ghead').evaluate(e=>e.getBoundingClientRect().x)),0);
-    // Pinching over the Gantt changes native page scale; table and surrounding
-    // controls participate in the same visual viewport, without a chart-only zoom.
+    // Pinching scales the table and bars together, including below initial size.
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:150,y:400,id:0},{x:240,y:400,id:1}]});
     for(let i=1;i<=12;i++){
       await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:150-i*4,y:400,id:0},{x:240+i*4,y:400,id:1}]});
       await page.waitForTimeout(20);
     }
     await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-    await page.waitForFunction(()=>visualViewport.scale>1.1);
+    await page.waitForFunction(()=>Number(getComputedStyle(document.getElementById('main')).zoom)>1.1);
     assert.equal(await page.locator('#app').evaluate(e=>getComputedStyle(e).transform),'none');
-    await cdp.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});
-    await page.waitForFunction(()=>visualViewport.scale===1);
+    await page.click('#mobileZoomReset');
+    await page.waitForFunction(()=>Number(getComputedStyle(document.getElementById('main')).zoom)===1);
+    async function pinchOut(){
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:90,y:400,id:0},{x:300,y:400,id:1}]});
+      for(let i=1;i<=12;i++){
+        await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:90+i*7,y:400,id:0},{x:300-i*7,y:400,id:1}]});
+        await page.waitForTimeout(20);
+      }
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    }
+    await pinchOut();await page.waitForFunction(()=>Number(getComputedStyle(document.getElementById('main')).zoom)<.75);
+    assert.equal(Math.round(await page.locator('#main').evaluate(e=>e.getBoundingClientRect().width)),390);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
+    assert((await dimensions(page)).mainWidth>520,'Zooming out must reveal a wider range, not blank margins');
+    const scaled=await page.locator('.tr[data-id="m0"]').boundingBox();assert(scaled.height<23);
+    assert.equal(Math.round(await page.locator('#tpanel').evaluate(e=>e.getBoundingClientRect().width)),229);
+    await page.screenshot({path:'/tmp/gantt-mobile-zoom-out.png'});
+    assert.equal(await page.evaluate(()=>JSON.stringify(T.map(taskOut))),tasks);
+    await page.click('#mobileZoomReset');
     for(let i=0;i<8;i++)await swipe(page,cdp,{x:200,y:740},{x:200,y:300});
     size=await dimensions(page);assert(size.top>=size.height-size.viewport-2);
     const lastRow=await page.locator('.tr[data-id="m79"]').boundingBox();
@@ -114,6 +129,12 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     await swipe(page,cdp,{x:330,y:400},{x:55,y:400});
     assert(await page.locator('.sg-chart').evaluate(e=>e.scrollLeft>150));
     assert.equal(Math.round(await page.locator('.sg-chart-header .sg-label').evaluate(e=>e.getBoundingClientRect().x)),13);
+    const groupViewportWidth=await page.locator('.sg-chart').evaluate(e=>e.getBoundingClientRect().width),groupRowHeight=(await page.locator('.sg-row').last().boundingBox()).height;
+    await pinchOut();await page.waitForFunction(()=>Number(getComputedStyle(document.querySelector('.sg-chart')).zoom)<.75);
+    assert(Math.abs(await page.locator('.sg-chart').evaluate(e=>e.getBoundingClientRect().width)-groupViewportWidth)<3);
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
+    assert((await page.locator('.sg-row').last().boundingBox()).height<groupRowHeight*.8);
+    await page.click('#mobileZoomReset');
     await page.evaluate(()=>scrollTo(0,document.scrollingElement.scrollHeight));
     const lastGroupRow=await page.locator('.sg-row').last().boundingBox();
     assert(lastGroupRow.y>52 && lastGroupRow.y+lastGroupRow.height<=844);
@@ -141,6 +162,6 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
     assert(await desktop.locator('#scheduleMobileNav').isHidden());
     assert.equal(await desktop.evaluate(()=>getComputedStyle(document.documentElement).overflow),'hidden');
     assert.deepEqual(errors,[]);
-    console.log('PASS: mobile native vertical/horizontal touch, whole-page pinch zoom, last task/date access, aligned rows/headers, table/bar shortcuts, axis zoom, landscape, group scrolling/folding, tab isolation and unchanged desktop pane scrolling');
+    console.log('PASS: mobile native vertical/horizontal touch, shared chart pinch zoom, last task/date access, aligned rows/headers, table/bar shortcuts, axis zoom, landscape, group scrolling/folding, tab isolation and unchanged desktop pane scrolling');
   }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});

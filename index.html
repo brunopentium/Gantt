@@ -157,7 +157,7 @@ input{font-family:inherit}
 </style>
 <link rel="stylesheet" href="action-plans.css?v=20261009-participant-owners">
 <link rel="stylesheet" href="schedule-groups.css?v=20261007-task-folding">
-<link rel="stylesheet" href="gantt-mobile.css?v=20261007-mobile-navigation">
+<link rel="stylesheet" href="gantt-mobile.css?v=20261011-mobile-zoom">
 <link rel="stylesheet" href="todo-native.css?v=20261008-integrated-todo">
 <link rel="stylesheet" href="my-day.css?v=20261009-daily-buttons">
 <link rel="stylesheet" href="workspace-autosave.css?v=20261008-auto-save">
@@ -208,7 +208,8 @@ input{font-family:inherit}
 <div id="scheduleHierarchyBar"></div>
 <div id="scheduleMobileNav" aria-label="Mobile schedule navigation">
   <button id="mobileShowTable" type="button">Table</button><button id="mobileShowGantt" type="button">Bars</button>
-  <span>Swipe sideways. Pinch with two fingers to zoom.</span>
+  <button id="mobileZoomOut" class="mobile-zoom-button" type="button" aria-label="Zoom out">−</button><button id="mobileZoomReset" class="mobile-zoom-button" type="button" aria-label="Reset schedule zoom">100%</button><button id="mobileZoomIn" class="mobile-zoom-button" type="button" aria-label="Zoom in">+</button>
+  <span>Swipe sideways. Pinch with two fingers to zoom in or out.</span>
 </div>
 <section id="scheduleAggregate" hidden aria-label="Consolidated schedule analysis"></section>
 <div id="main">
@@ -252,7 +253,7 @@ input{font-family:inherit}
 <script src="github-backup.js?v=20261008-auto-save"></script>
 <script src="gantt-print.js?v=20261008-english-navigation"></script>
 <script src="plan-print.js?v=20261008-english-navigation"></script>
-<script src="gantt-mobile.js?v=20261007-mobile-navigation"></script>
+<script src="gantt-mobile.js?v=20261011-mobile-zoom"></script>
 <script src="todo-native.js?v=20261008-my-day"></script>
 <script src="todo-cloud.js?v=20261008-auto-save"></script>
 <script src="workspace-backup.js?v=20261008-auto-save"></script>
