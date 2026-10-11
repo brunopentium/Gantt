@@ -1,0 +1,9 @@
+#pwaInstallDialog{position:fixed;inset:0;margin:auto;width:420px;max-width:calc(100vw - 28px);max-height:calc(100dvh - 28px);border:1px solid #ccdce5;border-radius:15px;padding:0;background:#fff;color:#20334a;box-shadow:0 20px 70px #0005;overflow:auto;font:14px/1.6 'Segoe UI',system-ui,sans-serif;user-select:text}
+#pwaInstallDialog::backdrop{background:#10243888}
+#pwaInstallDialog .pwa-install-content{padding:25px}
+#pwaInstallDialog h2{font-size:21px;line-height:1.3;margin:0 0 12px}
+#pwaInstallDialog p{margin:0;color:#536172;white-space:normal}
+#pwaInstallDialog [data-pwa-actions]{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
+#pwaInstallDialog button{font:600 14px 'Segoe UI',system-ui,sans-serif;border-radius:8px;padding:11px 17px;border:1px solid #cbd9e5;background:#f4f7fb;color:#20334a;min-height:44px}
+#pwaInstallDialog .pwa-install-yes{background:#087f83;color:#fff;border-color:#087f83}
+#pwaInstallDialog button:focus-visible{outline:3px solid #49b3b7;outline-offset:3px}
