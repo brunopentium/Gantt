@@ -11,8 +11,8 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
    page.on('pageerror',e=>errors.push(e.message));
    if(scenario==='standalone')await page.addInitScript(()=>{const original=window.matchMedia.bind(window);window.matchMedia=query=>query==='(display-mode: standalone)'?{matches:true}:original(query)});
    await page.goto(url);await page.waitForFunction(()=>window.MyDay&&document.getElementById('mdAutomaticOrder'));
-   const manifestURL=await page.locator('link[rel=manifest]').getAttribute('href');const response=await page.request.get(new URL(manifestURL,url).href);assert.equal(response.status(),200);const manifest=await response.json();assert.equal(manifest.display,'standalone');assert.equal(manifest.scope,'./');
-   for(const size of [192,512]){const icon=manifest.icons.find(x=>x.sizes===`${size}x${size}`);assert(icon);assert.equal((await page.request.get(new URL(icon.src,url).href)).status(),200)}
+   const manifest=await page.evaluate(async()=>{const response=await fetch(document.querySelector('link[rel=manifest]').href);if(!response.ok)throw Error('Manifest unavailable');return response.json()});assert.equal(manifest.display,'standalone');assert.equal(manifest.scope,'./');
+   for(const size of [192,512]){const icon=manifest.icons.find(x=>x.sizes===`${size}x${size}`);assert(icon);assert.equal(await page.evaluate(async src=>(await fetch(src)).status,icon.src),200)}
    await page.evaluate(()=>navigator.serviceWorker.ready);assert.equal(await page.evaluate(async()=>new URL((await navigator.serviceWorker.getRegistration()).scope).pathname),new URL(url).pathname);
    if(scenario==='standalone'){
     await page.waitForTimeout(3200);assert.equal(await page.locator('#pwaInstallDialog[open]').count(),0);
