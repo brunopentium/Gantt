@@ -13,3 +13,21 @@ html[data-task-phone="true"] .task-modal-overlay>div{max-height:calc(var(--task-
 html[data-task-phone="true"] .task-dashboard{display:flex;flex-direction:column}
 html[data-task-phone="true"] .task-grid{order:1}
 html[data-task-phone="true"] .task-filters{order:2;margin:20px 0 0}
+
+/* Portrait phones: cards fit the viewport; only the weekday strip scrolls. */
+html[data-task-phone="true"][data-task-portrait="true"] .task-grid,
+html[data-task-phone="true"][data-task-portrait="true"] .task-card{min-width:0;max-width:100%}
+html[data-task-phone="true"][data-task-portrait="true"] .task-card-header{flex-direction:column;gap:6px}
+html[data-task-phone="true"][data-task-portrait="true"] .task-card-info{width:100%;min-width:0;overflow-wrap:anywhere}
+html[data-task-phone="true"][data-task-portrait="true"] .task-card-topline{flex-wrap:wrap;min-width:0}
+html[data-task-phone="true"][data-task-portrait="true"] .task-card-actions{justify-content:flex-start;flex-wrap:wrap;max-width:100%}
+html[data-task-phone="true"][data-task-portrait="true"] .task-card-actions button{min-width:28px;min-height:30px;flex-shrink:0}
+html[data-task-phone="true"][data-task-portrait="true"] .task-postpone{width:100%;max-width:100%;min-width:0;flex-basis:100%}
+html[data-task-phone="true"][data-task-portrait="true"] .task-postpone>span{flex-shrink:0}
+html[data-task-phone="true"][data-task-portrait="true"] .task-postpone-days{flex:1;min-width:0;overflow-x:auto;scrollbar-width:thin;touch-action:pan-x pinch-zoom;-webkit-overflow-scrolling:touch}
+html[data-task-phone="true"][data-task-portrait="true"] .task-postpone-days button{flex-shrink:0;min-width:28px;height:28px}
+html[data-task-phone="true"][data-task-portrait="true"] .task-filters>*{min-width:0;max-width:100%}
+html[data-task-phone="true"][data-task-portrait="true"] .task-filters select{min-width:0;max-width:100%}
+html[data-task-phone="true"][data-task-portrait="true"] .task-filters>div:first-child>div{flex-wrap:wrap;max-width:100%}
+
+html[data-task-phone="true"][data-task-portrait="true"] .task-recurrence-summary{flex-wrap:wrap;gap:6px}

@@ -7,6 +7,7 @@
   function measure(){
     queued=false;
     document.documentElement.dataset.taskPhone=String(phone.matches);
+    document.documentElement.dataset.taskPortrait=String(window.parent.matchMedia('(orientation:portrait)').matches);
     const frame=window.frameElement;
     if(frame){
       document.documentElement.style.setProperty('--task-visible-top',Math.max(0,-frame.getBoundingClientRect().top)+'px');

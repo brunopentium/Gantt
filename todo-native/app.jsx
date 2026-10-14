@@ -189,9 +189,9 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
             };
 
             return (
-                <div className="flex items-center gap-1" title="Ajustar data de execução por dia da semana">
+                <div className="task-postpone flex items-center gap-1" title="Ajustar data de execução por dia da semana">
                     <span className="text-[11px] font-semibold text-slate-500">Reagendar:</span>
-                    <div className="flex items-center gap-1 overflow-x-auto flex-nowrap">
+                    <div className="task-postpone-days flex items-center gap-1 overflow-x-auto flex-nowrap" role="group" aria-label="Dias para reagendar">
                         {offsets.map((offset) => {
                             const targetDate = addDays(referenceDate, offset);
                             const weekdayIndex = new Date(targetDate + 'T00:00:00').getDay();
@@ -1016,7 +1016,7 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                     : 'Sem data';
                 const baseDateLabel = task.date ? task.date.split('-').reverse().join('/') : '';
                 return (
-                    <div key={task.id} data-task-id={task.id} style={cardBgStyle} className={`bg-white/90 rounded-lg shadow-sm hover:shadow transition p-1.5 border-l-4 ${getAlertLevel(task)} relative group`}>
+                    <div key={task.id} data-task-id={task.id} style={cardBgStyle} className={`task-card bg-white/90 rounded-lg shadow-sm hover:shadow transition p-1.5 border-l-4 ${getAlertLevel(task)} relative group`}>
                         {conflictReasons.length > 0 && (
                             <div className="flex flex-wrap items-center gap-1 text-[11px] text-amber-700 font-semibold mb-1">
                                 <Icon name="alert-triangle" size={14} />
@@ -1028,9 +1028,9 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                                 ))}
                             </div>
                         )}
-                        <div className="flex justify-between items-start mb-1 gap-2">
-                            <div className="flex-1 space-y-1 leading-tight">
-                                <div className="flex items-center justify-between gap-2">
+                        <div className="task-card-header flex justify-between items-start mb-1 gap-2">
+                            <div className="task-card-info flex-1 space-y-1 leading-tight">
+                                <div className="task-card-topline flex items-center justify-between gap-2">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{task.project}</span>
                                     <div className="flex items-center gap-2 text-[11px] text-slate-600">
                                         <RatingDisplay
@@ -1070,7 +1070,7 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                                     </h3>
                                 )}
                             </div>
-                            <div className="flex items-center gap-1.5 text-slate-500">
+                            <div className="task-card-actions flex items-center gap-1.5 text-slate-500">
                                 {isExecutionAfterDeadline(task) && (
                                     <span className="text-red-500" title="Execução após o prazo definido">
                                         <Icon name="alert-triangle" size={16} />
@@ -1248,7 +1248,7 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                         )}
 
                         {task.status === 'Recorrente' && (
-                            <div className="mt-2 text-[11px] text-purple-600 bg-purple-50 border border-purple-200 rounded p-2 flex items-center justify-between">
+                            <div className="task-recurrence-summary mt-2 text-[11px] text-purple-600 bg-purple-50 border border-purple-200 rounded p-2 flex items-center justify-between">
                                 <div className="flex items-center gap-1">
                                     <Icon name="clock-3" size={12} /> Próxima ocorrência: {getNextRecurrenceDate(task) || 'Configure a recorrência'}
                                 </div>

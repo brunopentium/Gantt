@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765/';
 const date=new Date().toISOString().slice(0,10);
 const data={tasks:Array.from({length:24},(_,i)=>({id:String(i),title:'PHONE TASK '+i,date,deadline:'',status:'Em Andamento',project:'Pessoal',priority:3,difficulty:2,notes:'',tags:[],subtasks:[],recurrence:{frequency:'Nenhuma'}})),settings:{projects:['Pessoal'],config:{}}};
+data.tasks[1].project='PROJETO'.repeat(18);data.tasks[1].status='Recorrente';data.tasks[1].recurrence={frequency:'Diária',daysOfWeek:[],daysOfMonth:[]};data.tasks[23].title+=' '+('Título muito longo para testar a largura do cartão '.repeat(4));
 (async()=>{
  const browser=await chromium.launch({headless:true});
  try{
@@ -26,6 +27,26 @@ const data={tasks:Array.from({length:24},(_,i)=>({id:String(i),title:'PHONE TASK
    const grid=await frame.locator('.task-grid').boundingBox(),filters=await frame.locator('.task-filters').boundingBox();
    assert(filters.y>=grid.y+grid.height);assert(grid.y<100);
    await page.screenshot({path:'/tmp/task-phone-content-first.png'});
+   assert.equal(await frame.locator('html').evaluate(()=>document.documentElement.scrollWidth),390);
+   assert(await frame.locator('.task-card').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().left>=0&&n.getBoundingClientRect().right<=innerWidth)));
+   assert(await frame.locator('.task-card-actions button').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().left>=0&&n.getBoundingClientRect().right<=innerWidth)));
+   await page.setViewportSize({width:320,height:844});
+   await page.waitForFunction(()=>document.getElementById('todoNativeFrame').contentWindow.innerWidth===320);
+   assert.equal(await frame.locator('html').evaluate(()=>document.documentElement.scrollWidth),320);
+   await page.setViewportSize({width:390,height:844});
+   await page.waitForFunction(()=>document.getElementById('todoNativeFrame').contentWindow.innerWidth===390);
+   const strip=frame.locator('[data-task-id="0"] .task-postpone-days');
+   assert(await strip.evaluate(n=>n.scrollWidth>n.clientWidth&&getComputedStyle(n).overflowX==='auto'));
+   const rect=await strip.boundingBox(),cdp=await context.newCDPSession(page);
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:rect.x+rect.width-12,y:rect.y+rect.height/2,id:0}]});
+   for(let i=1;i<=12;i++){await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:rect.x+rect.width-12-(rect.width-24)*i/12,y:rect.y+rect.height/2,id:0}]});await page.waitForTimeout(20)}
+   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+   await page.waitForFunction(()=>document.getElementById('todoNativeFrame').contentDocument.querySelector('[data-task-id="0"] .task-postpone-days').scrollLeft>30);
+   assert.equal(await page.evaluate(()=>NativeTodo.snapshot().tasks.find(t=>t.id==='0').date),date);
+   await strip.locator('button').last().click();
+   const shifted=new Date(Date.parse(date+'T12:00:00Z')+14*86400000).toISOString().slice(0,10);
+   await page.waitForFunction(value=>NativeTodo.snapshot().tasks.find(t=>t.id==='0').date===value,shifted);
+   await page.evaluate(date=>MyDayData.update({source:'todo',id:'0'},{date}),date);
    await frame.getByPlaceholder('Buscar tarefa...').fill('PHONE TASK 9');
    await page.waitForFunction(()=>document.getElementById('todoNativeFrame').contentDocument.querySelectorAll('[data-task-id]').length===1);
    assert.equal(await page.evaluate(()=>NativeTodo.snapshot().tasks.length),24);
@@ -46,8 +67,9 @@ const data={tasks:Array.from({length:24},(_,i)=>({id:String(i),title:'PHONE TASK
    assert.equal(await page.evaluate(()=>WorkspaceProfile.personal),personal);
    assert.deepEqual(errors,[]);await context.close();
   }
-  const page=await browser.newPage({viewport:{width:1280,height:900}});await page.goto(url);await page.click('#tabTodoNative');
+  const page=await browser.newPage({viewport:{width:1280,height:900}});await page.addInitScript(data=>{if(window===window.top)localStorage.setItem('pf_todo_v1',JSON.stringify(data))},data);await page.goto(url);await page.click('#tabTodoNative');
   const frame=page.frameLocator('#todoNativeFrame');await frame.getByRole('button',{name:'Nova Tarefa',exact:true}).waitFor();
+  assert.equal(await frame.locator('.task-card-header').first().evaluate(n=>getComputedStyle(n).flexDirection),'row');
   assert.equal(await frame.locator('.task-sidebar').evaluate(n=>getComputedStyle(n).display),'flex');assert.equal(await frame.locator('.task-content').evaluate(n=>getComputedStyle(n).overflowY),'auto');
   assert((await frame.locator('.task-filters').boundingBox()).y<(await frame.locator('.task-grid').boundingBox()).y);
   assert((await page.locator('#appTabs').boundingBox()).y<(await page.locator('#todoNativeFrame').boundingBox()).y);
