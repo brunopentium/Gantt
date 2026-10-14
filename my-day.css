@@ -232,3 +232,7 @@ html[data-app-view="my-day"] :is(#main,#toolbar,#statusbar,#scheduleHierarchyBar
 @media(max-width:720px){#myDayPanel .md-handled-body{flex-wrap:wrap;gap:9px}#myDayPanel .md-rating-buttons button{width:29px;min-height:34px}#myDayPanel .md-handled-summary{align-items:flex-start}}
 
 @media(max-width:720px){#myDayPanel .md-rating-order{gap:2px}#myDayPanel .md-rating-order button{width:26px}}
+
+/* Compact removal shares the existing control row without a text block. */
+#myDayPanel .md-item-controls>.md-remove-from-day{margin-left:0;padding:0;background:transparent;border:0;color:var(--md-muted)}
+#myDayPanel .md-item-controls>.md-remove-from-day:hover{background:#e8eef5;color:var(--md-ink)}
