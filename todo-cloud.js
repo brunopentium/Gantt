@@ -1,7 +1,7 @@
 /* Independent Todo versions share the existing private GitHub connection. */
 window.TodoCloud=(()=>{
   'use strict';
-  const ROOT='pf_github_backup_v1',TOKEN=ROOT+'_token',KEY='pf_github_todo_v1',PATH='backups/todo.json';
+  const ROOT=window.WorkspaceProfile.key('pf_github_backup_v1'),TOKEN=ROOT+'_token',KEY=window.WorkspaceProfile.key('pf_github_todo_v1'),PATH=window.WorkspaceProfile.path('backups/todo.json');
   let meta={},busy=false,ready=false,last='',startup='',hadLocalData=false,boundConnection='',operationConnection='',blocked=false,errorMessage='';
   let connectionReady=Promise.resolve(),startPromise=null;
   const read=(store,key,fallback)=>{try{return JSON.parse(store.getItem(key))||fallback}catch{return fallback}};
@@ -134,7 +134,7 @@ window.TodoCloud=(()=>{
     meta=read(localStorage,KEY,{});startup=fingerprint();hadLocalData=window.NativeTodo.hasLocalData();last=meta.fingerprint||startup;
     document.getElementById('ntCloudSave').onclick=()=>save();document.getElementById('ntCloudHistory').onclick=history;document.getElementById('ntCloudSettings').onclick=settings;
     status('GitHub do Todo aguardando conexão');
-    window.addEventListener('beforeunload',event=>{if(connection().enabled&&connection().token&&meta.enabled!==false&&fingerprint()!==last){event.preventDefault();event.returnValue=''}});
+    window.addEventListener('beforeunload',event=>{if(!window.WorkspaceProfile.isSwitching()&&connection().enabled&&connection().token&&meta.enabled!==false&&fingerprint()!==last){event.preventDefault();event.returnValue=''}});
   }
   function start(){
     if(startPromise)return startPromise;

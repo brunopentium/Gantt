@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProjectFlow - Gantt Manager</title>
+<script src="workspace-profile.js?v=20261014-personal"></script>
+<link rel="stylesheet" href="workspace-profile.css?v=20261014-personal">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#087f83">
 <link rel="stylesheet" href="pwa-install.css?v=20261011-pwa">
@@ -164,7 +166,7 @@ input{font-family:inherit}
 </head>
 <body>
 <div id="app">
-<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabMyDay" aria-controls="myDayPanel" class="act" role="tab" aria-selected="true">☀ Meu dia</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">Tarefas</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button><button id="tabTodo" aria-controls="todoPanel" role="tab" aria-selected="false" hidden>✅ Todo</button></nav>
+<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabMyDay" aria-controls="myDayPanel" class="act" role="tab" aria-selected="true">☀ Meu dia</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">Tarefas</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button><button id="tabTodo" aria-controls="todoPanel" role="tab" aria-selected="false" hidden>✅ Todo</button><span class="workspace-profile-spacer"></span><span id="personalWorkspaceBadge" hidden>Pessoal</span><button type="button" id="openPersonal">Pessoal</button><button type="button" id="exitPersonal" hidden>Sair</button></nav>
 <div class="workspace-save-bar" aria-label="Salvamento e recuperação"><label><input id="autosaveToggle" type="checkbox" checked> Salvar automaticamente</label><span id="autosaveStatus" role="status" aria-live="polite">Abrindo dados…</span><button id="autosaveResolve" type="button" hidden>Resolver sincronização</button><button id="autosaveCheckpoint" type="button">Criar ponto de restauração</button><button id="autosaveRecovery" type="button">Restaurações</button></div>
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
@@ -240,33 +242,33 @@ input{font-family:inherit}
   <span id="ntCloudStatus" role="status" aria-live="polite"></span>
 </div>
 <section id="todoNativePanel" hidden aria-label="Tarefas">
-  <iframe id="todoNativeFrame" title="Tarefas — TaskMaster integrado" data-src="todo-native/index.html?v=20261009-date-picker"></iframe>
+  <iframe id="todoNativeFrame" title="Tarefas — TaskMaster integrado" data-src="todo-native/index.html?v=20261014-personal"></iframe>
 </section>
 <section id="myDayPanel" hidden role="tabpanel" aria-labelledby="tabMyDay"></section>
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
-<script src="action-plans.js?v=20261009-daily-ranking"></script>
+<script src="action-plans.js?v=20261014-personal"></script>
 <script src="schedule-groups.js?v=20261008-english-navigation"></script>
 <script src="plan-exports.js?v=20261009-participant-owners"></script>
-<script src="plan-cloud.js?v=20261008-auto-save"></script>
-<script src="github-backup.js?v=20261008-auto-save"></script>
+<script src="plan-cloud.js?v=20261014-personal"></script>
+<script src="github-backup.js?v=20261014-personal"></script>
 <script src="gantt-print.js?v=20261008-english-navigation"></script>
 <script src="plan-print.js?v=20261008-english-navigation"></script>
 <script src="gantt-mobile.js?v=20261011-mobile-zoom"></script>
-<script src="todo-native.js?v=20261008-my-day"></script>
-<script src="todo-cloud.js?v=20261008-auto-save"></script>
-<script src="workspace-backup.js?v=20261008-auto-save"></script>
-<script src="local-recovery.js?v=20261008-auto-save"></script>
-<script src="workspace-autosave.js?v=20261008-auto-save"></script>
+<script src="todo-native.js?v=20261014-personal"></script>
+<script src="todo-cloud.js?v=20261014-personal"></script>
+<script src="workspace-backup.js?v=20261014-personal"></script>
+<script src="local-recovery.js?v=20261014-personal"></script>
+<script src="workspace-autosave.js?v=20261014-personal"></script>
 <script src="my-day-data.js?v=20261009-daily-ranking"></script>
-<script src="my-day.js?v=20261009-daily-buttons"></script>
-<script src="app-navigation.js?v=20261008-english-navigation"></script>
+<script src="my-day.js?v=20261014-personal"></script>
+<script src="app-navigation.js?v=20261014-personal"></script>
 <script>
 // ========== STATE ==========
 let T=[], sel=new Set(), lastSel=null, undo=[], fmt={}, cpOn=false, labelsOn=true, statusOn=false, theme='dark', res='weeks', cw=36;
 let projects=[], activeProjectId=null,hasLocalPlanState=false;
-const STORE_KEY='pf_projects_v1', LEGACY_KEY='pf2';
+const STORE_KEY=window.WorkspaceProfile.key('pf_projects_v1'), LEGACY_KEY=window.WorkspaceProfile.key('pf2');
 const RH=30;
 const COLS=[
   {id:'id',label:'#',w:30,min:24,ed:false},
@@ -1049,7 +1051,7 @@ function taskOut(t){return{...t,start:fdi(t.start),end:fdi(t.end)}}
 function taskIn(t){t.start=pd(t.start);t.end=pd(t.end);return t}
 function downloadJSON(data,name){
   let url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
-  let a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  let a=document.createElement('a');a.href=url;a.download=window.WorkspaceProfile.personal?'pessoal-'+name:name;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
@@ -1400,7 +1402,7 @@ function loadSample(){
 // ========== INIT ==========
 function init(){
   if(!load()){
-    loadSample();
+    if(window.WorkspaceProfile.personal){T=[];fmt={};document.getElementById('ptitle').value='Personal schedule'}else loadSample();
     let p=normalizeProject({title:document.getElementById('ptitle').value,tasks:T.map(taskOut),fmt,res,cw});
     projects=[p];activeProjectId=p.id;loadProject(p.id,false);
   }
@@ -1442,9 +1444,9 @@ window.ActionPlans.init({
   openTask:(projectId,taskId)=>{switchProject(projectId);sel.clear();sel.add(taskId);lastSel=taskId;render();setTimeout(()=>document.querySelector('.tr.sel')?.scrollIntoView({block:'center'}),0)}
 });
 let planScopeInitialized=false,legacyPlansMayLoad=!hasLocalPlanState;
-try{const stored=JSON.parse(localStorage.getItem('pf_github_backup_v1')||'{}'),prior=stored.fingerprint?JSON.parse(stored.fingerprint):null;
+try{const stored=JSON.parse(localStorage.getItem(window.WorkspaceProfile.key('pf_github_backup_v1'))||'{}'),prior=stored.fingerprint?JSON.parse(stored.fingerprint):null;
   if(hasLocalPlanState&&prior&&Array.isArray(prior.actionPlans))legacyPlansMayLoad=JSON.stringify(prior.actionPlans)===JSON.stringify(window.ActionPlans.exportData());
-  if(JSON.parse(localStorage.getItem('pf_github_action_plans_v1')||'{}').repo)legacyPlansMayLoad=false;
+  if(JSON.parse(localStorage.getItem(window.WorkspaceProfile.key('pf_github_action_plans_v1'))||'{}').repo)legacyPlansMayLoad=false;
 }catch{}
 window.PlanCloud.init({snapshot:()=>({version:1,type:'action-plans',actionPlans:window.ActionPlans.exportData()}),restore:(d,applyDates)=>window.ActionPlans.restoreData(d.actionPlans,applyDates),flush:()=>{commitEdit();save()},localBackup:()=>window.ActionPlans.backup()});
 window.NativeTodo.init();window.TodoCloud.init();

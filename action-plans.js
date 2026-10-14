@@ -73,7 +73,7 @@ window.ActionPlans=(()=>{
     if(statusFilter==='hide_blocked')return action.status!=='blocked';
     return statusFilter==='all'||action.status===statusFilter;
   }
-  function persistFilters(){localStorage.setItem('pf_action_plan_filter',statusFilter);localStorage.setItem('pf_action_plan_hide_statuses',String(hideStatuses))}
+  function persistFilters(){localStorage.setItem(window.WorkspaceProfile.key('pf_action_plan_filter'),statusFilter);localStorage.setItem(window.WorkspaceProfile.key('pf_action_plan_hide_statuses'),String(hideStatuses))}
   function applyStatusFilter(){retainedEntries.clear();visibleStatuses.clear()}
   // Matching new actions appear immediately; only status edits to displayed actions are retained.
   function visibleEntries(p=current()){
@@ -314,6 +314,7 @@ window.ActionPlans=(()=>{
     m.querySelector('form').onsubmit=e=>{e.preventDefault();const target=m.querySelector('#apTargetPlan').value,title=m.querySelector('#apNewTitle').value.trim();if(!target&&!title){m.querySelector('#apError').textContent='Enter the plan name.';return}checkpoint();activeId=target;if(!activeId){const p={id:id(),title,description:'',source:link,actions:[]};plans.push(p);activeId=p.id}const p=current();p.actions.push({id:id(),title:t.taskName,owner:'',start:t.start,end:t.end,status:'pending',notes:'',link});closePopups();save();switchView(true)};
   }
   function switchView(value){
+    if(value==='todo'&&window.WorkspaceProfile.personal)return;
     api.flush();
     const next=value==='todo'?'todo':value==='native-todo'?'native-todo':value==='my-day'?'my-day':value?'actions':'gantt';
     if(next!=='my-day')window.MyDay?.hide();
@@ -336,10 +337,10 @@ window.ActionPlans=(()=>{
     }else if(next==='my-day'){window.MyDay.show();window.TodoCloud.start()}else if(shown)refresh();else render();
   }
   function init(adapter){
-    const savedFilter=localStorage.getItem('pf_action_plan_filter'),savedHide=localStorage.getItem('pf_action_plan_hide_statuses');
+    const savedFilter=localStorage.getItem(window.WorkspaceProfile.key('pf_action_plan_filter')),savedHide=localStorage.getItem(window.WorkspaceProfile.key('pf_action_plan_hide_statuses'));
     statusFilter=Object.hasOwn(statusFilters,savedFilter)?savedFilter:'all';hideStatuses=savedHide===null?savedFilter==='hide_done_blocked':savedHide==='true';persistFilters();
-    api=adapter;planTheme=localStorage.getItem('pf_action_plan_theme');if(!['dark','light'].includes(planTheme))planTheme='light';
-    document.getElementById('apBackup').onclick=backup;document.getElementById('apImport').onclick=importFile;document.getElementById('apUndo').onclick=undoPlan;document.getElementById('apTheme').onclick=()=>{planTheme=(planTheme||api.getTheme())==='dark'?'light':'dark';localStorage.setItem('pf_action_plan_theme',planTheme);document.documentElement.dataset.theme=planTheme};
+    api=adapter;planTheme=localStorage.getItem(window.WorkspaceProfile.key('pf_action_plan_theme'));if(!['dark','light'].includes(planTheme))planTheme='light';
+    document.getElementById('apBackup').onclick=backup;document.getElementById('apImport').onclick=importFile;document.getElementById('apUndo').onclick=undoPlan;document.getElementById('apTheme').onclick=()=>{planTheme=(planTheme||api.getTheme())==='dark'?'light':'dark';localStorage.setItem(window.WorkspaceProfile.key('pf_action_plan_theme'),planTheme);document.documentElement.dataset.theme=planTheme};
     document.getElementById('apExport').onclick=()=>{const p=current();if(p){sync();downloadJSON({version:1,type:'action-plans',actionPlans:exportBranch(p)},cleanFileName(p.title)+'.json')}else{notice='Create or select a plan to export.';refresh()}};
     document.getElementById('apExcel').onclick=()=>{const p=current();if(p){sync();window.PlanExports.excel(reportPlan(p),task)}else{notice='Select a plan to export.';refresh()}};
     document.getElementById('apPDF').onclick=()=>{const p=current();if(p){sync();window.PlanExports.pdf(reportPlan(p,true),task)}else{notice='Select a plan to print.';refresh()}};

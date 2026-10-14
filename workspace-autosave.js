@@ -1,7 +1,7 @@
 /* One idle queue for the three native areas. Data remains local until a SHA-guarded save succeeds. */
 window.WorkspaceAutosave=(()=>{
   'use strict';
-  const KEY='pf_autosave_v1',IDLE=20000,RETRY=60000;
+  const KEY=window.WorkspaceProfile.key('pf_autosave_v1'),IDLE=20000,RETRY=60000;
   const labels={gantt:'Cronogramas',action:'Planos de ação',todo:'Task'};
   let adapters={},enabled=true,initialized=false,timer=null,running=null,paused=0,lastEdit=0,retryAt=0,refreshQueued=false,hasDraft=false;
   const fingerprints=new Map();

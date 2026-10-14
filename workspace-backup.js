@@ -4,9 +4,10 @@ window.WorkspaceBackup=(()=>{
   function init(adapter){api=adapter}
   function snapshot(){
     api.flush();window.NativeTodo.flush();
-    return {version:1,type:'projectflow-backup',exportedAt:new Date().toISOString(),...api.snapshot(),actionPlans:window.ActionPlans.exportData(),todo:window.NativeTodo.snapshot()};
+    return {version:1,type:'projectflow-backup',exportedAt:new Date().toISOString(),workspace:window.WorkspaceProfile.mode,...api.snapshot(),actionPlans:window.ActionPlans.exportData(),todo:window.NativeTodo.snapshot()};
   }
   function validate(data){
+    if(data?.workspace&&data.workspace!==window.WorkspaceProfile.mode)throw new Error('Este backup pertence ao outro ambiente. Abra o ambiente correto para restaurar.');
     if(data?.version!==1||data.type!=='projectflow-backup'||!Array.isArray(data.projects)||!data.projects.length||!Array.isArray(data.actionPlans))throw new Error('Backup geral inválido.');
     window.ScheduleGroups.validate(data.projects);
     window.ActionPlans.validate(data.actionPlans);

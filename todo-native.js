@@ -1,9 +1,9 @@
 /* The integrated TaskMaster owns its data; the Google Todo remains separate. */
 window.NativeTodo=(()=>{
   'use strict';
-  const KEY='pf_todo_v1', listeners=new Set();
+  const KEY=window.WorkspaceProfile.key('pf_todo_v1'), listeners=new Set();
   const clone=value=>JSON.parse(JSON.stringify(value));
-  const empty=()=>({tasks:[],settings:{projects:['R&D','Pessoal','Trabalho'],config:{}}});
+  const empty=()=>({tasks:[],settings:{projects:window.WorkspaceProfile.personal?['Pessoal']:['R&D','Pessoal','Trabalho'],config:{}}});
   let state=empty(),loadError='',hasLocalData=false,revision=0;
   function validate(data){
     if(!data||!Array.isArray(data.tasks)||!data.settings||typeof data.settings!=='object'||Array.isArray(data.settings))throw new Error('Backup do Todo inválido.');

@@ -18,6 +18,7 @@ context.addEventListener=(name,fn)=>{if(!events.has(name))events.set(name,new Se
 context.removeEventListener=(name,fn)=>events.get(name)?.delete(fn);
 context.dispatchEvent=event=>{for(const fn of events.get(event.type)||[])fn(event)};
 context.ActionPlans={exportData:()=>clone(plans),sync:()=>{syncCount++},subscribe:()=>()=>{},updateAction:(planId,id,patch)=>Object.assign(plans.find(p=>p.id===planId).actions.find(a=>a.id===id),patch),openAction:()=>{}};
+context.window.WorkspaceProfile={key:name=>name,personal:false};
 vm.createContext(context);
 for(const file of ['todo-native.js','my-day-data.js'])vm.runInContext(fs.readFileSync(path.join(__dirname,'..',file),'utf8'),context,{filename:file});
 context.MyDayData.init({projects:()=>projects,flush:()=>{flushCount++},updateTask:(projectId,id,patch)=>Object.assign(projects.find(p=>p.id===projectId).tasks.find(t=>t.id===id),patch)});

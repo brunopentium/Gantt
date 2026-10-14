@@ -1,7 +1,7 @@
 /* Private GitHub backups. Credentials never enter schedule exports or commits. */
 window.GanttBackup = (() => {
   'use strict';
-  const KEY='pf_github_backup_v1', TOKEN_KEY=KEY+'_token', PATH='backups/cronogramas.json';
+  const KEY=window.WorkspaceProfile.key('pf_github_backup_v1'), TOKEN_KEY=KEY+'_token', PATH=window.WorkspaceProfile.path('backups/cronogramas.json');
   let api, config={}, token='', busy=false, ready=false, restoring=false, lastContent='',covered='',pendingCover='',boundConnection='',operationConnection='',blocked=false,errorMessage='',startup='';
   function read(store,key,fallback){try{return JSON.parse(store.getItem(key))||fallback}catch{return fallback}}
   function persist(){localStorage.setItem(KEY,JSON.stringify(config))}
@@ -117,7 +117,7 @@ window.GanttBackup = (() => {
       }
       const data=JSON.parse(decode(remote.content));checked(data);
       api.flush();const current=content(),dirty=!!config.fingerprint&&current!==config.fingerprint&&current!==covered||current!==startup;
-      const legacyPlans=Array.isArray(data.actionPlans)&&!read(localStorage,'pf_github_action_plans_v1',{}).repo;
+      const legacyPlans=Array.isArray(data.actionPlans)&&!read(localStorage,window.WorkspaceProfile.key('pf_github_action_plans_v1'),{}).repo;
       if(!prompt&&remote.sha===config.sha&&config.fingerprint&&(!legacyPlans||dirty)){ready=true;boundConnection=signature();status(dirty?'Local data kept; changes pending':'Latest GitHub version loaded');return {ok:true,pending:dirty}}
       if(!prompt&&dirty)throw failure('Local data kept; a different remote version requires Connect / load latest version.');
       if(!prompt&&remote.sha!==config.sha&&window.PlanCloud?.state().linkedDirty)throw failure('Local linked action plans kept; connect manually to choose the schedule version.');
@@ -219,7 +219,7 @@ window.GanttBackup = (() => {
     document.getElementById('btnCloudHistory').onclick=history;
     status(config.enabled?(token?'Loading GitHub…':'Enter the token to load the latest version'):'GitHub disconnected');
     const started=credentials()?latest():Promise.resolve();
-    window.addEventListener('beforeunload',event=>{if(credentials()&&content()!==lastContent&&content()!==covered){event.preventDefault();event.returnValue=''}});
+    window.addEventListener('beforeunload',event=>{if(!window.WorkspaceProfile.isSwitching()&&credentials()&&content()!==lastContent&&content()!==covered){event.preventDefault();event.returnValue=''}});
     return started;
   }
   function planEditStart(){syncConnection();const c=content();return c===lastContent||c===covered||c===pendingCover}

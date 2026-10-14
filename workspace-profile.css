@@ -1,0 +1,17 @@
+#appTabs .workspace-profile-spacer{flex:1}
+#appTabs #openPersonal,#appTabs #exitPersonal{margin-left:auto;flex:0 0 auto;min-width:82px;border-color:#8b71bd}
+#appTabs #personalWorkspaceBadge{align-self:center;color:#cab2ef;font-size:12px;font-weight:700;padding:0 6px}
+#appTabs [hidden]{display:none!important}
+html[data-workspace="personal"] #appTabs{border-bottom:3px solid #9864cc}
+#personalLoginDialog{inset:0;margin:auto;width:370px;max-width:calc(100vw - 28px);border:1px solid #cbd4e1;border-radius:12px;padding:24px;background:#fff;color:#20334a;font:14px/1.6 system-ui;user-select:text}
+#personalLoginDialog::backdrop{background:#10243888}
+#personalLoginDialog h2{font-size:21px;margin:0 0 8px}
+#personalLoginDialog label{display:flex;flex-direction:column;gap:5px;margin-top:14px}
+#personalLoginDialog input{font:16px system-ui;border:1px solid #b8c6d7;border-radius:6px;padding:10px;width:100%;color:#20334a;background:#fff}
+#personalLoginDialog form>div{display:flex;justify-content:flex-end;gap:10px;margin-top:15px}
+#personalLoginDialog button{font:600 14px system-ui;padding:10px 16px;min-height:42px;background:#f4f7fb;color:#20334a;border-color:#cbd4e1;border-radius:7px}
+#personalLoginDialog [type=submit]{background:#7651a8;color:#fff;border-color:#7651a8}
+#personalLoginError{color:#b52929;min-height:22px}
+@media(max-width:600px){#appTabs .workspace-profile-spacer{display:none}#appTabs #openPersonal,#appTabs #exitPersonal{min-width:82px}#personalWorkspaceBadge{margin-left:auto}}
+
+html[data-workspace="personal"] #myDayPanel .md-legacy-option,html[data-workspace="personal"] #myDayPanel .md-legacy-option+p{display:none!important}

@@ -1,7 +1,7 @@
 /* Internal safety copies stay in this browser; JSON downloads are explicit. */
 window.LocalRecovery=(()=>{
   'use strict';
-  const DB='projectflow-recovery-v1',STORE='snapshots',LIMIT=30,NAMED_LIMIT=10;
+  const DB=window.WorkspaceProfile.db('projectflow-recovery-v1'),STORE='snapshots',LIMIT=30,NAMED_LIMIT=10;
   let databasePromise=null,modal=null,previousFocus=null;
   const clone=value=>JSON.parse(JSON.stringify(value));
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

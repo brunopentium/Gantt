@@ -100,7 +100,7 @@ import {AlertCircle, AlertOctagon, AlertTriangle, Bell, Calendar, CalendarCheck,
 
 const iconComponents={'alert-circle':AlertCircle,'alert-octagon':AlertOctagon,'alert-triangle':AlertTriangle,'bell':Bell,'calendar':Calendar,'calendar-check':CalendarCheck,'calendar-clock':CalendarClock,'calendar-range':CalendarRange,'check-square':CheckSquare,'chevron-down':ChevronDown,'chevron-right':ChevronRight,'clock-3':Clock3,'database':Database,'download':Download,'edit-2':Edit2,'fast-forward':FastForward,'flag':Flag,'layers':Layers,'layout-dashboard':LayoutDashboard,'list-ordered':ListOrdered,'plus':Plus,'plus-square':PlusSquare,'repeat':Repeat,'settings':Settings,'skip-forward':SkipForward,'sticky-note':StickyNote,'trash-2':Trash2,'trending-up':TrendingUp,'upload':Upload,'x':X};
 const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];return Component?<Component size={size} className={className} aria-hidden="true"/>:null};
-        const DEFAULT_PROJECT = 'R&D';
+        const DEFAULT_PROJECT = window.TaskBackend?.personal ? 'Pessoal' : 'R&D';
 
         const SECONDARY_FIELDS = ['project', 'priority', 'difficulty', 'deadline'];
         const DEFAULT_SECONDARY_SORT = SECONDARY_FIELDS.map(field => ({ field, direction: 'asc' }));
