@@ -1,0 +1,11 @@
+/* The parent decides phone mode so a tall auto-sized frame does not change it. */
+html[data-task-phone="true"] body{height:auto;overflow:visible}
+html[data-task-phone="true"] .task-shell{min-height:0;flex-direction:column;position:relative}
+html[data-task-phone="true"] .task-sidebar{display:contents}
+html[data-task-phone="true"] .task-new-button{order:1;width:calc(100% - 32px);margin:16px 16px 0}
+html[data-task-phone="true"] .task-content{order:2;flex:none;height:auto;overflow:visible;width:100%;padding:16px}
+html[data-task-phone="true"] .task-sidebar>h1{order:3;background:#0f172a;margin:0;padding:24px 24px 12px;color:#fff}
+html[data-task-phone="true"] .task-sidebar>nav{order:4;flex:none;background:#0f172a;padding:12px 24px;color:#fff}
+html[data-task-phone="true"] .task-sidebar-stats{order:5;background:#0f172a;padding:24px;margin:0;color:#fff}
+html[data-task-phone="true"] .task-modal-overlay{position:absolute;inset:auto 0 auto 0;top:var(--task-visible-top,0px);height:var(--task-viewport-height,100vh)}
+html[data-task-phone="true"] .task-modal-overlay>div{max-height:calc(var(--task-viewport-height,100vh) - 32px)}

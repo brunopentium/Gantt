@@ -7,3 +7,14 @@
 #todoNativePanel{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;background:#f1f5f9}
 #todoNativeFrame{display:block;width:100%;flex:1;min-height:0;border:0;background:#f1f5f9}
 @media(max-width:600px){#appTabs{flex-wrap:wrap}#appTabs button{flex:1;padding:6px 9px;min-width:135px}}
+
+/* Only Tasks on phones: content first, all navigation/management at the end. */
+@media(max-width:767px) and (pointer:coarse),(max-height:600px) and (max-width:1024px) and (pointer:coarse){
+ html[data-app-view="native-todo"],html[data-app-view="native-todo"] body{height:auto;min-height:100%;overflow:visible}
+ [data-app-view="native-todo"] #app{height:auto;min-height:100dvh;overflow-anchor:none}
+ [data-app-view="native-todo"] #todoNativePanel{order:1;flex:none}
+ [data-app-view="native-todo"] #todoNativeFrame{flex:none;min-height:200px}
+ [data-app-view="native-todo"] #todoNativeToolbar{order:2}
+ [data-app-view="native-todo"] .workspace-save-bar{order:3}
+ [data-app-view="native-todo"] #appTabs{order:4}
+}

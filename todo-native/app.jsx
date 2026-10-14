@@ -1266,10 +1266,10 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
             };
 
             return (
-                <div className="min-h-screen flex flex-col md:flex-row">
+                <div className="task-shell min-h-screen flex flex-col md:flex-row">
                     {storageError && <div role="alert" className="fixed top-0 left-0 right-0 z-[60] bg-red-100 text-red-800 p-3">{storageError}</div>}
                     {/* SIDEBAR */}
-                    <aside className="w-full md:w-64 bg-slate-900 text-white p-6 flex flex-col shadow-xl z-10">
+                    <aside className="task-sidebar w-full md:w-64 bg-slate-900 text-white p-6 flex flex-col shadow-xl z-10">
                         <h1 className="text-2xl font-bold flex items-center gap-2 mb-8">
                             <Icon name="check-square" className="text-blue-400" /> TaskMaster
                         </h1>
@@ -1292,7 +1292,7 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                             </button>
                         </nav>
 
-                        <div className="mt-8 pt-8 border-t border-slate-700 space-y-4">
+                        <div className="task-sidebar-stats mt-8 pt-8 border-t border-slate-700 space-y-4">
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-slate-400">Hoje</span>
                                 <span className="bg-blue-500 px-2 rounded-full text-xs font-bold">{stats.today}</span>
@@ -1315,13 +1315,13 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                             </div>
                         </div>
 
-                        <button onClick={() => { setEditingTask(null); setModalOpen(true); }} className="mt-6 w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold shadow-lg flex justify-center items-center gap-2 transition">
+                        <button onClick={() => { setEditingTask(null); setModalOpen(true); }} className="task-new-button mt-6 w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded font-bold shadow-lg flex justify-center items-center gap-2 transition">
                             <Icon name="plus" /> Nova Tarefa
                         </button>
                     </aside>
 
                     {/* MAIN CONTENT */}
-                    <main className="flex-1 overflow-y-auto h-screen bg-slate-100 p-4 md:p-6">
+                    <main className="task-content flex-1 overflow-y-auto h-screen bg-slate-100 p-4 md:p-6">
 
                         {view === 'dashboard' && (
                             <div className="max-w-5xl mx-auto">
@@ -1627,7 +1627,7 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
 
                     {/* TASK MODAL (Form) */}
                     {modalOpen && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
+                        <div className="task-modal-overlay fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 backdrop-blur-sm">
                             <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto modal-animate">
                                 <TaskForm
                                     task={editingTask}

@@ -59,6 +59,20 @@ window.NativeTodo=(()=>{
   }
   function backup(){flush();downloadJSON({...snapshot(),exportedAt:new Date().toISOString()},'todo-backup.json')}
   function init(){
+    const phone=matchMedia('(max-width:767px) and (pointer:coarse), (max-height:600px) and (max-width:1024px) and (pointer:coarse)');
+    document.getElementById('appTabs').addEventListener('click',event=>{
+      if(!event.target.closest('button'))return;
+      const leaving=phone.matches&&document.documentElement.dataset.appView==='native-todo';
+      requestAnimationFrame(()=>{if(phone.matches&&(leaving||document.documentElement.dataset.appView==='native-todo'))scrollTo(0,0)});
+    },true);
+    window.addEventListener('message',event=>{
+      const frame=document.getElementById('todoNativeFrame');
+      if(event.origin!==location.origin||event.source!==frame.contentWindow||event.data?.type!=='projectflow:task-layout')return;
+      if(event.data.phone&&Number.isFinite(event.data.height)&&event.data.height>0){
+        const height=Math.min(100000,Math.max(200,event.data.height));
+        if(frame.style.height!==height+'px')frame.style.height=height+'px';
+      }else if(!event.data.phone)frame.style.height='';
+    });
     document.getElementById('ntBackup').onclick=backup;
     document.getElementById('ntBackupAll').onclick=()=>window.WorkspaceBackup.exportAll();
     document.getElementById('ntRestoreAll').onclick=()=>window.WorkspaceBackup.importFile();
