@@ -82,7 +82,7 @@ window.MyDayData=(()=>{
     const work={today:[],overdue:[],upcoming:[],undated:[],blocked:[]},schedule={starting:[],finishing:[],ongoing:[],overdue:[]};
     for(const row of rows){
       if(!row.open)continue;
-      if(row.source==='gantt'){for(const [name,flag]of Object.entries({starting:'starting',finishing:'finishing',ongoing:'ongoing',overdue:'overdue'}))if(row.flags[flag])schedule[name].push(row)}
+      if(row.source==='gantt'){if(row.raw.myDay?.[day]?.included===true)work.today.push(row);for(const [name,flag]of Object.entries({starting:'starting',finishing:'finishing',ongoing:'ongoing',overdue:'overdue'}))if(row.flags[flag])schedule[name].push(row)}
       else{
         // Execution and deadline are distinct: an overdue execution can still
         // have a deadline today and must remain discoverable in both views.
@@ -135,9 +135,10 @@ window.MyDayData=(()=>{
   function validateDaily(value){
     if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length>30)throw new Error('Avaliação diária inválida.');
     for(const [day,entry] of Object.entries(value)){
-      if(!validDate(day)||!entry||typeof entry!=='object'||Array.isArray(entry)||Object.keys(entry).some(k=>!['priority','difficulty','order','handled'].includes(k)))throw new Error('Avaliação diária inválida.');
+      if(!validDate(day)||!entry||typeof entry!=='object'||Array.isArray(entry)||Object.keys(entry).some(k=>!['priority','difficulty','order','handled','included'].includes(k)))throw new Error('Avaliação diária inválida.');
       for(const field of ['priority','difficulty'])if(entry[field]!=null&&(!Number.isInteger(entry[field])||entry[field]<1||entry[field]>5))throw new Error('Use notas de 1 a 5.');
       if(entry.order!=null&&(!Number.isInteger(entry.order)||entry.order<1||entry.order>99999))throw new Error('A ordem deve ser um número inteiro entre 1 e 99999.');
+      if(entry.included!=null&&typeof entry.included!=='boolean')throw new Error('Inclusão diária inválida.');
       if(entry.handled!=null&&typeof entry.handled!=='boolean')throw new Error('Foco diário inválido.');
     }
   }

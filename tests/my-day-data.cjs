@@ -48,6 +48,18 @@ assert(!Object.values(data.work).flat().some(r=>['done','reserve'].includes(r.re
 assert.notEqual(data.rows.find(r=>r.ref.id==='same'&&r.ref.planId==='parent').key,data.rows.find(r=>r.ref.id==='same'&&r.ref.planId==='child').key);
 assert.throws(()=>context.MyDayData.read('2026-02-30'),/data válida/);
 
+// A schedule task joins only the explicitly selected date, without cloning or rescheduling.
+const ref={source:'gantt',projectId:'schedule',id:'leaf'};
+const leaf=context.MyDayData.read(day).rows.find(r=>r.key===context.MyDayData.key(ref));
+assert.equal(context.MyDayData.read(day).work.today.filter(r=>r.source==='gantt').length,0);
+context.MyDayData.update(ref,context.MyDayData.dailyPatch(leaf,day,{included:true,priority:1}));
+assert.equal(context.MyDayData.read(day).work.today.filter(r=>r.source==='gantt').length,1);
+assert.equal(context.MyDayData.read('2026-10-09').work.today.filter(r=>r.source==='gantt').length,0);
+assert.equal(projects[1].tasks[1].start,day);assert.equal(projects[1].tasks[1].end,'2026-10-09');
+assert.throws(()=>context.MyDayData.validateDaily({[day]:{included:'yes'}}),/Inclusão/);
+context.MyDayData.update(ref,context.MyDayData.dailyPatch(context.MyDayData.read(day).rows.find(r=>r.key===leaf.key),day,{included:false}));
+assert.equal(context.MyDayData.read(day).work.today.filter(r=>r.source==='gantt').length,0);
+
 // A stale React snapshot cannot revert an external edit, even on the next flush.
 const old=context.NativeTodo.data();frame.contentWindow.TaskMaster={snapshot:()=>clone(old)};
 context.MyDayData.update({source:'todo',id:'shift'},{date:'2026-10-12',notes:'Atualizada'});

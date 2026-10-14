@@ -261,8 +261,8 @@ input{font-family:inherit}
 <script src="workspace-backup.js?v=20261014-personal"></script>
 <script src="local-recovery.js?v=20261014-personal"></script>
 <script src="workspace-autosave.js?v=20261014-personal"></script>
-<script src="my-day-data.js?v=20261009-daily-ranking"></script>
-<script src="my-day.js?v=20261014-personal"></script>
+<script src="my-day-data.js?v=20261014-schedule-inclusion"></script>
+<script src="my-day.js?v=20261014-schedule-inclusion"></script>
 <script src="app-navigation.js?v=20261014-personal"></script>
 <script>
 // ========== STATE ==========
@@ -1518,7 +1518,7 @@ function myDayProjects(){
   });
 }
 function updateMyDayTask(projectId,taskId,patch){
-  if(!patch||typeof patch!=='object'||Array.isArray(patch)||Object.keys(patch).some(k=>!['title','name','start','end','pct','notes'].includes(k)))throw new Error('Alteração de atividade inválida.');
+  if(!patch||typeof patch!=='object'||Array.isArray(patch)||Object.keys(patch).some(k=>!['title','name','start','end','pct','notes','myDay'].includes(k)))throw new Error('Alteração de atividade inválida.');
   const p=projects.find(p=>p.id===projectId);
   if(!p||p.kind==='group')throw new Error('Cronograma não encontrado.');
   const active=projectId===activeProjectId,previous=T,priorTasks=p.tasks,priorUpdatedAt=p.updatedAt,undoLength=undo.length;
@@ -1531,6 +1531,7 @@ function updateMyDayTask(projectId,taskId,patch){
     const title=patch.title??patch.name;
     if(title!==undefined){if(typeof title!=='string'||!title.trim())throw new Error('Informe o nome da atividade.');t.name=title.trim()}
     if(patch.pct!==undefined){const pct=Number(patch.pct);if(!Number.isFinite(pct)||pct<0||pct>100)throw new Error('O progresso deve estar entre 0 e 100%.');t.pct=pct}
+    if(patch.myDay!==undefined){window.MyDayData.validateDaily(patch.myDay);t.myDay=JSON.parse(JSON.stringify(patch.myDay))}
     if(patch.notes!==undefined){if(typeof patch.notes!=='string')throw new Error('Observações inválidas.');t.notes=patch.notes}
     if(patch.start!==undefined||patch.end!==undefined){
       const start=patch.start??(t.mile?patch.end:undefined)??fdi(t.start),end=t.mile?start:(patch.end??fdi(t.end));
