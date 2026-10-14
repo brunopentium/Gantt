@@ -9,3 +9,7 @@ html[data-task-phone="true"] .task-sidebar>nav{order:4;flex:none;background:#0f1
 html[data-task-phone="true"] .task-sidebar-stats{order:5;background:#0f172a;padding:24px;margin:0;color:#fff}
 html[data-task-phone="true"] .task-modal-overlay{position:absolute;inset:auto 0 auto 0;top:var(--task-visible-top,0px);height:var(--task-viewport-height,100vh)}
 html[data-task-phone="true"] .task-modal-overlay>div{max-height:calc(var(--task-viewport-height,100vh) - 32px)}
+
+html[data-task-phone="true"] .task-dashboard{display:flex;flex-direction:column}
+html[data-task-phone="true"] .task-grid{order:1}
+html[data-task-phone="true"] .task-filters{order:2;margin:20px 0 0}

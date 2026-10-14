@@ -1324,9 +1324,9 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                     <main className="task-content flex-1 overflow-y-auto h-screen bg-slate-100 p-4 md:p-6">
 
                         {view === 'dashboard' && (
-                            <div className="max-w-5xl mx-auto">
+                            <div className="task-dashboard max-w-5xl mx-auto">
                                 {/* Filters Bar */}
-                                <div className="bg-white p-3 rounded-lg shadow-sm mb-4 flex flex-col md:flex-row gap-3 items-end md:items-center justify-between">
+                                <div className="task-filters bg-white p-3 rounded-lg shadow-sm mb-4 flex flex-col md:flex-row gap-3 items-end md:items-center justify-between">
                                     <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto items-start md:items-center">
                                         <select className="border rounded px-2 py-1.5 text-sm" value={filters.project} onChange={e => setFilters({...filters, project: e.target.value})}>
                                             <option value="Todos">Todos Projetos</option>
@@ -1366,7 +1366,7 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
                                 </div>
 
                                 {/* Tasks Grid */}
-                                <div className="grid gap-3">
+                                <div className="task-grid grid gap-3">
                                     {filteredTasks.length === 0 && (
                                         <div className="text-center text-slate-400 py-10">Nenhuma tarefa encontrada.</div>
                                     )}

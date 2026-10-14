@@ -23,7 +23,14 @@ const data={tasks:Array.from({length:24},(_,i)=>({id:String(i),title:'PHONE TASK
    assert(locations[1].top>=locations[0].bottom);assert(locations[2].top>=locations[1].bottom);
    assert((await page.locator('#appTabs').boundingBox()).y>(await page.locator('#todoNativeFrame').boundingBox()).height);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);
+   const grid=await frame.locator('.task-grid').boundingBox(),filters=await frame.locator('.task-filters').boundingBox();
+   assert(filters.y>=grid.y+grid.height);assert(grid.y<100);
    await page.screenshot({path:'/tmp/task-phone-content-first.png'});
+   await frame.getByPlaceholder('Buscar tarefa...').fill('PHONE TASK 9');
+   await page.waitForFunction(()=>document.getElementById('todoNativeFrame').contentDocument.querySelectorAll('[data-task-id]').length===1);
+   assert.equal(await page.evaluate(()=>NativeTodo.snapshot().tasks.length),24);
+   await frame.getByPlaceholder('Buscar tarefa...').fill('');
+   await page.waitForFunction(()=>document.getElementById('todoNativeFrame').contentDocument.querySelectorAll('[data-task-id]').length===24);
    await frame.getByRole('button',{name:'Nova Tarefa',exact:true}).click();const form=frame.locator('form');
    await form.locator('input[type=text]').first().fill('CREATED ON PHONE');await form.getByRole('button',{name:'Salvar Tarefa',exact:true}).click();
    await page.waitForFunction(()=>NativeTodo.snapshot().tasks.some(t=>t.title==='CREATED ON PHONE'));
@@ -42,6 +49,7 @@ const data={tasks:Array.from({length:24},(_,i)=>({id:String(i),title:'PHONE TASK
   const page=await browser.newPage({viewport:{width:1280,height:900}});await page.goto(url);await page.click('#tabTodoNative');
   const frame=page.frameLocator('#todoNativeFrame');await frame.getByRole('button',{name:'Nova Tarefa',exact:true}).waitFor();
   assert.equal(await frame.locator('.task-sidebar').evaluate(n=>getComputedStyle(n).display),'flex');assert.equal(await frame.locator('.task-content').evaluate(n=>getComputedStyle(n).overflowY),'auto');
+  assert((await frame.locator('.task-filters').boundingBox()).y<(await frame.locator('.task-grid').boundingBox()).y);
   assert((await page.locator('#appTabs').boundingBox()).y<(await page.locator('#todoNativeFrame').boundingBox()).y);
   console.log('PASS: smartphone Tasks content/new button first and menus/global controls last in work/personal, auto frame sizing, top and off-screen CRUD modals, footer navigation, other-tab isolation and unchanged desktop');
  }finally{await browser.close()}
