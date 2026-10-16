@@ -72,6 +72,29 @@ test('read-only users get no mutation tools; missing configuration and provider 
   await assert.rejects(chat(env,principal,input,store,{now,fetcher:async()=>new Response('{}',{status:402})}),{code:'model_unavailable'});
   assert.equal(store.writes.length,0);
 });
+test('provider failures distinguish authentication, routing, permissions and budget without leaking upstream data',async()=>{
+  const store=new Store(),privateText='sk-or-private prompt with a confidential task';
+  for(const [status,error,expected]of[
+    [401,{message:privateText},/chave OpenRouter foi recusada/],
+    [403,{message:privateText},/permissão ou política/],
+    [403,{message:privateText,metadata:{limit_source:'openrouter_key_limit'}},/saldo ou limite/],
+    [404,{message:privateText},/provedor compatível/],
+    [400,{message:privateText},/formato ou os parâmetros/],
+    [429,{message:privateText},/limite temporário/],
+    [503,{message:privateText},/indisponível/]
+  ])await assert.rejects(chat(env,principal,input,store,{now,fetcher:async()=>Response.json({error},{status})}),e=>{
+    assert.equal(e.code,'model_unavailable');assert.match(e.message,expected);assert(e.message.includes('HTTP '+status));assert(!e.message.includes(privateText));return true;
+  });
+  assert.equal(store.writes.length,0);
+});
+test('provider errors inside HTTP 200 or malformed responses cannot become successful replies or drafts',async()=>{
+  const store=new Store();
+  for(const body of [{error:{code:403,metadata:{error_type:'permission_denied'}}},{choices:[{message:{content:'Salvei tudo'},error:{code:502}}]}])
+    await assert.rejects(chat(env,principal,input,store,{now,fetcher:async()=>Response.json(body)}),{code:'model_unavailable'});
+  await assert.rejects(chat(env,principal,input,store,{now,fetcher:async()=>new Response('<html>unavailable</html>',{status:503})}),e=>{assert.match(e.message,/HTTP 503/);return true;});
+  await assert.rejects(chat(env,principal,input,store,{now,fetcher:async()=>new Response('not json')}),{code:'model_response'});
+  assert.equal(store.writes.length,0);
+});
 test('partial multi-area failures identify only confirmed remote saves',async()=>{
   const store=new Store(),result=await draft(store,[call('update_task',{id:'t1',patch:{status:'Concluída'}},'1'),call('update_action',{id:'a3',planId:'p2',patch:{status:'doing'}},'2')]);
   store.fail='plans';const r=await applyChatDraft(env,principal,result.draft.token,store,now);

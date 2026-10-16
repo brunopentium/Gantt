@@ -96,6 +96,18 @@ function toolSchema(name) {
   delete schema.$schema;
   return schema;
 }
+function modelFailure(status, error) {
+  const type = error?.metadata?.error_type;
+  const message = status === 401 || type === 'authentication' ? 'A chave OpenRouter foi recusada. Atualize OPENROUTER_API_KEY no servidor.'
+    : status === 402 || type === 'payment_required' || ['openrouter_guardrail_budget', 'openrouter_workspace_budget', 'openrouter_key_limit'].includes(error?.metadata?.limit_source) ? 'O saldo ou limite da chave OpenRouter não permite este pedido.'
+      : status === 403 || ['permission_denied', 'content_policy_violation', 'refusal'].includes(type) ? 'A OpenRouter bloqueou o pedido por permissão ou política de acesso. Confira as restrições da chave e da conta.'
+        : status === 404 ? 'A OpenRouter não encontrou um provedor compatível com o modelo e os parâmetros solicitados.'
+          : status === 400 || status === 422 || ['invalid_request', 'invalid_prompt', 'unprocessable'].includes(type) ? 'A OpenRouter recusou o formato ou os parâmetros do pedido. A integração precisa de ajuste.'
+            : status === 429 || type === 'rate_limit_exceeded' ? 'A OpenRouter atingiu um limite temporário. Tente mais tarde.'
+              : 'O provedor de IA está indisponível ou não conseguiu responder. Tente mais tarde.';
+  // Never echo upstream text: it may contain credentials, prompts or task data.
+  return new IntegrationError('model_unavailable', `${message} (OpenRouter HTTP ${status}.)`, 502);
+}
 async function modelCall(env, messages, tools, fetcher) {
   let response;
   try {
@@ -103,16 +115,18 @@ async function modelCall(env, messages, tools, fetcher) {
       method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(55000),
       headers: { Authorization: 'Bearer ' + env.OPENROUTER_API_KEY, 'Content-Type': 'application/json', 'X-OpenRouter-Title': 'ProjectFlow Meu Dia' },
       body: JSON.stringify({ model: env.OPENROUTER_MODEL || 'openai/gpt-6-luna', messages, tools, tool_choice: 'auto',
-        parallel_tool_calls: false, max_tokens: 2500, reasoning: { effort: 'low' }, provider: { require_parameters: true } })
+        max_tokens: 2500, reasoning: { effort: 'low' }, provider: { require_parameters: true } })
     });
   } catch { throw new IntegrationError('model_unavailable', 'A IA não respondeu a tempo. Nenhuma alteração foi aplicada.', 502); }
-  if (!response.ok) {
-    const message = response.status === 402 ? 'O saldo ou limite da chave OpenRouter não permite este pedido.'
-      : response.status === 401 || response.status === 403 ? 'Confira a chave OpenRouter configurada no servidor.'
-        : response.status === 429 ? 'A OpenRouter atingiu um limite temporário. Tente mais tarde.' : 'A OpenRouter não conseguiu atender este pedido.';
-    throw new IntegrationError('model_unavailable', message, 502);
+  let body;
+  try { body = await response.json(); } catch {
+    if (!response.ok) throw modelFailure(response.status);
+    throw new IntegrationError('model_response', 'O provedor de IA retornou uma resposta inválida. Tente mais tarde.', 502);
   }
-  const body = await response.json(), message = body.choices?.[0]?.message;
+  if (!response.ok) throw modelFailure(response.status, body?.error);
+  const providerError = body?.error || body?.choices?.[0]?.error;
+  if (providerError) throw modelFailure(Number.isInteger(providerError.code) && providerError.code >= 400 && providerError.code <= 599 ? providerError.code : 502, providerError);
+  const message = body?.choices?.[0]?.message;
   if (!message || (!message.content && !message.tool_calls?.length)) throw new IntegrationError('model_response', 'Resposta incompleta da IA. Tente um pedido mais curto.', 502);
   return message;
 }
