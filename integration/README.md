@@ -1,0 +1,148 @@
+# Integração ProjectFlow: terminal, API e MCP
+
+Integração separada do frontend, usando os mesmos backups privados do aplicativo. O código não automatiza cliques nem acessa o armazenamento do navegador.
+
+**Estado:** implementação e testes locais. Estes arquivos não publicam um servidor nem instalam uma conexão no ChatGPT. Hospedagem, credenciais, configuração OAuth e instalação da conexão são etapas separadas.
+
+## Operações
+
+| Operação | Função |
+| --- | --- |
+| `list_tasks` | Tarefas, projetos, datas efetivas, filtros e versão atual |
+| `create_task` | Criar tarefa em projeto existente, com data explícita e proteção contra duplicação |
+| `update_task` | Atualizar campos solicitados de uma tarefa existente |
+| `reschedule_tasks` | Simular/aplicar Configurações → A partir de hoje para uma data explícita |
+| `list_actions` | Planos/subplanos e ações, responsáveis e datas vinculadas resolvidas |
+| `update_action` | Atualizar a ação original; datas vinculadas exigem a interface |
+| `list_schedule_activities` | Consultar atividades abertas pelo intervalo planejado |
+| `get_my_day` | Hoje, atrasados, próximos sete dias, sem data, bloqueados e cronogramas |
+
+Toda operação exige `workspace: "work"` (Trabalho) ou `"personal"` (Pessoal). Somente Trabalho fica habilitado por padrão. Quando omitido, `day` usa a data de `America/Sao_Paulo`. Datas são `AAAA-MM-DD`.
+
+As listas retornam `total`, `offset`, `limit` e `nextOffset`. O padrão é 50, máximo 200. Para continuar, envie o `nextOffset` recebido. Cada lista de Meu dia tem sua própria paginação, com o mesmo offset informado.
+
+## Usar pelo terminal sem hospedar um servidor
+
+Requer Node.js 22.17 ou superior.
+
+```sh
+cd integration
+npm ci
+cp .env.example .env
+```
+
+Preencha **no arquivo local `.env`**, fora do Git, `GITHUB_REPOSITORY`, `GITHUB_TOKEN` e, se necessário, `GITHUB_BRANCH`. Use um token fine-grained limitado ao repositório privado de backups, com **Contents: Read and write**. Não use o repositório público `Gantt`. Não extraia credenciais do navegador nem envie tokens por chat ou nos argumentos dos comandos.
+
+O modo local não precisa de OAuth nem de servidor HTTP; usa as permissões do processo local:
+
+```sh
+npm run cli -- --local list_tasks '{"workspace":"work","day":"2026-10-16","overdueOnly":true}'
+npm run cli -- --local list_actions '{"workspace":"work","owner":"Bruno Souza","openOnly":true}'
+npm run cli -- --local list_schedule_activities '{"workspace":"work","day":"2026-10-16","filter":"ongoing"}'
+```
+
+Consulte a versão antes de gravar. Substitua `SHA_DA_CONSULTA` pelo `version` da consulta de tarefas:
+
+```sh
+npm run cli -- --local create_task '{"workspace":"work","expectedVersion":"SHA_DA_CONSULTA","requestId":"teste-agente-2026-10-16-001","title":"Teste Agente Chatgpt","project":"R&D","date":"2026-10-16"}'
+```
+
+Use outro `requestId` para uma nova tarefa. **Reutilize o mesmo ID** ao repetir a mesma criação depois de uma falha ou resultado incerto. Após conflito, consulte novamente e revise a operação. `saved: true` confirma a gravação; uma nova gravação também retorna o SHA do commit.
+
+A reprogramação primeiro simula, sem gravar:
+
+```sh
+npm run cli -- --local reschedule_tasks '{"workspace":"work","expectedVersion":"SHA_DA_CONSULTA","from":"2026-10-16"}'
+```
+
+Após revisar as mudanças, envie o mesmo pedido com `"dryRun":false`. Se a versão mudou, consulte e simule novamente. O procedimento segue a regra atual da interface: usa dias úteis, preserva os intervalos, prazos finais e recorrência, exclui concluídas/canceladas/reservas e não antecipa tarefas futuras para trás. Alvos no fim de semana passam para o próximo dia útil.
+
+Para JSON longo, use `-` como último argumento e forneça o JSON pelo stdin. `npm run cli -- --help` lista os comandos.
+
+## MCP local por stdio
+
+Clientes com MCP local podem iniciar `node src/stdio.mjs`, fornecendo `GITHUB_REPOSITORY`, `GITHUB_TOKEN` e `PROJECTFLOW_WORKSPACES` pelo gerenciador de credenciais/ambiente. `npm run stdio` carrega o `.env` local. Esse transporte não abre portas e não substitui uma conexão remota do ChatGPT.
+
+Exemplo sem segredos embutidos; ajuste o caminho e forneça as variáveis pelo cliente:
+
+```json
+{
+  "mcpServers": {
+    "projectflow": {
+      "command": "node",
+      "args": ["/caminho/para/Gantt/integration/src/stdio.mjs"]
+    }
+  }
+}
+```
+
+## Hospedar na Cloudflare
+
+Use um **Worker separado** de `orgoffice.pages.dev`, sem mover o aplicativo. A entrada é `src/worker.mjs`; `nodejs_compat` está habilitado. Não são necessários banco de dados ou KV para este serviço.
+
+1. Configure o provedor OAuth descrito abaixo.
+2. Ajuste `wrangler.toml`: nome, repositório, `PUBLIC_URL`, `OAUTH_ISSUER`, `OAUTH_JWKS_URL` e `OAUTH_AUDIENCE`. A URL pública deve ser a URL real do Worker, sem caminho. O audience é essa URL seguida de `/mcp`.
+3. Autentique a conta de implantação: `npx wrangler login`.
+4. Configure os segredos: `npx wrangler secret put GITHUB_TOKEN` e `npx wrangler secret put OAUTH_SUBJECTS`. O segundo contém o ID `sub` do usuário autorizado no provedor, não o nome de exibição. Não coloque tokens no arquivo TOML.
+5. `npm run build:worker` verifica o bundle sem publicar. Após revisão e configuração, `npm run deploy:worker` publica o serviço na sua conta.
+6. Verifique `/health`, a descoberta OAuth e uma consulta autenticada. Teste primeiro com um repositório privado de testes contendo os três backups válidos, antes de habilitar os dados reais.
+
+Sem configuração de autenticação o Worker retorna 503. Para desenvolvimento, Wrangler aceita segredos em `.dev.vars` (ignorado pelo Git); ajuste a URL pública e o audience para o endereço local. Não publique configurações de desenvolvimento.
+
+## OAuth para HTTP/MCP remoto
+
+O token GitHub autentica o servidor no GitHub; **não autentica o usuário que chama a integração**. Configure um provedor OAuth/OIDC administrado por você, como Auth0 ou Keycloak, que ofereça:
+
+- Authorization code + PKCE S256, metadata OAuth/OIDC e cliente registrado para ChatGPT ou DCR/CIMD configurado pelo provedor.
+- Access tokens JWT com assinatura RS256, ES256 ou PS256 e campos `iss`, `aud`, `sub`, `exp`.
+- Audience **exatamente** `PUBLIC_URL/mcp` e escopos `projectflow:read` / `projectflow:write`. Configure o provedor para tratar o parâmetro `resource` do cliente e emitir esse audience. Não use um ID token para chamar o serviço.
+- Usuário explicitamente listado em `OAUTH_SUBJECTS`; pertencer ao mesmo provedor não concede acesso.
+- Callbacks e credenciais de cliente conforme os valores exibidos no cadastro da conexão do ChatGPT. O serviço não inventa callbacks nem cria usuários.
+
+O servidor publica `/.well-known/oauth-protected-resource/mcp` e `/.well-known/oauth-protected-resource`, valida os tokens a cada requisição e oferece desafios `WWW-Authenticate`. Login, consentimento e emissão/renovação de tokens pertencem ao provedor OAuth. O token de usuário não é repassado ao GitHub.
+
+Referências: [autenticação de plugins](https://developers.openai.com/plugins/build/auth), [conectar e testar](https://developers.openai.com/plugins/deploy/connect-chatgpt), [MCP TypeScript SDK](https://ts.sdk.modelcontextprotocol.io/server).
+
+## Servidor Node/Docker, alternativa ao Worker
+
+Preencha `.env` (incluindo OAuth) e execute `npm start`. O padrão escuta somente `127.0.0.1:8787`; exponha-o por proxy HTTPS ou túnel autorizado. Para Docker, rode o build **dentro de `integration/`**:
+
+```sh
+docker build -t projectflow-integration .
+docker run --rm --env-file .env -p 127.0.0.1:8787:8787 projectflow-integration
+```
+
+O Docker usa `HOST=0.0.0.0` internamente; com proxy local mantenha a porta publicada apenas em loopback. Hosts/origens são verificados. `ALLOWED_ORIGINS`, se necessário para uma ferramenta de inspeção no navegador, é uma lista explícita separada por vírgula; não aceita `*`.
+
+## Conectar ao ChatGPT
+
+Depois de publicar e testar o login, adicione um servidor MCP personalizado nas configurações de plugins/conexões disponíveis na sua conta, com a **URL HTTPS + `/mcp`** e autenticação OAuth. Revise os escopos e instale a conexão. A interface e a disponibilidade dependem da conta/ambiente; este código não instala o plugin automaticamente.
+
+Para CLI remota, configure `PROJECTFLOW_URL` (origem do serviço) e `PROJECTFLOW_ACCESS_TOKEN` (access token OAuth obtido pelo login do cliente) e omita `--local`. `/api` recebe POST JSON com `{ "operation": "list_tasks", "arguments": { "workspace": "work" } }`. O serviço não fornece um fluxo client-credentials.
+
+## Convivência com o aplicativo e limites
+
+- Trabalho usa `backups/{todo,planos-de-acao,cronogramas}.json`; Pessoal usa `backups/pessoal/`. Pessoal exige habilitação explícita em `PROJECTFLOW_WORKSPACES`. A senha local da interface não autentica esta API.
+- Toda gravação exige o SHA consultado e também usa esse SHA no `PUT` do GitHub. Conflitos não são repetidos automaticamente. Os commits entram no histórico existente da área.
+- Uma aba já aberta pode manter uma cópia antiga. **Salve edições locais antes de usar a integração**; depois da alteração remota use a conexão do aplicativo para abrir a última versão. O mecanismo existente preserva edições locais e pode exigir resolução de conflitos. O serviço não força a atualização da aba.
+- Consultas agregadas leem as três áreas separadamente e informam cada versão; não são uma transação simultânea.
+- Esta versão não exclui dados, cria projetos/planos/ações, altera dependências ou datas vinculadas, muda avaliações diárias ou inclui atividades no Meu dia. Consultas não inventam progresso: 0% registrado continua 0%.
+- Arquivos ausentes/inválidos não viram listas vazias: conecte e salve a área no aplicativo primeiro. Campos desconhecidos do formato atual são preservados.
+
+## Regra proposta para o Assistente ProjectFlow
+
+Depois de a integração estar publicada e conectada, o usuário pode substituir a regra de atuação exclusivamente visual por:
+
+> Use prioritariamente a integração autenticada do ProjectFlow para operações suportadas. Declare o ambiente Trabalho ou Pessoal, consulte registros e versões antes de alterar, preserve campos não solicitados e confira o salvamento. Use a interface para operações não suportadas, conflitos ou conferência. Não altere backups manualmente fora da integração. Não inclua atividades no Meu dia sem pedido. Peça confirmação antes de excluir informações.
+
+É uma proposta: estes arquivos **não atualizam a habilidade instalada**.
+
+## Verificação
+
+```sh
+npm ci
+npm test
+npm run build:worker
+```
+
+Os testes usam dados fictícios, GitHub simulado, JWTs de teste e clientes MCP reais em conexão local. Cobrem datas, versões, duplicatas, preservação, validadores originais, vínculos, OAuth, escopos, ambientes, API e MCP nas entradas Node/Worker. Nenhum teste lê ou modifica backups privados do usuário.

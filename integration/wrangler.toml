@@ -1,0 +1,15 @@
+name = "projectflow-integration"
+main = "src/worker.mjs"
+compatibility_date = "2026-10-16"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Configurar estas variáveis no painel Cloudflare ou antes do deploy.
+# Nunca colocar tokens neste arquivo.
+[vars]
+GITHUB_REPOSITORY = "brunopentium/gantt-backups"
+PROJECTFLOW_WORKSPACES = "work"
+PUBLIC_URL = "https://projectflow-integration.YOUR-SUBDOMAIN.workers.dev"
+OAUTH_ISSUER = "https://identity.example.com/"
+OAUTH_JWKS_URL = "https://identity.example.com/.well-known/jwks.json"
+OAUTH_AUDIENCE = "https://projectflow-integration.YOUR-SUBDOMAIN.workers.dev/mcp"
