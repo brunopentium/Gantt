@@ -2,7 +2,7 @@
 
 Integração separada do frontend, usando os mesmos backups privados do aplicativo. O código não automatiza cliques nem acessa o armazenamento do navegador.
 
-**Estado:** implementação e testes locais. Estes arquivos não publicam um servidor nem instalam uma conexão no ChatGPT. Hospedagem, credenciais, configuração OAuth e instalação da conexão são etapas separadas.
+**Estado:** Worker publicado em `https://projectflow-integration.brunocesardesouza26.workers.dev`, com conexão OAuth instalada no ChatGPT. Leitura, criação sem duplicação e atualização foram validadas remotamente em uma branch privada com dados fictícios. O ambiente Trabalho usa os backups da branch `main`; Pessoal permanece desabilitado. Credenciais ficam em segredos do Worker.
 
 ## Operações
 
@@ -145,4 +145,4 @@ npm test
 npm run build:worker
 ```
 
-Os testes usam dados fictícios, GitHub simulado, JWTs de teste e clientes MCP reais em conexão local. Cobrem datas, versões, duplicatas, preservação, validadores originais, vínculos, OAuth, escopos, ambientes, API e MCP nas entradas Node/Worker. Nenhum teste lê ou modifica backups privados do usuário.
+Os testes usam dados fictícios, GitHub simulado, JWTs de teste e clientes MCP reais em conexão local. Cobrem datas, versões, duplicatas, preservação, validadores originais, vínculos, OAuth, escopos, ambientes, API e MCP nas entradas Node/Worker. Os testes automatizados locais não leem nem modificam backups privados do usuário. A validação remota de leitura/gravação foi executada somente na branch privada `codex/projectflow-integration-test`, criada com dados fictícios; a branch real `main` não recebeu essas gravações.
