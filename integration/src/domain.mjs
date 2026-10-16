@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { inputs, validDate } from './schemas.mjs';
 import { IntegrationError } from './store.mjs';
+import { executePlanning, planningAreas } from './planning.mjs';
 
 const clone = value => structuredClone(value);
 const own = (obj, field) => Object.hasOwn(obj, field);
@@ -83,6 +84,7 @@ export async function execute(store, name, raw) {
   const parsed = inputs[name].safeParse(raw);
   if (!parsed.success) throw new IntegrationError('invalid_input', parsed.error.issues.map(i => `${i.path.join('.') || 'entrada'}: ${i.message}`).join('; '));
   const input = parsed.data, day = input.day || today(), workspace = input.workspace;
+  if (Object.hasOwn(planningAreas,name)) return executePlanning(store,name,input);
   const read = area => store.read(area, workspace);
   if (name === 'list_tasks') {
     const snapshot = await read('todo');
@@ -149,7 +151,7 @@ export async function execute(store, name, raw) {
     const rows = actionRows(plans, schedules.data).filter(a => ids.has(a.planId)
       && (!input.owner || ownerMatches(a.owner, [input.owner])) && (!input.openOnly || a.open));
     return { workspace, version: snapshot.version, scheduleVersion: schedules.version,
-      plans: selected.map(p => ({ id: p.id, title: p.title, parentId: p.parentId || null,
+      plans: selected.map(p => ({ source: 'plan', id: p.id, title: p.title, description: p.description || '', document: p.document || {}, parentId: p.parentId || null,
         path: pathOf(p, plans).map(p => p.title).join(' / '), actions: p.actions.length })), ...page(rows, input) };
   }
   if (name === 'update_action') {
@@ -168,8 +170,8 @@ export async function execute(store, name, raw) {
     const snapshot = await read('schedules');
     if (input.projectId && !snapshot.data.projects.some(p => p.id === input.projectId)) throw new IntegrationError('not_found', 'Cronograma não encontrado.', 404);
     const ids = new Set(snapshot.data.projects.filter(p => inBranch(p, input.projectId, snapshot.data.projects, input.includeChildren)).map(p => p.id));
-    const rows = scheduledRows(snapshot.data, day).filter(r => ids.has(r.projectId) && r.open && (input.filter === 'all' || r.flags[input.filter]));
-    return { workspace, day, version: snapshot.version, meaning: 'Atividades abertas pelo intervalo PLANEJADO; pct é o progresso registrado.', ...page(rows, input) };
+    const rows = scheduledRows(snapshot.data, day).filter(r => ids.has(r.projectId) && (input.includeClosed || r.open) && (input.filter === 'all' || r.flags[input.filter]));
+    return { workspace, day, version: snapshot.version, projects: snapshot.data.projects.filter(p=>ids.has(p.id)).map(p=>({source:'schedule',id:p.id,title:p.title,parentId:p.parentId||null,kind:p.kind||'schedule',activities:p.tasks.length})), meaning: 'Atividades pelo intervalo PLANEJADO; pct é o progresso registrado.', ...page(rows, input) };
   }
   const [todo, plans, schedules] = await Promise.all([read('todo'), read('plans'), read('schedules')]);
   const rows = [
@@ -194,7 +196,10 @@ export async function execute(store, name, raw) {
   const counts = Object.fromEntries(Object.entries(work).map(([key, items]) => [key, items.length]));
   counts.mineToday = work.today.filter(r => r.audience === 'mine').length;
   counts.followupToday = work.today.filter(r => r.audience === 'followup').length;
-  return { workspace, day, versions: { todo: todo.version, plans: plans.version, schedules: schedules.version }, counts,
+  return { workspace, day, taskProjects: todo.data.settings.projects || [],
+    plans: plans.data.actionPlans.map(p=>({source:'plan',id:p.id,title:p.title,parentId:p.parentId||null})),
+    projects: schedules.data.projects.map(p=>({source:'schedule',id:p.id,title:p.title,kind:p.kind||'schedule',parentId:p.parentId||null})),
+    versions: { todo: todo.version, plans: plans.version, schedules: schedules.version }, counts,
     work: Object.fromEntries(Object.entries(work).map(([key, items]) => [key, page(items, input)])),
     schedule: Object.fromEntries(Object.entries(schedule).map(([key, items]) => [key, page(items, input)])) };
 }

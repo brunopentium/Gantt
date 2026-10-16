@@ -3,6 +3,7 @@
 import React, {useState, useEffect, useMemo, useRef} from "react";
 import {createRoot} from "react-dom/client";
 import {flushSync} from "react-dom";
+import {projectNames} from "./project-names.mjs";
 import {AlertCircle, AlertOctagon, AlertTriangle, Bell, Calendar, CalendarCheck, CalendarClock, CalendarRange, CheckSquare, ChevronDown, ChevronRight, Clock3, Database, Download, Edit2, FastForward, Flag, Layers, LayoutDashboard, ListOrdered, Plus, PlusSquare, Repeat, Settings, SkipForward, StickyNote, Trash2, TrendingUp, Upload, X} from "lucide-react";
         // --- UTILS ---
         const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -234,13 +235,7 @@ const Icon=({name,size=20,className=""})=>{const Component=iconComponents[name];
             const [initialLoad, setInitialLoad] = useState(false);
             const [storageError, setStorageError] = useState('');
             const [storageRevision, setStorageRevision] = useState(0);
-            const normalizeProjectName = (name) => name === 'Geral' ? DEFAULT_PROJECT : (name || DEFAULT_PROJECT);
-            const ensureDefaultProject = (list) => {
-                const sanitized = list.map(p => normalizeProjectName(p)).filter(Boolean);
-                const unique = Array.from(new Set(sanitized));
-                const withoutDefault = unique.filter(p => p !== DEFAULT_PROJECT);
-                return [DEFAULT_PROJECT, ...withoutDefault];
-            };
+            const {normalizeProjectName, ensureDefaultProject} = projectNames(DEFAULT_PROJECT);
 
             const [projects, setProjects] = useState([DEFAULT_PROJECT, 'Pessoal', 'Trabalho']);
             const [view, setView] = useState('dashboard'); // dashboard, settings, conflicts, planner

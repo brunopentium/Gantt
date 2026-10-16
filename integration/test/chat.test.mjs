@@ -74,6 +74,32 @@ test('a new task project and first task are reviewed together and committed once
   const duplicate=await draft(store,[call('create_task_project',{title:' geral '})]);
   assert.equal(duplicate.draft,null);assert.equal(store.writes.length,1);
 });
+test('any requested project is prepared automatically with its task and an invalid task leaves no orphan project',async()=>{
+  for(const title of ['Geral','Projeto Alfa','Novo cliente 2027']){
+    const store=new Store(),result=await draft(store,[call('create_task',{title:'Primeira tarefa',project:title,date:'2026-10-16'})]);
+    assert.equal(result.draft.changes.length,2);assert.equal(store.writes.length,0);
+    await applyChatDraft(env,principal,result.draft.token,store,now+1);
+    assert(store.data.todo.settings.projects.includes(title));assert.equal(store.data.todo.tasks.at(-1).project,title);assert.equal(store.writes.length,1);
+  }
+  const invalid=await draft(new Store(),[call('create_task',{title:'Inválida',project:'Não salvar',date:'2026-02-30'})]);
+  assert.equal(invalid.draft,null);
+});
+test('plans and schedules with their first items stage without writes and commit once per area',async()=>{
+  const store=new Store(),before=structuredClone(store.data);let step=0;
+  const result=await chat(env,principal,input,store,{now,fetcher:async(url,options)=>{
+    const body=JSON.parse(options.body);let message;
+    if(step++===0)message={tool_calls:[call('create_action_plan',{title:'Plano novo'},'plan'),call('create_schedule',{title:'Cronograma novo'},'schedule')]};
+    else if(step===2){
+      const p=JSON.parse(body.messages.find(m=>m.tool_call_id==='plan').content).plan,s=JSON.parse(body.messages.find(m=>m.tool_call_id==='schedule').content).schedule;
+      message={tool_calls:[call('create_action',{planId:p.id,title:'Ação nova',owner:'Bruno'},'action'),call('create_schedule_activity',{projectId:s.id,title:'Atividade nova',start:'2026-10-16',duration:2},'activity')]};
+    }else message={content:'Revise a proposta.'};
+    return Response.json({choices:[{message}]});
+  }});
+  assert.equal(result.draft.changes.length,4);assert.deepEqual(store.data,before);assert.equal(store.writes.length,0);
+  assert(result.draft.changes.some(c=>c.kind==='schedule-activity'&&c.fields.some(f=>f.field==='end'&&f.after==='2026-10-19')));
+  await applyChatDraft(env,principal,result.draft.token,store,now+1);assert.deepEqual(store.writes.map(w=>w.area),['plans','schedules']);
+  assert.deepEqual(store.data.todo,before.todo);assert.equal(store.data.plans.actionPlans.at(-1).actions.length,1);assert.equal(store.data.schedules.projects.at(-1).tasks.length,1);
+});
 test('model cannot write an unobserved ID, override workspace or set unsupported linked dates',async()=>{
   const store=new Store(),result=await draft(store,[call('update_task',{id:'invented',workspace:'personal',patch:{date:'2026-10-19'}},'1'),call('update_action',{id:'linked',planId:'p1',patch:{end:'2026-11-10'}},'2')]);
   assert.equal(result.draft,null);assert.equal(store.writes.length,0);

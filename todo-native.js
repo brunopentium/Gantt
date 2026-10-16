@@ -38,7 +38,7 @@ window.NativeTodo=(()=>{
   function commit(value){
     if(loadError)throw new Error(loadError);
     // A React render from before an external restore must never write back over it.
-    if(value._revision!==undefined&&value._revision!==revision)return;
+    if((revision>0||value._revision!==undefined)&&value._revision!==revision)return;
     const next=clone(validate({tasks:value.tasks,settings:value.settings}));
     if(JSON.stringify(next)===JSON.stringify(state)&&hasLocalData)return;
     localStorage.setItem(KEY,JSON.stringify(next));state=next;hasLocalData=true;
