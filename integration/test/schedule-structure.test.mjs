@@ -93,3 +93,37 @@ test('summary colors are used by the actual chart renderer and vector PDF output
   const result=print.window.GanttPrint.build({title:'Cores',start:'2026-10-16',end:'2026-10-19',days:4,today:-1,format:{},status:false,labels:false,tasks:[{id:'parent',name:'Grupo',summary:true,indent:0,hasDate:true,x:0,w:.5,color:'#9070e0',pct:30}]});
   assert.match(result,/height="4" fill="#9070e0"/);
 });
+
+test('row backgrounds match each selected parent own bar and preserve all tasks and other formatting',async()=>{
+  const store=fixture(),p=project(store);
+  p.tasks=[task('p1',{color:'#9070e0'}),task('child1',{indent:1}),task('p2',{color:'#40b080'}),task('child2',{indent:1}),task('default')];
+  p.fmt={p1_row:{fc:'#ffffff',b:true,custom:'keep'},p1_name:{bg:'#111111'},child1_row:{bg:'#222222'},default_row:{bg:'#333333'},other:{keep:true}};
+  const before=structuredClone(store.data),result=await run(store,'set_schedule_row_background',{projectId:'s',activityIds:['p1','p2','default'],matchBarColor:true});
+  assert.deepEqual(result.activities.map(t=>t.rowBackgroundColor),['#9070e0','#40b080','#4a9eff']);
+  const expected=structuredClone(before);Object.assign(expected.schedules.projects[0].fmt,{p1_row:{...p.fmt.p1_row,bg:'#9070e0'},p2_row:{bg:'#40b080'},default_row:{bg:'#4a9eff'}});
+  assert.deepEqual(store.data,expected);
+  const read=await execute(store,'list_schedule_structure',{workspace:'work',projectId:'s'});assert.equal(read.items[0].rowBackgroundColor,'#9070e0');assert.equal(read.items[1].rowBackgroundColor,'#222222');
+  const repeat=await run(store,'set_schedule_row_background',{projectId:'s',activityIds:['p1','p2','default'],matchBarColor:true});assert(repeat.unchanged);assert.equal(store.writes.length,1);
+  await run(store,'set_schedule_row_background',{projectId:'s',activityIds:['p1'],color:null});
+  assert.deepEqual(project(store).fmt.p1_row,before.schedules.projects[0].fmt.p1_row);
+  await run(store,'set_schedule_row_background',{projectId:'s',activityIds:['p2'],color:null});assert.equal(project(store).fmt.p2_row,undefined);
+  assert.deepEqual(project(store).tasks,before.schedules.projects[0].tasks);
+});
+test('explicit row backgrounds include descendants only on request and clearing an absent background is a no-op',async()=>{
+  const store=fixture(),p=project(store);p.tasks=[task('p'),task('child',{indent:1,color:'#112233'}),task('outside')];delete p.fmt;
+  const clear=await run(store,'set_schedule_row_background',{projectId:'s',activityIds:['p'],color:null});assert(clear.unchanged);assert.equal(store.writes.length,0);assert.equal(project(store).fmt,undefined);
+  await run(store,'set_schedule_row_background',{projectId:'s',activityIds:['p'],color:'#abcdef',includeDescendants:true});
+  assert.deepEqual(project(store).fmt,{p_row:{bg:'#abcdef'},child_row:{bg:'#abcdef'}});
+  await run(store,'set_schedule_row_background',{projectId:'s',activityIds:['p','child'],matchBarColor:true,includeDescendants:true});
+  assert.deepEqual(project(store).fmt,{p_row:{bg:'#4a9eff'},child_row:{bg:'#112233'}});
+});
+test('invalid or ambiguous row backgrounds, missing IDs and stale versions never save',async()=>{
+  const store=fixture(),before=structuredClone(store.data);
+  for(const args of [{},{color:'#12345'},{color:'red;display:none'},{color:null,matchBarColor:true},{color:'#ffffff',matchBarColor:true},{color:'#ffffff',activityIds:['missing']},{color:'#ffffff',expectedVersion:'f'.repeat(40)}]){
+    await assert.rejects(run(store,'set_schedule_row_background',{projectId:'s',activityIds:['a'],...args}));
+    assert.deepEqual(store.data,before);assert.equal(store.writes.length,0);
+  }
+  project(store).tasks[1].color='red;display:none';const invalid=structuredClone(store.data);
+  await assert.rejects(run(store,'set_schedule_row_background',{projectId:'s',activityIds:['a','b'],matchBarColor:true}),{code:'invalid_structure'});
+  assert.deepEqual(store.data,invalid);assert.equal(store.writes.length,0);
+});

@@ -161,7 +161,7 @@ test('chat reads hierarchy, stages a real parent, moves activities and colors th
   assert.deepEqual(store.data.plans,before.plans);assert.deepEqual(store.data.todo,before.todo);
 });
 test('chat rejects hierarchy and color mutations on records that were not consulted',async()=>{
-  for(const [name,args] of [['group_schedule_activities',{projectId:'s1',title:'Bad',activityIds:['missing']}],['move_schedule_activities',{projectId:'s1',activityIds:['summary'],parentActivityId:'missing'}],['set_schedule_activity_colors',{projectId:'s1',activityIds:['missing'],color:'#ffffff'}]]){
+  for(const [name,args] of [['group_schedule_activities',{projectId:'s1',title:'Bad',activityIds:['missing']}],['move_schedule_activities',{projectId:'s1',activityIds:['summary'],parentActivityId:'missing'}],['set_schedule_activity_colors',{projectId:'s1',activityIds:['missing'],color:'#ffffff'}],['set_schedule_row_background',{projectId:'s1',activityIds:['missing'],matchBarColor:true}]]){
     const store=new Store(),result=await draft(store,[call(name,args)]);assert.equal(result.draft,null);assert.equal(store.writes.length,0);
   }
 });
@@ -232,4 +232,19 @@ test('Worker chat routes preserve CORS and authentication boundaries',async()=>{
   assert.equal((await request('/chat',{...post,headers:{...post.headers,Origin:'https://other.example'}})).status,403);
   assert.equal((await request('/chat/token',{...post,headers:{'Content-Type':'application/json'}})).status,400);
   assert.equal((await request('/chat',{...post,body:'x'.repeat(100001),headers:{...post.headers,Authorization:'Bearer allowed'}})).status,413);
+});
+
+test('chat previews and applies fmt-only row backgrounds in personal without modifying activity records',async()=>{
+  const store=new Store(),schedule=store.data.schedules.projects[1];schedule.tasks[0].color='#9070e0';schedule.fmt.summary_row={bg:'#111111',fc:'#ffffff',b:true};
+  const before=structuredClone(store.data),personalEnv={...env,PROJECTFLOW_WORKSPACES:'work,personal'};
+  const result=await chat(personalEnv,principal,{...input,workspace:'personal',messages:[{role:'user',content:'Preencha a linha-pai com a cor da respectiva barra.'}]},store,{now,fetcher:model([
+    {tool_calls:[call('list_schedule_structure',{projectId:'s1'},'structure')]},
+    {tool_calls:[call('set_schedule_row_background',{projectId:'s1',activityIds:['summary'],matchBarColor:true},'background')]},
+    {content:'Revise a cor de fundo da linha.'}
+  ],body=>{assert(body.tools.some(t=>t.function.name==='set_schedule_row_background'));assert.match(body.messages[0].content,/Row background color/);})});
+  assert.deepEqual(store.data,before);assert.equal(store.writes.length,0);assert.equal(result.draft.changes.length,1);
+  const change=result.draft.changes[0];assert.equal(change.id,'summary');assert.equal(change.kind,'schedule-summary');assert.equal(change.created,false);
+  assert.deepEqual(change.fields,[{field:'rowBackgroundColor',label:'Cor de fundo da linha',before:'#111111',after:'#9070e0'}]);
+  const saved=await applyChatDraft(personalEnv,principal,result.draft.token,store,now+1,'personal');assert(saved.saved);assert.deepEqual(store.writes,[{area:'schedules',workspace:'personal'}]);
+  const expected=structuredClone(before);expected.schedules.projects[1].fmt.summary_row.bg='#9070e0';assert.deepEqual(store.data,expected);
 });

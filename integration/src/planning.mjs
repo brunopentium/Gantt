@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { IntegrationError } from './store.mjs';
 import { validateDocument } from './schemas.mjs';
 import { recalculateSchedule } from './schedule.mjs';
-import {groupScheduleActivities,moveScheduleActivities,colorScheduleActivities} from './schedule-structure.mjs';
-export const planningAreas={create_action_plan:'plans',update_action_plan:'plans',create_action:'plans',create_schedule:'schedules',update_schedule:'schedules',create_schedule_activity:'schedules',update_schedule_activity:'schedules',group_schedule_activities:'schedules',move_schedule_activities:'schedules',set_schedule_activity_colors:'schedules'};
+import {groupScheduleActivities,moveScheduleActivities,colorScheduleActivities,backgroundScheduleRows} from './schedule-structure.mjs';
+export const planningAreas={create_action_plan:'plans',update_action_plan:'plans',create_action:'plans',create_schedule:'schedules',update_schedule:'schedules',create_schedule_activity:'schedules',update_schedule_activity:'schedules',group_schedule_activities:'schedules',move_schedule_activities:'schedules',set_schedule_activity_colors:'schedules',set_schedule_row_background:'schedules'};
 const fail=(code,message)=>{throw new IntegrationError(code,message);};
 const own=(o,k)=>Object.hasOwn(o,k);
 function parent(records,id,parentId){
@@ -55,6 +55,7 @@ export async function executePlanning(store,name,input){
         if(!c.existing)groupScheduleActivities(schedule,input,task);result={activity:activity(task)};
       }else if(name==='move_schedule_activities')result={activities:moveScheduleActivities(schedule,input).map(activity)};
       else if(name==='set_schedule_activity_colors')result={activities:colorScheduleActivities(schedule,input).map(activity)};
+      else if(name==='set_schedule_row_background')result={activities:backgroundScheduleRows(schedule,input).map(task=>({...activity(task),rowBackgroundColor:schedule.fmt?.[String(task.id)+'_row']?.bg??null}))};
       else{
       let task,patch;
       if(name==='create_schedule_activity'){
