@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { webcrypto } from 'node:crypto';
 
 const source = await readFile(new URL('../../my-day-chat.js', import.meta.url), 'utf8');
+const formatSource = await readFile(new URL('../../chat-format.js', import.meta.url), 'utf8');
 const server = 'https://projectflow-integration.brunocesardesouza26.workers.dev';
 // Exercise the actual form handlers with synthetic UI, OAuth and cloud adapters.
 // This checks synchronization decisions, not rendering or a real login.
@@ -13,8 +14,8 @@ async function app(overrides = {}, area = 'todo', hooks = {}) {
   let popup, uncertain = false;
   function element() {
     const classes=new Set(),listeners=new Map();
-    return { dataset: {}, value: '', hidden: false, disabled: false, textContent: '', classList: { toggle(name,value) {if(value)classes.add(name);else classes.delete(name);}, contains:name=>classes.has(name) }, listeners,
-      append() {}, replaceChildren() {}, scrollIntoView() {}, focus() {this.focused=true;}, show() {this.open=true;}, close() {this.open=false;}, addEventListener(name,fn) {listeners.set(name,fn);}, setAttribute() {}, contains:e=>[...elements.values()].includes(e),
+    return { dataset: {}, value: '', hidden: false, disabled: false, textContent: '', children:[], classList: { toggle(name,value) {if(value)classes.add(name);else classes.delete(name);}, contains:name=>classes.has(name) }, listeners,
+      append(...items) {this.children.push(...items);}, replaceChildren() {this.children=[];}, scrollIntoView() {}, focus() {this.focused=true;}, show() {this.open=true;}, close() {this.open=false;}, addEventListener(name,fn) {listeners.set(name,fn);}, setAttribute() {}, contains:e=>[...elements.values()].includes(e),
       querySelector(selector) { return elements.get(selector.slice(1)); },
       set innerHTML(value) { for (const match of value.matchAll(/id="([^"]+)"/g)) elements.set(match[1], element()); } };
   }
@@ -23,23 +24,25 @@ async function app(overrides = {}, area = 'todo', hooks = {}) {
   const clean = { connected: true, ready: true, busy: false, blocked: false, dirty: false, repo: 'example/private' };
   const states = { todo: { ...clean }, plans: { ...clean }, schedules: { ...clean }, ...overrides };
   const adapter = area => ({ state: () => states[area], refreshRemote: async () => { refreshed.push(area); return { ok: true }; } });
+  const storage=hooks.storage||new Map();
   const context = { Date, JSON, URL, URLSearchParams, AbortSignal, crypto: webcrypto, btoa, TextEncoder, setInterval: () => 1,
-    clearInterval() {}, document: { body: element(), createElement: element, activeElement: null, getElementById: id => elements.get(id) },
+    localStorage:{getItem(key){if(hooks.blockStorage)throw Error('blocked');return storage.get(key)||null;},setItem(key,value){if(hooks.blockStorage)throw Error('blocked');storage.set(key,value);}},
+    clearInterval() {}, document: { body: element(), createElement: element, createTextNode:text=>({textContent:text}), activeElement: null, getElementById: id => elements.get(id) },
     WorkspaceProfile: { personal: false }, MyDay: { date: () => '2026-10-16', refresh() {} }, MyDayData: { flush() {} },
     WorkspaceAutosave: { async suspend() {}, resume() {}, refresh() {} }, TodoCloud: adapter('todo'), PlanCloud: adapter('plans'), GanttBackup: adapter('schedules'),
     open: () => (popup = { closed: false, close() { this.closed = true; } }), addEventListener: (name, fn) => events.set(name, fn),
     fetch: async (url, options) => {
       const path = new URL(url).pathname; calls.push(path);
-      if (path === '/chat/config') return Response.json({ enabled: true, clientId: 'public', issuer: 'https://issuer.example/', redirectUri: server + '/chat/callback', audience: server + '/mcp', repository: 'example/private' });
+      if (path === '/chat/config') return Response.json({ enabled: true, clientId: 'public', issuer: 'https://issuer.example/', redirectUri: server + '/chat/callback', audience: server + '/mcp', repository: 'example/private',model:'openai/gpt-6-luna',models:[{id:'openai/gpt-6-luna',name:'GPT-6 Luna',free:false},{id:'openrouter/free',name:'Automático gratuito',free:true}] });
       if (path === '/chat/token') return Response.json({ access_token: 'synthetic-access', expires_in: 600 });
       assert.equal(options.headers.Authorization, 'Bearer synthetic-access');
-      if (path === '/chat') return Response.json({ reply: 'Revise', draft: { token: 'synthetic-draft', changes: [{ area, kind: 'task-project', title: 'Geral', created: true, fields: [{ label: 'Novo projeto de tarefas', after: 'Geral' }] }] } });
+      if (path === '/chat') {hooks.onChat?.(JSON.parse(options.body));return Response.json({ reply: 'Revise', draft: { token: 'synthetic-draft', changes: [{ area, kind: 'task-project', title: 'Geral', created: true, fields: [{ label: 'Novo projeto de tarefas', after: 'Geral' }] }] } });}
       assert.equal(path, '/chat/apply');
       await hooks.applying?.(elements);
       if (uncertain) throw new Error('synthetic network failure');
       return Response.json({ saved: true, changed: 1, results: [{ area, saved: true }] });
     } };
-  context.window = context; vm.createContext(context); vm.runInContext(source, context);
+  context.window = context; vm.createContext(context);vm.runInContext(formatSource,context); vm.runInContext(source, context);
   context.document.body.append=panel=>{context.document.body.panel=panel;};
   context.MyDayChat.init(); await new Promise(setImmediate);
   await elements.get('mdChatLogin').onclick();
@@ -120,4 +123,16 @@ test('an assistant reply does not take keyboard focus from an app editor',async(
   h.context.document.activeElement={tagName:'INPUT'};input.value='Consulte minhas tarefas';
   await h.elements.get('mdChatForm').onsubmit({preventDefault(){}});
   assert.equal(input.focused,false);assert.equal(h.elements.get('app').inert,false);
+});
+test('model choice survives closing and a fresh page session and is sent with every request',async()=>{
+  const storage=new Map(),requests=[];
+  const h=await app({},'todo',{storage,onChat:body=>requests.push(body)});
+  const select=h.elements.get('mdChatModel');select.value='openrouter/free';select.onchange();
+  h.context.MyDayChat.open();h.context.MyDayChat.close();h.context.MyDayChat.open();assert.equal(select.value,'openrouter/free');
+  const fresh=await app({},'todo',{storage,onChat:body=>requests.push(body)});
+  assert.equal(fresh.elements.get('mdChatModel').value,'openrouter/free');
+  assert.equal(requests.at(-1).model,'openrouter/free');assert.match(fresh.elements.get('mdChatModelHint').textContent,/Gratuito/);
+  const old=await app({},'todo',{storage:new Map([['projectflow:chat:model:v1','removed/model']])});
+  assert.equal(old.elements.get('mdChatModel').value,'removed/model');assert.equal(old.elements.get('mdChatSend').disabled,true);assert.match(old.elements.get('mdChatModelHint').textContent,/Selecione outro/);
+  const blocked=await app({},'todo',{blockStorage:true});assert.match(blocked.elements.get('mdChatModelHint').textContent,/só nesta sessão/);
 });
