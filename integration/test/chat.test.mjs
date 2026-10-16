@@ -52,6 +52,28 @@ test('free provider failures do not retry with a paid model',async()=>{
   assert.equal(calls,1);
   const configValue=chatConfig(env,config);assert.equal(configValue.model,'openai/gpt-6-luna');assert(configValue.models.some(m=>m.free));
 });
+test('personal chat isolates all three areas and refuses applying its draft in work',async()=>{
+  const e={...env,PROJECTFLOW_WORKSPACES:'work,personal'},work=new Store(),personal=new Store(),reads=[];
+  personal.data.todo.tasks.forEach(t=>{t.title='PERSONAL '+t.id;});
+  personal.data.plans.actionPlans.forEach(p=>{p.title='PERSONAL '+p.id;});
+  personal.data.schedules.projects.forEach(p=>{p.title='PERSONAL '+p.id;});
+  const before=structuredClone(work.data),store={read(area,workspace){reads.push(workspace);return (workspace==='personal'?personal:work).read(area,workspace);},write(area,workspace,...args){return (workspace==='personal'?personal:work).write(area,workspace,...args);}};
+  const result=await chat(e,principal,{...input,workspace:'personal'},store,{now,fetcher:model([{tool_calls:[
+    call('create_task',{title:'Comprar tinta',project:'Casa',date:'2026-10-16',workspace:'work'},'task'),
+    call('update_action',{planId:'p2',id:'a3',patch:{notes:'Só pessoal'}},'action'),
+    call('update_schedule_activity',{projectId:'s1',id:'overdue',patch:{pct:25}},'schedule')
+  ]},{content:'Revise.'}],body=>{assert.match(body.messages[0].content,/Ambiente obrigatório: personal/);})});
+  assert.equal(result.workspace,'personal');assert.deepEqual([...new Set(result.draft.changes.map(c=>c.area))],['todo','plans','schedules']);
+  assert.equal(personal.writes.length,0);assert(reads.every(w=>w==='personal'));
+  reads.length=0;
+  await assert.rejects(applyChatDraft(e,principal,result.draft.token,store,now+1,'work'),{code:'workspace_mismatch'});assert.equal(reads.length,0);assert.equal(personal.writes.length,0);
+  await assert.rejects(applyChatDraft(env,principal,result.draft.token,store,now+1,'personal'),{code:'workspace_forbidden'});assert.equal(reads.length,0);
+  await applyChatDraft(e,principal,result.draft.token,store,now+1,'personal');
+  assert.deepEqual(personal.writes.map(w=>w.workspace),['personal','personal','personal']);assert.deepEqual(work.data,before);assert.equal(work.writes.length,0);
+  assert.equal(personal.data.todo.tasks.at(-1).project,'Casa');assert.equal(personal.data.plans.actionPlans[1].actions[0].notes,'Só pessoal');
+  assert.equal(personal.data.schedules.projects[1].tasks.find(t=>t.id==='overdue').pct,25);
+  let read=false;await assert.rejects(chat(env,principal,{...input,workspace:'personal'},{read(){read=true;}},{now}),{code:'workspace_forbidden'});assert(!read);
+});
 test('chat stages multiple tool calls without saving and batches a reviewed area into one CAS write',async()=>{
   const store=new Store(),before=structuredClone(store.data);
   const result=await draft(store,[call('update_task',{id:'t1',patch:{date:'2026-10-19'}},'1'),call('update_task',{id:'t2',patch:{date:'2026-10-20'}},'2'),call('update_action',{planId:'p2',id:'a3',patch:{status:'doing'}},'3')]);

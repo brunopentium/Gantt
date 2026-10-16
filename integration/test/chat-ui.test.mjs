@@ -28,16 +28,17 @@ async function app(overrides = {}, area = 'todo', hooks = {}) {
   const context = { Date, JSON, URL, URLSearchParams, AbortSignal, crypto: webcrypto, btoa, TextEncoder, setInterval: () => 1,
     localStorage:{getItem(key){if(hooks.blockStorage)throw Error('blocked');return storage.get(key)||null;},setItem(key,value){if(hooks.blockStorage)throw Error('blocked');storage.set(key,value);}},
     clearInterval() {}, document: { body: element(), createElement: element, createTextNode:text=>({textContent:text}), activeElement: null, getElementById: id => elements.get(id) },
-    WorkspaceProfile: { personal: false }, MyDay: { date: () => '2026-10-16', refresh() {} }, MyDayData: { flush() {} },
+    WorkspaceProfile: { personal: hooks.personal===true }, MyDay: { date: () => '2026-10-16', refresh() {} }, MyDayData: { flush() {} },
     WorkspaceAutosave: { async suspend() {}, resume() {}, refresh() {} }, TodoCloud: adapter('todo'), PlanCloud: adapter('plans'), GanttBackup: adapter('schedules'),
     open: () => (popup = { closed: false, close() { this.closed = true; } }), addEventListener: (name, fn) => events.set(name, fn),
     fetch: async (url, options) => {
       const path = new URL(url).pathname; calls.push(path);
-      if (path === '/chat/config') return Response.json({ enabled: true, clientId: 'public', issuer: 'https://issuer.example/', redirectUri: server + '/chat/callback', audience: server + '/mcp', repository: 'example/private',model:'openai/gpt-6-luna',models:[{id:'openai/gpt-6-luna',name:'GPT-6 Luna',free:false},{id:'openrouter/free',name:'Automático gratuito',free:true}] });
+      if (path === '/chat/config') return Response.json({ enabled: true, clientId: 'public', issuer: 'https://issuer.example/', redirectUri: server + '/chat/callback', audience: server + '/mcp', repository: 'example/private',workspaces:hooks.workspaces||['work','personal'],model:'openai/gpt-6-luna',models:[{id:'openai/gpt-6-luna',name:'GPT-6 Luna',free:false},{id:'openrouter/free',name:'Automático gratuito',free:true}] });
       if (path === '/chat/token') return Response.json({ access_token: 'synthetic-access', expires_in: 600 });
       assert.equal(options.headers.Authorization, 'Bearer synthetic-access');
-      if (path === '/chat') {hooks.onChat?.(JSON.parse(options.body));return Response.json({ reply: 'Revise', draft: { token: 'synthetic-draft', changes: [{ area, kind: 'task-project', title: 'Geral', created: true, fields: [{ label: 'Novo projeto de tarefas', after: 'Geral' }] }] } });}
+      if (path === '/chat') {hooks.onChat?.(JSON.parse(options.body));return Response.json({workspace:hooks.responseWorkspace||(hooks.personal?'personal':'work'), reply: 'Revise', draft: { token: 'synthetic-draft', changes: [{ area, kind: 'task-project', title: 'Geral', created: true, fields: [{ label: 'Novo projeto de tarefas', after: 'Geral' }] }] } });}
       assert.equal(path, '/chat/apply');
+      hooks.onApply?.(JSON.parse(options.body));
       await hooks.applying?.(elements);
       if (uncertain) throw new Error('synthetic network failure');
       return Response.json({ saved: true, changed: 1, results: [{ area, saved: true }] });
@@ -135,4 +136,17 @@ test('model choice survives closing and a fresh page session and is sent with ev
   const old=await app({},'todo',{storage:new Map([['projectflow:chat:model:v1','removed/model']])});
   assert.equal(old.elements.get('mdChatModel').value,'removed/model');assert.equal(old.elements.get('mdChatSend').disabled,true);assert.match(old.elements.get('mdChatModelHint').textContent,/Selecione outro/);
   const blocked=await app({},'todo',{blockStorage:true});assert.match(blocked.elements.get('mdChatModelHint').textContent,/só nesta sessão/);
+});
+test('personal mode enables sending after login and binds consultation and apply to personal',async()=>{
+  const sent=[],saved=[];const h=await app({},'todo',{personal:true,onChat:body=>sent.push(body),onApply:body=>saved.push(body)});
+  assert.equal(h.elements.get('mdChatSend').disabled,false);assert.equal(sent.length,1);assert.equal(sent[0].workspace,'personal');
+  assert.equal(h.elements.get('mdChatWorkspace').textContent,'Pessoal');assert.match(h.elements.get('mdChatDraftTitle').textContent,/Pessoal/);
+  await h.elements.get('mdChatApply').onclick();assert.equal(saved[0].workspace,'personal');assert.deepEqual(h.refreshed,['todo']);
+  h.elements.get('mdChatInput').value='Novo pedido';await h.elements.get('mdChatForm').onsubmit({preventDefault(){}});
+  h.events.get('projectflow:workspace-switch')();assert.equal(h.elements.get('mdChatSend').disabled,true);assert.equal(h.elements.get('mdChatApply').disabled,true);assert.equal(h.elements.get('mdChatDraft').hidden,true);
+  assert(sent.every(body=>body.workspace==='personal'));
+});
+test('personal stays unavailable when disabled on the server and rejects another workspace response',async()=>{
+  const blocked=await app({},'todo',{personal:true,workspaces:['work']});assert(!blocked.calls.includes('/chat'));assert.equal(blocked.elements.get('mdChatSend').disabled,true);assert.match(blocked.elements.get('mdChatStatus').textContent,/Pessoal não está habilitado/);
+  const wrong=await app({},'todo',{personal:true,responseWorkspace:'work'});assert.equal(wrong.elements.get('mdChatApply').disabled,true);assert.match(wrong.elements.get('mdChatStatus').textContent,/outro ambiente/);
 });

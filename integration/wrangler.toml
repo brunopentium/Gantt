@@ -10,7 +10,7 @@ workers_dev = true
 GITHUB_REPOSITORY = "brunopentium/gantt-backups"
 # Leitura e gravação validadas antes em branch privada com dados fictícios.
 GITHUB_BRANCH = "main"
-PROJECTFLOW_WORKSPACES = "work"
+PROJECTFLOW_WORKSPACES = "work,personal"
 PUBLIC_URL = "https://projectflow-integration.brunocesardesouza26.workers.dev"
 OAUTH_ISSUER = "https://dev-5ovnmm62q24tx6eb.us.auth0.com/"
 OAUTH_JWKS_URL = "https://dev-5ovnmm62q24tx6eb.us.auth0.com/.well-known/jwks.json"

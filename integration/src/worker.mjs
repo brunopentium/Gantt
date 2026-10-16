@@ -61,7 +61,7 @@ export function createWorkerHandler({ config, storeFactory, authenticate = creat
         chatRateLimit(principal.subject);
         return json(url.pathname === '/chat'
           ? await chat(env, principal, body, storeFactory())
-          : await applyChatDraft(env, principal, body.token, storeFactory()));
+          : await applyChatDraft(env, principal, body.token, storeFactory(), Date.now(), body.workspace));
       }
       if (url.pathname === '/api') {
         if (typeof body?.operation !== 'string') throw new IntegrationError('invalid_input', 'Informe operation e arguments.');
