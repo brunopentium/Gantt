@@ -120,7 +120,20 @@ Depois de publicar e testar o login, adicione um servidor MCP personalizado nas 
 
 Para CLI remota, configure `PROJECTFLOW_URL` (origem do serviço) e `PROJECTFLOW_ACCESS_TOKEN` (access token OAuth obtido pelo login do cliente) e omita `--local`. `/api` recebe POST JSON com `{ "operation": "list_tasks", "arguments": { "workspace": "work" } }`. O serviço não fornece um fluxo client-credentials.
 
-## Convivência com o aplicativo e limites
+## Chat OpenRouter no Meu Dia
+
+O botão **Conversar com assistente** abre um painel lateral (tela inteira no celular). Usa login Auth0 com PKCE, usuário autorizado e os escopos existentes. O token de acesso fica somente na memória da aba. Nenhuma chave OpenRouter é enviada ao navegador.
+
+- Worker: configurar o segredo `OPENROUTER_API_KEY` em **Settings → Variables and Secrets → Add → Secret**. O modelo fica em `OPENROUTER_MODEL`, inicialmente `openai/gpt-5-mini`.
+- `CHAT_CLIENT_ID` é um cliente público dedicado, registrado com callback `${PUBLIC_URL}/chat/callback`, authorization code e autenticação de token `none`. `ALLOWED_ORIGINS` contém somente o site e a prévia autorizados, sem curingas.
+- `/chat/config` retorna apenas configuração pública. `/chat/token` troca código+PKCE pelo token, valida a identidade autorizada e não retorna ID token ou refresh token.
+- `/chat` consulta os backups e executa as operações do domínio em uma cópia temporária. O resultado contém uma proposta assinada, vinculada ao usuário/repositório/branch e válida por 15 minutos. Nenhuma ferramenta do modelo grava diretamente.
+- **Aplicar alterações** chama `/chat/apply`: exige escopo de escrita, assinatura íntegra e as versões consultadas ainda atuais. Todas as operações são validadas antes do primeiro PUT; há no máximo uma gravação por área. Se outra área falhar, a resposta lista somente os salvamentos confirmados, sem repetir automaticamente.
+- Antes de aplicar, o aplicativo pausa o salvamento automático e exige as três áreas conectadas e sem edições pendentes. Depois recarrega as áreas alteradas, guardando cópia de recuperação. A recarga de planos pelo chat não reaplica datas vinculadas ao Gantt.
+- O chat exige conexão com a internet e saldo/limite disponível na chave OpenRouter. O servidor limita pedidos e chamadas por conversa; o limite por minuto em memória é uma proteção adicional, não um teto financeiro global. Configure também o limite da chave na OpenRouter.
+- A prévia usa o mesmo backend de Trabalho: uma proposta aplicada altera os backups reais. A publicação da prévia, por si só, não altera os dados nem o frontend principal.
+
+### Convivência com o aplicativo e limites
 
 - Trabalho usa `backups/{todo,planos-de-acao,cronogramas}.json`; Pessoal usa `backups/pessoal/`. Pessoal exige habilitação explícita em `PROJECTFLOW_WORKSPACES`. A senha local da interface não autentica esta API.
 - Toda gravação exige o SHA consultado e também usa esse SHA no `PUT` do GitHub. Conflitos não são repetidos automaticamente. Os commits entram no histórico existente da área.

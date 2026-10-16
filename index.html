@@ -162,6 +162,7 @@ input{font-family:inherit}
 <link rel="stylesheet" href="gantt-mobile.css?v=20261011-mobile-zoom">
 <link rel="stylesheet" href="todo-native.css?v=20261014-task-phone">
 <link rel="stylesheet" href="my-day.css?v=20261014-compact-remove">
+<link rel="stylesheet" href="my-day-chat.css?v=20261016-openrouter-chat">
 <link rel="stylesheet" href="workspace-autosave.css?v=20261008-auto-save">
 </head>
 <body>
@@ -251,18 +252,19 @@ input{font-family:inherit}
 <script src="action-plans.js?v=20261014-personal"></script>
 <script src="schedule-groups.js?v=20261008-english-navigation"></script>
 <script src="plan-exports.js?v=20261009-participant-owners"></script>
-<script src="plan-cloud.js?v=20261014-personal"></script>
+<script src="plan-cloud.js?v=20261016-chat-sync"></script>
 <script src="github-backup.js?v=20261014-personal"></script>
 <script src="gantt-print.js?v=20261008-english-navigation"></script>
 <script src="plan-print.js?v=20261008-english-navigation"></script>
 <script src="gantt-mobile.js?v=20261011-mobile-zoom"></script>
 <script src="todo-native.js?v=20261014-task-phone"></script>
-<script src="todo-cloud.js?v=20261014-personal"></script>
+<script src="todo-cloud.js?v=20261016-chat-sync"></script>
 <script src="workspace-backup.js?v=20261014-personal"></script>
 <script src="local-recovery.js?v=20261014-personal"></script>
 <script src="workspace-autosave.js?v=20261014-personal"></script>
 <script src="my-day-data.js?v=20261014-schedule-inclusion"></script>
-<script src="my-day.js?v=20261014-compact-remove"></script>
+<script src="my-day.js?v=20261016-chat"></script>
+<script src="my-day-chat.js?v=20261016-openrouter-chat"></script>
 <script src="app-navigation.js?v=20261014-personal"></script>
 <script>
 // ========== STATE ==========
@@ -1571,6 +1573,7 @@ window.MyDay.init(window.MyDayData,{
   status:source=>document.getElementById({todo:'ntCloudStatus',action:'apCloudStatus',gantt:'cloudBackupStatus'}[source])?.textContent||''
 });
 window.WorkspaceAutosave.init({gantt:window.GanttBackup,action:window.PlanCloud,todo:window.TodoCloud});
+window.MyDayChat.init();
 window.AppNavigation.init();
 // Meu dia is always the first view, including when the legacy Todo is enabled.
 document.getElementById('tabMyDay').click();

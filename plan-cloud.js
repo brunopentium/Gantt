@@ -39,7 +39,7 @@ window.PlanCloud=(()=>{
   function validate(d){try{if(d?.version!==1||d.type!=='action-plans')throw new Error('Invalid action-plan file.');window.ActionPlans.validate(d.actionPlans)}catch(error){throw failure(error.message)}}
   function guard(silent=false){state();if(busy||window.GanttBackup?.state().busy||window.TodoCloud?.state().busy){status('Please wait for the current operation');return false}const c=connection();if(!c.repo||!c.token||!c.enabled||meta.enabled===false){if(!silent)settings();return false}return true}
   function lock(v){document.getElementById('app').inert=v}
-  async function latest(prompt=false,silent=!prompt){
+  async function latest(prompt=false,silent=!prompt,applyLinkedDates=true){
     if(!guard(silent))return {ok:false,pending:true};begin();if(prompt)lock(true);status('Loading the latest action-plan version…');
     try{
       await repository();const remote=await request(path(),{allowMissing:true});
@@ -53,7 +53,7 @@ window.PlanCloud=(()=>{
       await capture('Before loading action plans from GitHub');
       if(signature()!==operationConnection)throw failure('The connection changed; reconnect before loading.');
       if(!prompt&&fingerprint()!==current)throw failure('Local action plans kept; changes were made while connecting. Reconnect to choose a version.');
-      api.restore(d,!window.GanttBackup.remoteTime()||!d.exportedAt||d.exportedAt>=window.GanttBackup.remoteTime());window.GanttBackup.acknowledgePlans();meta.sha=remote.sha;last=fingerprint();meta.fingerprint=last;persist();ready=true;boundConnection=signature();startup=last;hydratedFingerprint='';status('Latest action-plan version loaded');return {ok:true};
+      api.restore(d,applyLinkedDates&&(!window.GanttBackup.remoteTime()||!d.exportedAt||d.exportedAt>=window.GanttBackup.remoteTime()));window.GanttBackup.acknowledgePlans();meta.sha=remote.sha;last=fingerprint();meta.fingerprint=last;persist();ready=true;boundConnection=signature();startup=last;hydratedFingerprint='';status('Latest action-plan version loaded');return {ok:true};
     }catch(e){const result=failed(e);status('Local action plans kept: '+errorMessage);return result}finally{finish();if(prompt)lock(false)}
   }
   async function save(source,silent=false){
@@ -99,5 +99,5 @@ window.PlanCloud=(()=>{
   function start(){const c=connection();if(c.repo&&c.token&&c.enabled&&meta.enabled!==false)return latest(false,true);status('Action-plan GitHub disconnected')}
   function scheduleLoadStart(){if(!api)return null;const current=fingerprint();return {clean:meta.fingerprint?current===meta.fingerprint:!legacyDirty&&current===startup}}
   function scheduleLoadComplete(ticket){if(ticket?.clean)hydratedFingerprint=fingerprint()}
-  return {init,start,changed,state,scheduleLoadStart,scheduleLoadComplete,autoConnect:()=>state().ready?Promise.resolve({ok:true}):blocked?Promise.resolve({ok:false,blocked:true}):latest(false,true),autoSave:()=>blocked?Promise.resolve({ok:false,blocked:true}):save(null,true),save};
+  return {init,start,changed,state,scheduleLoadStart,scheduleLoadComplete,refreshRemote:()=>latest(false,true,false),autoConnect:()=>state().ready?Promise.resolve({ok:true}):blocked?Promise.resolve({ok:false,blocked:true}):latest(false,true),autoSave:()=>blocked?Promise.resolve({ok:false,blocked:true}):save(null,true),save};
 })();

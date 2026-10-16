@@ -3,6 +3,8 @@ import { createAuthenticator, httpConfig } from './auth.mjs';
 import { createMcpServer, safeError, scopeFor } from './mcp.mjs';
 import { IntegrationError, storeFromEnv } from './store.mjs';
 import { execute } from './domain.mjs';
+import { chat, applyChatDraft, chatRateLimit } from './chat.mjs';
+import { chatConfig, chatCallback, exchangeChatCode } from './chat-http.mjs';
 
 async function boundedJson(request) {
   let size = 0;
@@ -19,7 +21,7 @@ async function boundedJson(request) {
   try { return JSON.parse(new TextDecoder().decode(bytes)); }
   catch { throw new IntegrationError('invalid_input', 'Corpo JSON inválido.'); }
 }
-export function createWorkerHandler({ config, storeFactory, authenticate = createAuthenticator(config) }) {
+export function createWorkerHandler({ config, storeFactory, authenticate = createAuthenticator(config), env = {} }) {
   return async request => {
     const url = new URL(request.url), metadataUrl = `${config.publicUrl}/.well-known/oauth-protected-resource/mcp`;
     const headers = new Headers({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -36,18 +38,31 @@ export function createWorkerHandler({ config, storeFactory, authenticate = creat
         headers.set('Access-Control-Expose-Headers', 'WWW-Authenticate');
       }
       if (request.method === 'GET' && url.pathname === '/health') return json({ service: 'projectflow-integration', version: '1.0.0' });
+      if (request.method === 'GET' && url.pathname === '/chat/config') return json(chatConfig(env, config));
+      if (request.method === 'GET' && url.pathname === '/chat/callback') return chatCallback(config);
       if (request.method === 'GET' && ['/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp'].includes(url.pathname)) {
         return json({ resource: `${config.publicUrl}/mcp`, authorization_servers: [config.issuer],
           scopes_supported: ['projectflow:read', 'projectflow:write'], bearer_methods_supported: ['header'] });
       }
-      if (!['/mcp', '/api'].includes(url.pathname)) throw new IntegrationError('not_found', 'Rota inexistente.', 404);
+      if (!['/mcp', '/api', '/chat', '/chat/apply', '/chat/token'].includes(url.pathname)) throw new IntegrationError('not_found', 'Rota inexistente.', 404);
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+      if (url.pathname === '/chat/token') {
+        if (request.method !== 'POST' || !origin || !request.headers.get('content-type')?.startsWith('application/json')) throw new IntegrationError('invalid_input', 'Solicitação de login inválida.', 400);
+        return json(await exchangeChatCode(env, config, await boundedJson(request), authenticate));
+      }
       let principal;
       try { principal = await authenticate(request.headers.get('authorization')); }
       catch (error) { if (error.status === 401 || error.code === 'insufficient_scope') headers.set('WWW-Authenticate', challenge()); throw error; }
       if (request.method !== 'POST') return new Response(null, { status: 405, headers: { ...Object.fromEntries(headers), Allow: 'POST, OPTIONS' } });
       if (!request.headers.get('content-type')?.startsWith('application/json')) throw new IntegrationError('invalid_input', 'Use Content-Type: application/json.', 415);
       const body = await boundedJson(request);
+      if (url.pathname === '/chat' || url.pathname === '/chat/apply') {
+        if (!origin) throw new IntegrationError('origin_denied', 'Abra o chat pelo ProjectFlow.', 403);
+        chatRateLimit(principal.subject);
+        return json(url.pathname === '/chat'
+          ? await chat(env, principal, body, storeFactory())
+          : await applyChatDraft(env, principal, body.token, storeFactory()));
+      }
       if (url.pathname === '/api') {
         if (typeof body?.operation !== 'string') throw new IntegrationError('invalid_input', 'Informe operation e arguments.');
         if (!principal.scopes.includes(scopeFor(body.operation))) {
@@ -78,7 +93,7 @@ export default {
       if (cachedKey !== key) {
         cachedConfig = httpConfig(env); cachedAuthenticate = createAuthenticator(cachedConfig); cachedKey = key;
       }
-      return await createWorkerHandler({ config: cachedConfig, authenticate: cachedAuthenticate, storeFactory: () => storeFromEnv(env) })(request);
+      return await createWorkerHandler({ config: cachedConfig, authenticate: cachedAuthenticate, storeFactory: () => storeFromEnv(env), env })(request);
     } catch {
       return Response.json({ error: { code: 'configuration', message: 'Configure a autenticação e as variáveis do servidor antes de ativar a integração.' } },
         { status: 503, headers: { 'Cache-Control': 'no-store' } });
