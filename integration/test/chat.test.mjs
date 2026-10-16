@@ -32,6 +32,25 @@ function model(steps,inspect){return async(url,options)=>{
 async function draft(store=new Store(),ops=[call('update_task',{id:'t1',patch:{date:'2026-10-19'}})]){
   return chat(env,principal,input,store,{now,fetcher:model([{role:'assistant',tool_calls:ops},{role:'assistant',content:'Preparei a proposta.'}])});
 }
+test('the selected model is validated before reading data and remains fixed throughout tool rounds',async()=>{
+  const store=new Store();let called=false;
+  await assert.rejects(chat(env,principal,{...input,model:'unlisted/expensive'},store,{now,fetcher:async()=>{called=true;}}),{code:'invalid_model'});assert(!called);assert.equal(store.writes.length,0);
+  for(const id of ['openai/gpt-6-luna','deepseek/deepseek-v4.1-flash','qwen/qwen3.8-flash','openrouter/free','google/gemma-4-31b-it:free']){
+    const seen=[],reasoning=[{type:'reasoning.encrypted',data:'synthetic-tool-continuation'}];const result=await chat(env,principal,{...input,model:id},new Store(),{now,fetcher:model([{tool_calls:[call('list_tasks',{limit:5})],reasoning_details:reasoning},{content:'**Hoje**\n\n- Tarefa A.'}],body=>{
+      seen.push(body.model);assert.equal(body.provider.require_parameters,true);
+      if(seen.length===2)assert.deepEqual(body.messages.find(m=>m.tool_calls)?.reasoning_details,reasoning);
+      assert.equal(Boolean(body.reasoning),id.startsWith('openai/'));
+      if(id==='openrouter/free'||id.endsWith(':free'))assert.deepEqual(body.provider.max_price,{prompt:0,completion:0,request:0});else assert.equal(body.provider.max_price,undefined);
+      assert.match(body.messages[0].content,/linha em branco/);
+    })});assert.deepEqual(seen,[id,id]);assert.equal(result.model,id);
+  }
+});
+test('free provider failures do not retry with a paid model',async()=>{
+  let calls=0;
+  await assert.rejects(chat(env,principal,{...input,model:'openrouter/free'},new Store(),{now,fetcher:async(url,options)=>{calls++;assert.equal(JSON.parse(options.body).model,'openrouter/free');return Response.json({error:{code:429}},{status:429});}}),{code:'model_unavailable'});
+  assert.equal(calls,1);
+  const configValue=chatConfig(env,config);assert.equal(configValue.model,'openai/gpt-6-luna');assert(configValue.models.some(m=>m.free));
+});
 test('chat stages multiple tool calls without saving and batches a reviewed area into one CAS write',async()=>{
   const store=new Store(),before=structuredClone(store.data);
   const result=await draft(store,[call('update_task',{id:'t1',patch:{date:'2026-10-19'}},'1'),call('update_task',{id:'t2',patch:{date:'2026-10-20'}},'2'),call('update_action',{planId:'p2',id:'a3',patch:{status:'doing'}},'3')]);
