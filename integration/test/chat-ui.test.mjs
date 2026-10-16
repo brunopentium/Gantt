@@ -8,21 +8,23 @@ const source = await readFile(new URL('../../my-day-chat.js', import.meta.url), 
 const server = 'https://projectflow-integration.brunocesardesouza26.workers.dev';
 // Exercise the actual form handlers with synthetic UI, OAuth and cloud adapters.
 // This checks synchronization decisions, not rendering or a real login.
-async function app(overrides = {}, area = 'todo') {
+async function app(overrides = {}, area = 'todo', hooks = {}) {
   const elements = new Map(), events = new Map(), calls = [], refreshed = [], opened = [];
   let popup, uncertain = false;
   function element() {
-    return { dataset: {}, value: '', hidden: false, disabled: false, textContent: '', classList: { toggle() {} },
-      append() {}, replaceChildren() {}, scrollIntoView() {}, focus() {}, showModal() {}, close() {}, addEventListener() {}, setAttribute() {},
+    const classes=new Set(),listeners=new Map();
+    return { dataset: {}, value: '', hidden: false, disabled: false, textContent: '', classList: { toggle(name,value) {if(value)classes.add(name);else classes.delete(name);}, contains:name=>classes.has(name) }, listeners,
+      append() {}, replaceChildren() {}, scrollIntoView() {}, focus() {this.focused=true;}, show() {this.open=true;}, close() {this.open=false;}, addEventListener(name,fn) {listeners.set(name,fn);}, setAttribute() {}, contains:e=>[...elements.values()].includes(e),
       querySelector(selector) { return elements.get(selector.slice(1)); },
       set innerHTML(value) { for (const match of value.matchAll(/id="([^"]+)"/g)) elements.set(match[1], element()); } };
   }
   for (const id of ['tabTodoNative', 'tabActions', 'tabGantt', 'ntCloudSettings', 'apCloudSettings','btnCloudBackup']) elements.set(id, { click: () => opened.push(id) });
+  elements.set('app',{inert:false});
   const clean = { connected: true, ready: true, busy: false, blocked: false, dirty: false, repo: 'example/private' };
   const states = { todo: { ...clean }, plans: { ...clean }, schedules: { ...clean }, ...overrides };
   const adapter = area => ({ state: () => states[area], refreshRemote: async () => { refreshed.push(area); return { ok: true }; } });
   const context = { Date, JSON, URL, URLSearchParams, AbortSignal, crypto: webcrypto, btoa, TextEncoder, setInterval: () => 1,
-    clearInterval() {}, document: { body: { append() {} }, createElement: element, activeElement: null, getElementById: id => elements.get(id) },
+    clearInterval() {}, document: { body: element(), createElement: element, activeElement: null, getElementById: id => elements.get(id) },
     WorkspaceProfile: { personal: false }, MyDay: { date: () => '2026-10-16', refresh() {} }, MyDayData: { flush() {} },
     WorkspaceAutosave: { async suspend() {}, resume() {}, refresh() {} }, TodoCloud: adapter('todo'), PlanCloud: adapter('plans'), GanttBackup: adapter('schedules'),
     open: () => (popup = { closed: false, close() { this.closed = true; } }), addEventListener: (name, fn) => events.set(name, fn),
@@ -33,16 +35,18 @@ async function app(overrides = {}, area = 'todo') {
       assert.equal(options.headers.Authorization, 'Bearer synthetic-access');
       if (path === '/chat') return Response.json({ reply: 'Revise', draft: { token: 'synthetic-draft', changes: [{ area, kind: 'task-project', title: 'Geral', created: true, fields: [{ label: 'Novo projeto de tarefas', after: 'Geral' }] }] } });
       assert.equal(path, '/chat/apply');
+      await hooks.applying?.(elements);
       if (uncertain) throw new Error('synthetic network failure');
       return Response.json({ saved: true, changed: 1, results: [{ area, saved: true }] });
     } };
   context.window = context; vm.createContext(context); vm.runInContext(source, context);
+  context.document.body.append=panel=>{context.document.body.panel=panel;};
   context.MyDayChat.init(); await new Promise(setImmediate);
   await elements.get('mdChatLogin').onclick();
   await events.get('message')({ origin: server, source: popup, data: { type: 'projectflow-chat-auth', code: 'synthetic-code', state: new URL(popup.location).searchParams.get('state') } });
   elements.get('mdChatInput').value = 'Crie o projeto Geral';
   await elements.get('mdChatForm').onsubmit({ preventDefault() {} });
-  return { elements, calls, refreshed, opened, states, uncertain: () => { uncertain = true; } };
+  return { elements, calls, refreshed, opened, states, context, dialog:context.document.body.panel, events, uncertain: () => { uncertain = true; } };
 }
 
 test('task-only proposal saves and reloads with unrelated areas disconnected and dirty', async () => {
@@ -89,4 +93,31 @@ test('schedule changes reload schedules and cannot overwrite pending linked acti
   const missing=await app({},'schedules');missing.states.schedules.connected=false;
   await missing.elements.get('mdChatApply').onclick();missing.elements.get('mdChatConnect').onclick();
   assert.deepEqual(missing.opened,['tabGantt','btnCloudBackup']);
+});
+test('opening the sidebar keeps the app interactive and closing preserves the proposal',async()=>{
+  const h=await app();h.context.MyDayChat.open();
+  assert.equal(h.dialog.open,true);assert.equal(h.elements.get('app').inert,false);
+  assert.equal(h.context.document.body.classList.contains('md-chat-open'),true);
+  h.elements.get('tabGantt').click();assert.deepEqual(h.opened,['tabGantt']);assert.equal(h.dialog.open,true);
+  h.context.MyDayChat.close();assert.equal(h.dialog.open,false);
+  assert.equal(h.context.document.body.classList.contains('md-chat-open'),false);
+  h.context.MyDayChat.open();assert.equal(h.elements.get('mdChatDraft').hidden,false);
+  let stopped=false;h.dialog.listeners.get('keydown')({key:'Tab',stopPropagation(){stopped=true;}});assert(stopped);
+  h.events.get('projectflow:workspace-switch')();assert.equal(h.dialog.open,false);
+  assert.equal(h.context.document.body.classList.contains('md-chat-open'),false);
+});
+test('only applying changes locks editing, and success or uncertainty releases the app',async()=>{
+  for(const uncertain of [false,true]){
+    let applying=false;
+    const h=await app({},'todo',{applying(elements){applying=true;assert.equal(elements.get('app').inert,true);}});
+    assert.equal(h.elements.get('app').inert,false);if(uncertain)h.uncertain();
+    await h.elements.get('mdChatApply').onclick();assert(applying);assert.equal(h.elements.get('app').inert,false);
+  }
+});
+test('an assistant reply does not take keyboard focus from an app editor',async()=>{
+  const h=await app();h.context.MyDayChat.open();
+  const input=h.elements.get('mdChatInput');input.focused=false;
+  h.context.document.activeElement={tagName:'INPUT'};input.value='Consulte minhas tarefas';
+  await h.elements.get('mdChatForm').onsubmit({preventDefault(){}});
+  assert.equal(input.focused,false);assert.equal(h.elements.get('app').inert,false);
 });

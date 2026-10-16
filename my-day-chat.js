@@ -56,7 +56,7 @@ window.MyDayChat=(()=>{
       append('assistant',result.reply);history.push({role:'assistant',content:result.reply});history=history.slice(-14);showDraft(result.draft);
       status(result.draft?'Revise as mudanças e toque em Aplicar.':'Consulta concluída.');
     }catch(error){history.pop();append('assistant',error.message);status(error.message,true);field.value=text;}
-    finally{busy=false;controls();field.focus();}
+    finally{busy=false;controls();if(dialog.open&&(document.activeElement===document.body||dialog.contains(document.activeElement)))field.focus();}
   }
   function assertClean(required){
     window.MyDayData.flush();
@@ -80,9 +80,9 @@ window.MyDayChat=(()=>{
   }
   async function apply(){
     if(busy||!pending||blockedSync)return;
-    busy=true;controls();let suspended=false,sent=false,confirmed=false;const token=pending.token,required=[...new Set(pending.changes.map(c=>c.area))];
+    busy=true;controls();let suspended=false,sent=false,confirmed=false,unlock=()=>{};const token=pending.token,required=[...new Set(pending.changes.map(c=>c.area))];
     try{
-      await window.WorkspaceAutosave.suspend();suspended=true;assertClean(required);
+      await window.WorkspaceAutosave.suspend();suspended=true;assertClean(required);unlock=lockApp();
       status('Aplicando as alterações revisadas…');sent=true;
       const result=await request('/chat/apply',{token});confirmed=true;showDraft(null);
       const saved=result.results||[];
@@ -93,12 +93,12 @@ window.MyDayChat=(()=>{
     }catch(error){
       if(sent&&!confirmed){showDraft(null);blockedSync=true;dialog.dataset.savedAreas=JSON.stringify(required.map(area=>({area})));}
       status(error.message,true);append('assistant',error.message);
-    }finally{if(suspended)window.WorkspaceAutosave.resume();busy=false;controls();}
+    }finally{unlock();if(suspended)window.WorkspaceAutosave.resume();busy=false;controls();}
   }
   async function reload(){
-    if(busy)return;busy=true;controls();let suspended=false;
-    try{await window.WorkspaceAutosave.suspend();suspended=true;const saved=JSON.parse(dialog.dataset.savedAreas||'[]');assertClean(saved.map(r=>r.area));await synchronize(saved);blockedSync=false;delete dialog.dataset.savedAreas;status('Tela atualizada. Confira os itens antes de fazer outro pedido.');}
-    catch(error){status(error.message,true)}finally{if(suspended)window.WorkspaceAutosave.resume();busy=false;controls()}
+    if(busy)return;busy=true;controls();let suspended=false,unlock=()=>{};
+    try{await window.WorkspaceAutosave.suspend();suspended=true;const saved=JSON.parse(dialog.dataset.savedAreas||'[]');assertClean(saved.map(r=>r.area));unlock=lockApp();await synchronize(saved);blockedSync=false;delete dialog.dataset.savedAreas;status('Tela atualizada. Confira os itens antes de fazer outro pedido.');}
+    catch(error){status(error.message,true)}finally{unlock();if(suspended)window.WorkspaceAutosave.resume();busy=false;controls()}
   }
   const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');
   async function login(){
@@ -126,7 +126,9 @@ window.MyDayChat=(()=>{
       status(config.enabled?'Conectado. Como posso ajudar?':'Login pronto. Falta configurar a chave OpenRouter no servidor.');
     }catch(error){status(error.message,true)}finally{popup?.close();popup=null;busy=false;controls()}
   }
-  function close(){if(busy)return;dialog.close();lastFocus?.focus();}
+  function lockApp(){const app=document.getElementById('app');if(!app)return()=>{};const previous=app.inert;app.inert=true;return()=>{app.inert=previous};}
+  function hide(){dialog.close();document.body.classList.toggle('md-chat-open',false);}
+  function close(){if(busy)return;hide();if(lastFocus?.isConnected&&lastFocus.getClientRects().length)lastFocus.focus();}
   function init(){
     if(dialog)return;
     dialog=node('dialog','md-chat');dialog.id='mdChatPanel';dialog.setAttribute('aria-labelledby','mdChatTitle');
@@ -135,11 +137,11 @@ window.MyDayChat=(()=>{
     find('mdChatLogout').onclick=()=>{accessToken='';expires=0;showDraft(null);controls();status('Desconectado do chat.');};
     find('mdChatForm').onsubmit=send;find('mdChatInput').onkeydown=event=>{if(event.key==='Enter'&&event.shiftKey&&!event.isComposing){event.preventDefault();if(!event.repeat&&!find('mdChatSend').disabled)find('mdChatForm').requestSubmit();}};find('mdChatApply').onclick=apply;find('mdChatDiscard').onclick=()=>{showDraft(null);status('Proposta descartada.');};find('mdChatReload').onclick=reload;
     find('mdChatConnect').onclick=()=>{if(busy||!connectionArea)return;const area=connectionArea;close();document.getElementById({todo:'tabTodoNative',plans:'tabActions',schedules:'tabGantt'}[area])?.click();document.getElementById({todo:'ntCloudSettings',plans:'apCloudSettings',schedules:'btnCloudBackup'}[area])?.click();};
-    dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();else lastFocus?.focus()});window.addEventListener('message',receiveLogin);
-    window.addEventListener('projectflow:workspace-switch',()=>{accessToken='';history=[];loginTransaction=null;popup?.close();dialog.close()});
+    dialog.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Escape'&&!event.defaultPrevented){event.preventDefault();close();}});window.addEventListener('message',receiveLogin);
+    window.addEventListener('projectflow:workspace-switch',()=>{accessToken='';history=[];loginTransaction=null;popup?.close();hide()});
     append('assistant','Posso consultar suas tarefas, ações e cronogramas e preparar alterações para você revisar. O que vamos organizar?');
     request('/chat/config',undefined,{auth:false,timeout:15000}).then(value=>{config=value;status(window.WorkspaceProfile.personal?'Esta versão do chat está disponível em Trabalho.':value.enabled?'Entre para conversar sobre seu dia.':'Falta configurar a chave OpenRouter no servidor.');controls()}).catch(error=>{status(error.message,true);controls()});controls();
   }
-  function open(){init();lastFocus=document.activeElement;dialog.showModal();controls();find(logged()?'mdChatInput':'mdChatLogin').focus();}
+  function open(){init();lastFocus=document.activeElement;if(!dialog.open)dialog.show();document.body.classList.toggle('md-chat-open',true);controls();find(logged()?'mdChatInput':'mdChatLogin').focus();}
   return {init,open,close};
 })();
