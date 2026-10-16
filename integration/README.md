@@ -124,7 +124,7 @@ Para CLI remota, configure `PROJECTFLOW_URL` (origem do serviço) e `PROJECTFLOW
 
 O botão **Conversar com assistente** abre um painel lateral (tela inteira no celular). Usa login Auth0 com PKCE, usuário autorizado e os escopos existentes. O token de acesso fica somente na memória da aba. Nenhuma chave OpenRouter é enviada ao navegador.
 
-- Worker: configurar o segredo `OPENROUTER_API_KEY` em **Settings → Variables and Secrets → Add → Secret**. O modelo fica em `OPENROUTER_MODEL`, inicialmente `openai/gpt-5-mini`.
+- Worker: configurar o segredo `OPENROUTER_API_KEY` em **Settings → Variables and Secrets → Add → Secret**. O modelo fica em `OPENROUTER_MODEL`, inicialmente `openai/gpt-6-luna`.
 - `CHAT_CLIENT_ID` é um cliente público dedicado, registrado com callback `${PUBLIC_URL}/chat/callback`, authorization code e autenticação de token `none`. `ALLOWED_ORIGINS` contém somente o site e a prévia autorizados, sem curingas.
 - `/chat/config` retorna apenas configuração pública. `/chat/token` troca código+PKCE pelo token, valida a identidade autorizada e não retorna ID token ou refresh token.
 - `/chat` consulta os backups e executa as operações do domínio em uma cópia temporária. O resultado contém uma proposta assinada, vinculada ao usuário/repositório/branch e válida por 15 minutos. Nenhuma ferramenta do modelo grava diretamente.

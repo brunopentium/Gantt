@@ -102,7 +102,7 @@ async function modelCall(env, messages, tools, fetcher) {
     response = await fetcher('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(55000),
       headers: { Authorization: 'Bearer ' + env.OPENROUTER_API_KEY, 'Content-Type': 'application/json', 'X-OpenRouter-Title': 'ProjectFlow Meu Dia' },
-      body: JSON.stringify({ model: env.OPENROUTER_MODEL || 'openai/gpt-5-mini', messages, tools, tool_choice: 'auto',
+      body: JSON.stringify({ model: env.OPENROUTER_MODEL || 'openai/gpt-6-luna', messages, tools, tool_choice: 'auto',
         parallel_tool_calls: false, max_tokens: 2500, reasoning: { effort: 'low' }, provider: { require_parameters: true } })
     });
   } catch { throw new IntegrationError('model_unavailable', 'A IA não respondeu a tempo. Nenhuma alteração foi aplicada.', 502); }
@@ -190,7 +190,7 @@ export async function chat(env, principal, raw, store, { fetcher = (url, options
       expires: now + 15 * 60000, versions, operations }, env), changes: proposed, expiresAt: new Date(now + 15 * 60000).toISOString() };
     if (draft.token.length > 65000) throw new IntegrationError('draft_too_large', 'Divida este pedido em grupos menores. Nenhuma alteração foi aplicada.');
   }
-  return { reply, draft, workspace: input.workspace, model: env.OPENROUTER_MODEL || 'openai/gpt-5-mini' };
+  return { reply, draft, workspace: input.workspace, model: env.OPENROUTER_MODEL || 'openai/gpt-6-luna' };
 }
 export async function applyChatDraft(env, principal, token, store, now = Date.now()) {
   requireWrite(principal);

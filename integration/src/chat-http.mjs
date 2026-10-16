@@ -4,7 +4,7 @@ export function chatConfig(env, config) {
   return { enabled: !!env.OPENROUTER_API_KEY && !!env.CHAT_CLIENT_ID, clientId: env.CHAT_CLIENT_ID || '', issuer: config.issuer,
     audience: config.audience, redirectUri: config.publicUrl + '/chat/callback', repository: env.GITHUB_REPOSITORY,
     branch: env.GITHUB_BRANCH || 'main', workspaces: (env.PROJECTFLOW_WORKSPACES || 'work').split(',').map(s => s.trim()),
-    model: env.OPENROUTER_MODEL || 'openai/gpt-5-mini' };
+    model: env.OPENROUTER_MODEL || 'openai/gpt-6-luna' };
 }
 export function chatCallback(config) {
   const origins = JSON.stringify(config.origins).replace(/</g, '\\u003c');
