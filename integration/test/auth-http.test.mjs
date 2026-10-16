@@ -69,7 +69,7 @@ test('SDK client completes MCP initialize, tool discovery, query and confirmed w
   const client = new Client({ name: 'projectflow-test', version: '1.0.0' });
   await client.connect(new StreamableHTTPClientTransport(new URL(url + '/mcp'), { requestInit: { headers: { Authorization: `Bearer ${access}` } } }));
   t.after(() => client.close());
-  const tools = await client.listTools(); assert.equal(tools.tools.length, 8);
+  const tools = await client.listTools(); assert.equal(tools.tools.length, 9);
   assert.equal(tools.tools.find(t => t.name === 'list_tasks').annotations.readOnlyHint, true);
   assert.deepEqual(tools.tools.find(t => t.name === 'create_task')._meta.securitySchemes[0].scopes, ['projectflow:write']);
   const listed = await client.callTool({ name: 'list_tasks', arguments: { workspace: 'work' } });

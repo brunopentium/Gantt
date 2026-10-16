@@ -9,7 +9,7 @@ import { IntegrationError } from './store.mjs';
 const clone = value => structuredClone(value);
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 40);
 const areaFor = name => name === 'update_action' ? 'plans' : 'todo';
-const changes = new Set(['create_task', 'update_task', 'update_action', 'reschedule_tasks']);
+const changes = new Set(['create_task_project', 'create_task', 'update_task', 'update_action', 'reschedule_tasks']);
 const chatInput = z.object({ workspace: z.enum(['work', 'personal']), day: inputs.get_my_day.shape.day,
   messages: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(8000) }).strict()).min(1).max(16)
 }).strict();
@@ -79,6 +79,13 @@ function preview(store) {
   const result = [];
   for (const key of store.changed) {
     const area = key.split(':')[0], old = new Map(records(area, store.original.get(key).data).map(r => [r.key, r.row]));
+    if (area === 'todo') {
+      const previous = new Set(store.original.get(key).data.settings.projects || []);
+      for (const title of store.current.get(key).data.settings.projects || []) if (!previous.has(title)) {
+        result.push({ area, kind: 'task-project', id: title, title, created: true,
+          fields: [{ field: 'project', label: 'Novo projeto de tarefas', before: '', after: title }] });
+      }
+    }
     for (const record of records(area, store.current.get(key).data)) {
       const before = old.get(record.key), fields = Object.keys(fieldLabels).filter(field => JSON.stringify(before?.[field]) !== JSON.stringify(record.row[field]))
         .map(field => ({ field, label: fieldLabels[field], before: before?.[field] ?? '', after: record.row[field] ?? '' }));

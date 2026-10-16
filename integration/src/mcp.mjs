@@ -5,6 +5,7 @@ import { IntegrationError } from './store.mjs';
 
 export const descriptions = {
   list_tasks: 'Consultar tarefas do ambiente explícito, seus IDs, projetos existentes e versão para alterações. Datas em America/Sao_Paulo.',
+  create_task_project: 'Criar um projeto da guia Tarefas quando solicitado. Não cria plano de ação nem cronograma. Exige a versão da consulta de tarefas e devolve o nome canônico; projetos equivalentes existentes não são duplicados.',
   create_task: 'Criar uma tarefa com data e projeto explícitos. Consulte a versão antes. Reutilize requestId ao repetir a mesma criação para evitar duplicatas.',
   update_task: 'Atualizar somente os campos pedidos de uma tarefa existente. Exige a versão da última consulta. Não exclui tarefas.',
   reschedule_tasks: 'Simular ou aplicar a reprogramação EM DIAS ÚTEIS a partir da data indicada, usando a regra de Configurações. Preserva prazos finais, recorrência e campos restantes. dryRun é true por padrão; revise a simulação antes de aplicar.',

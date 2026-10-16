@@ -91,11 +91,16 @@ export async function execute(store, name, raw) {
       .sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999') || String(a.id).localeCompare(String(b.id)));
     return { workspace, day, version: snapshot.version, projects: snapshot.data.settings.projects || [], ...page(tasks, input) };
   }
-  if (['create_task', 'update_task', 'reschedule_tasks'].includes(name)) {
+  if (['create_task_project', 'create_task', 'update_task', 'reschedule_tasks'].includes(name)) {
     const snapshot = await read('todo'); requireVersion(snapshot, input);
     const data = clone(snapshot.data);
     let result;
-    if (name === 'create_task') {
+    if (name === 'create_task_project') {
+      const existing = (data.settings.projects || []).find(project => normalize(project) === normalize(input.title));
+      if (existing !== undefined) return { workspace, saved: true, unchanged: true, version: snapshot.version, project: { title: existing } };
+      data.settings.projects = [...(data.settings.projects || []), input.title];
+      result = { project: { title: input.title } };
+    } else if (name === 'create_task') {
       requireProject(data, input.project);
       const id = 'agent-' + createHash('sha256').update(`${workspace}:${input.requestId}`).digest('hex').slice(0, 32);
       const payload = { title: input.title, project: input.project, date: input.date, deadline: input.deadline,

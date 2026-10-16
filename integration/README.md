@@ -9,6 +9,7 @@ Integração separada do frontend, usando os mesmos backups privados do aplicati
 | Operação | Função |
 | --- | --- |
 | `list_tasks` | Tarefas, projetos, datas efetivas, filtros e versão atual |
+| `create_task_project` | Criar projeto da guia Tarefas, sem duplicar nomes equivalentes |
 | `create_task` | Criar tarefa em projeto existente, com data explícita e proteção contra duplicação |
 | `update_task` | Atualizar campos solicitados de uma tarefa existente |
 | `reschedule_tasks` | Simular/aplicar Configurações → A partir de hoje para uma data explícita |
@@ -129,7 +130,8 @@ O botão **Conversar com assistente** abre um painel lateral (tela inteira no ce
 - `/chat/config` retorna apenas configuração pública. `/chat/token` troca código+PKCE pelo token, valida a identidade autorizada e não retorna ID token ou refresh token.
 - `/chat` consulta os backups e executa as operações do domínio em uma cópia temporária. O resultado contém uma proposta assinada, vinculada ao usuário/repositório/branch e válida por 15 minutos. Nenhuma ferramenta do modelo grava diretamente.
 - **Aplicar alterações** chama `/chat/apply`: exige escopo de escrita, assinatura íntegra e as versões consultadas ainda atuais. Todas as operações são validadas antes do primeiro PUT; há no máximo uma gravação por área. Se outra área falhar, a resposta lista somente os salvamentos confirmados, sem repetir automaticamente.
-- Antes de aplicar, o aplicativo pausa o salvamento automático e exige as três áreas conectadas e sem edições pendentes. Depois recarrega as áreas alteradas, guardando cópia de recuperação. A recarga de planos pelo chat não reaplica datas vinculadas ao Gantt.
+- Antes de aplicar, o aplicativo pausa o salvamento automático e exige somente as áreas alteradas conectadas e sem edições pendentes. Depois recarrega as áreas alteradas, guardando cópia de recuperação. A recarga de planos pelo chat não reaplica datas vinculadas ao Gantt.
+- Projetos de tarefas podem ser criados explicitamente pelo chat, inclusive junto com a primeira tarefa na mesma proposta e gravação. Isso não cria um plano de ação nem um cronograma.
 - O chat exige conexão com a internet e saldo/limite disponível na chave OpenRouter. O servidor limita pedidos e chamadas por conversa; o limite por minuto em memória é uma proteção adicional, não um teto financeiro global. Configure também o limite da chave na OpenRouter.
 - A prévia usa o mesmo backend de Trabalho: uma proposta aplicada altera os backups reais. A publicação da prévia, por si só, não altera os dados nem o frontend principal.
 
@@ -139,7 +141,7 @@ O botão **Conversar com assistente** abre um painel lateral (tela inteira no ce
 - Toda gravação exige o SHA consultado e também usa esse SHA no `PUT` do GitHub. Conflitos não são repetidos automaticamente. Os commits entram no histórico existente da área.
 - Uma aba já aberta pode manter uma cópia antiga. **Salve edições locais antes de usar a integração**; depois da alteração remota use a conexão do aplicativo para abrir a última versão. O mecanismo existente preserva edições locais e pode exigir resolução de conflitos. O serviço não força a atualização da aba.
 - Consultas agregadas leem as três áreas separadamente e informam cada versão; não são uma transação simultânea.
-- Esta versão não exclui dados, cria projetos/planos/ações, altera dependências ou datas vinculadas, muda avaliações diárias ou inclui atividades no Meu dia. Consultas não inventam progresso: 0% registrado continua 0%.
+- Esta versão não exclui dados nem cria planos de ação, ações ou cronogramas. Também não altera dependências, datas vinculadas ou avaliações diárias nem inclui atividades no Meu dia. Consultas não inventam progresso: 0% registrado continua 0%.
 - Arquivos ausentes/inválidos não viram listas vazias: conecte e salve a área no aplicativo primeiro. Campos desconhecidos do formato atual são preservados.
 
 ## Regra proposta para o Assistente ProjectFlow

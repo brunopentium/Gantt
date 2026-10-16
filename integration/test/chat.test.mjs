@@ -60,6 +60,20 @@ test('bulk task proposals stage every selected task and roll back the entire bat
   const invalid=await draft(store,[call('plan_task_updates',{updates:[{id:'t1',patch:{date:'2026-10-19'}},{id:'missing',patch:{date:'2026-10-20'}}]})]);
   assert.equal(invalid.draft,null);assert.equal(store.writes.length,0);
 });
+test('a new task project and first task are reviewed together and committed once to the tasks area',async()=>{
+  const store=new Store(),before=structuredClone(store.data);
+  const result=await draft(store,[call('create_task_project',{title:'Geral'},'project'),call('create_task',{title:'Teste',project:'Geral',date:'2026-10-16'},'task')]);
+  assert.deepEqual(store.data,before);assert.equal(store.writes.length,0);
+  assert.equal(result.draft.changes.length,2);
+  assert.equal(result.draft.changes[0].kind,'task-project');assert.equal(result.draft.changes[0].title,'Geral');
+  assert.equal(result.draft.changes[1].fields.find(f=>f.field==='project').after,'Geral');
+  const applied=await applyChatDraft(env,principal,result.draft.token,store,now+1000);
+  assert.equal(applied.saved,true);assert.equal(applied.changed,2);assert.deepEqual(store.writes,[{area:'todo',workspace:'work'}]);
+  assert.equal(store.data.todo.settings.projects.at(-1),'Geral');assert.equal(store.data.todo.tasks.at(-1).project,'Geral');
+  assert.deepEqual(store.data.todo.tasks.slice(0,-1),before.todo.tasks);assert.deepEqual(store.data.plans,before.plans);assert.deepEqual(store.data.schedules,before.schedules);
+  const duplicate=await draft(store,[call('create_task_project',{title:' geral '})]);
+  assert.equal(duplicate.draft,null);assert.equal(store.writes.length,1);
+});
 test('model cannot write an unobserved ID, override workspace or set unsupported linked dates',async()=>{
   const store=new Store(),result=await draft(store,[call('update_task',{id:'invented',workspace:'personal',patch:{date:'2026-10-19'}},'1'),call('update_action',{id:'linked',planId:'p1',patch:{end:'2026-11-10'}},'2')]);
   assert.equal(result.draft,null);assert.equal(store.writes.length,0);

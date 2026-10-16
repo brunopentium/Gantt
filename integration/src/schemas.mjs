@@ -25,6 +25,7 @@ const actionPatch = z.object({
 
 export const inputs = {
   list_tasks: z.object({ workspace, day: date.optional(), project: title.optional(), status: z.enum(todoStatuses).optional(), overdueOnly: z.boolean().default(false), ...pagination }).strict(),
+  create_task_project: z.object({ workspace, expectedVersion: version, title }).strict(),
   create_task: z.object({ workspace, expectedVersion: version, requestId: z.string().min(8).max(100), title, project: title, date,
     deadline: optionalDate.default(''), priority: rating.default(3), difficulty: rating.default(3), notes: text.default('') }).strict(),
   update_task: z.object({ workspace, expectedVersion: version, id: identifier, patch: taskPatch }).strict(),

@@ -2,12 +2,13 @@
 window.MyDayChat=(()=>{
   'use strict';
   const SERVER='https://projectflow-integration.brunocesardesouza26.workers.dev';
-  let dialog,config,accessToken='',expires=0,pending=null,history=[],busy=false,blockedSync=false,popup=null,loginTransaction=null,lastFocus=null;
+  let dialog,config,accessToken='',expires=0,pending=null,history=[],busy=false,blockedSync=false,popup=null,loginTransaction=null,lastFocus=null,connectionArea='';
   const node=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text)e.textContent=text;return e};
   const find=id=>dialog.querySelector('#'+id);
   const fmt=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value)?value.split('-').reverse().join('/'):String(value??'')||'Sem valor';
   const logged=()=>!!accessToken&&Date.now()<expires;
   const adapters=()=>({todo:window.TodoCloud,plans:window.PlanCloud,schedules:window.GanttBackup});
+  const areaLabels={todo:'Tarefas',plans:'Planos de ação'};
   function status(message,error=false){find('mdChatStatus').textContent=message;find('mdChatStatus').classList.toggle('is-error',error)}
   function controls(){
     find('mdChatLogin').hidden=logged();find('mdChatLogout').hidden=!logged();
@@ -17,6 +18,8 @@ window.MyDayChat=(()=>{
     find('mdChatApply').disabled=busy||!pending||blockedSync;
     find('mdChatDiscard').disabled=busy;find('mdChatClose').disabled=busy;
     find('mdChatReload').hidden=!blockedSync;find('mdChatReload').disabled=busy;
+    find('mdChatConnect').hidden=!connectionArea;find('mdChatConnect').disabled=busy;
+    find('mdChatConnect').textContent='Configurar GitHub de '+(areaLabels[connectionArea]||'Tarefas');
     find('mdChatDraft').hidden=!pending;
   }
   async function request(path,body,{auth=true,timeout=120000}={}){
@@ -32,11 +35,11 @@ window.MyDayChat=(()=>{
   }
   function append(role,text){const e=node('div','md-chat-message md-chat-'+role);e.append(node('span','md-chat-role',role==='user'?'Você':'Assistente ProjectFlow'),node('div','md-chat-text',text));find('mdChatMessages').append(e);e.scrollIntoView({block:'nearest'});}
   function showDraft(draft){
-    pending=draft;const list=find('mdChatChanges');list.replaceChildren();
+    pending=draft;connectionArea='';const list=find('mdChatChanges');list.replaceChildren();
     if(draft){
       find('mdChatDraftTitle').textContent=draft.changes.length+' '+(draft.changes.length===1?'item para alterar':'itens para alterar');
       for(const change of draft.changes){const item=node('li');item.append(node('strong','',change.title));
-        item.append(node('div','md-chat-context',change.planTitle|| (change.area==='todo'?'Tarefas':'Plano de ação')));
+        item.append(node('div','md-chat-context',change.kind==='task-project'?'Projetos de tarefas':change.planTitle|| (change.area==='todo'?'Tarefas':'Plano de ação')));
         for(const field of change.fields)item.append(node('div','md-chat-field',field.label+': '+(change.created?'':fmt(field.before)+' → ')+fmt(field.after)));
         list.append(item);
       }
@@ -55,11 +58,15 @@ window.MyDayChat=(()=>{
     }catch(error){history.pop();append('assistant',error.message);status(error.message,true);field.value=text;}
     finally{busy=false;controls();field.focus();}
   }
-  function assertClean(){
+  function assertClean(required){
     window.MyDayData.flush();
-    const areas=Object.entries(adapters()).map(([area,a])=>({area,...a.state()}));
-    if(areas.some(a=>a.busy))throw new Error('Aguarde a sincronização em andamento.');
-    if(areas.some(a=>!a.connected||!a.ready||a.blocked))throw new Error('Conecte e carregue as três áreas do GitHub antes de aplicar pelo chat.');
+    connectionArea='';
+    const all=Object.entries(adapters()).map(([area,a])=>({area,...a.state()}));
+    if(!required.length||required.some(area=>!Object.hasOwn(areaLabels,area)))throw new Error('A proposta contém uma área inválida. Faça o pedido novamente.');
+    const areas=all.filter(a=>required.includes(a.area));
+    if(all.some(a=>a.busy))throw new Error('Aguarde a sincronização em andamento.');
+    const missing=areas.find(a=>!a.connected||!a.ready||a.blocked);
+    if(missing){connectionArea=missing.area;throw new Error('Conecte e carregue '+areaLabels[missing.area]+' do GitHub antes de aplicar. Configure a conexão neste navegador.');}
     if(areas.some(a=>a.repo!==config.repository))throw new Error('O chat e o aplicativo estão conectados a repositórios diferentes.');
     if(areas.some(a=>a.dirty))throw new Error('Há edições locais pendentes. Salve no GitHub antes de aplicar esta proposta.');
   }
@@ -72,9 +79,9 @@ window.MyDayChat=(()=>{
   }
   async function apply(){
     if(busy||!pending||blockedSync)return;
-    busy=true;controls();let suspended=false,sent=false,confirmed=false;const token=pending.token;
+    busy=true;controls();let suspended=false,sent=false,confirmed=false;const token=pending.token,required=[...new Set(pending.changes.map(c=>c.area))];
     try{
-      await window.WorkspaceAutosave.suspend();suspended=true;assertClean();
+      await window.WorkspaceAutosave.suspend();suspended=true;assertClean(required);
       status('Aplicando as alterações revisadas…');sent=true;
       const result=await request('/chat/apply',{token});confirmed=true;showDraft(null);
       const saved=result.results||[];
@@ -83,13 +90,13 @@ window.MyDayChat=(()=>{
       const message=result.changed+' '+(result.changed===1?'item atualizado':'itens atualizados')+' no GitHub e no Meu Dia.';
       append('assistant',message);history.push({role:'assistant',content:message});status(message);
     }catch(error){
-      if(sent&&!confirmed){showDraft(null);blockedSync=true;dialog.dataset.savedAreas=JSON.stringify([{area:'todo'},{area:'plans'}]);}
+      if(sent&&!confirmed){showDraft(null);blockedSync=true;dialog.dataset.savedAreas=JSON.stringify(required.map(area=>({area})));}
       status(error.message,true);append('assistant',error.message);
     }finally{if(suspended)window.WorkspaceAutosave.resume();busy=false;controls();}
   }
   async function reload(){
     if(busy)return;busy=true;controls();let suspended=false;
-    try{await window.WorkspaceAutosave.suspend();suspended=true;assertClean();await synchronize(JSON.parse(dialog.dataset.savedAreas||'[]'));blockedSync=false;delete dialog.dataset.savedAreas;status('Tela atualizada. Confira os itens antes de fazer outro pedido.');}
+    try{await window.WorkspaceAutosave.suspend();suspended=true;const saved=JSON.parse(dialog.dataset.savedAreas||'[]');assertClean(saved.map(r=>r.area));await synchronize(saved);blockedSync=false;delete dialog.dataset.savedAreas;status('Tela atualizada. Confira os itens antes de fazer outro pedido.');}
     catch(error){status(error.message,true)}finally{if(suspended)window.WorkspaceAutosave.resume();busy=false;controls()}
   }
   const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),x=>x.toString(16).padStart(2,'0')).join('');
@@ -122,10 +129,11 @@ window.MyDayChat=(()=>{
   function init(){
     if(dialog)return;
     dialog=node('dialog','md-chat');dialog.id='mdChatPanel';dialog.setAttribute('aria-labelledby','mdChatTitle');
-    dialog.innerHTML='<header class="md-chat-header"><div><h2 id="mdChatTitle">Assistente ProjectFlow</h2><p>Seu dia, organizado em uma conversa</p></div><button type="button" id="mdChatClose" aria-label="Fechar chat">×</button></header><div class="md-chat-connection"><span id="mdChatStatus" role="status">Conectando…</span><button type="button" id="mdChatLogin">Entrar</button><button type="button" id="mdChatLogout" hidden>Sair</button></div><div class="md-chat-scroll"><div id="mdChatMessages" role="log" aria-label="Conversa"></div><section id="mdChatDraft" class="md-chat-draft" hidden><h3 id="mdChatDraftTitle"></h3><ul id="mdChatChanges"></ul><div class="md-chat-draft-actions"><button type="button" id="mdChatDiscard">Descartar</button><button type="button" id="mdChatApply">Aplicar alterações</button></div></section></div><button type="button" id="mdChatReload" hidden>Atualizar após salvamento</button><form id="mdChatForm" class="md-chat-composer"><label class="sr-only" for="mdChatInput">Seu pedido</label><textarea id="mdChatInput" rows="3" maxlength="8000" placeholder="Ex.: passe a tarefa da roda fônica para segunda-feira" required></textarea><button id="mdChatSend" type="submit">Enviar</button><small>Trabalho · Consulta a última versão salva no GitHub</small></form>';
+    dialog.innerHTML='<header class="md-chat-header"><div><h2 id="mdChatTitle">Assistente ProjectFlow</h2><p>Seu dia, organizado em uma conversa</p></div><button type="button" id="mdChatClose" aria-label="Fechar chat">×</button></header><div class="md-chat-connection"><span id="mdChatStatus" role="status">Conectando…</span><button type="button" id="mdChatLogin">Entrar</button><button type="button" id="mdChatLogout" hidden>Sair</button></div><div class="md-chat-scroll"><div id="mdChatMessages" role="log" aria-label="Conversa"></div><section id="mdChatDraft" class="md-chat-draft" hidden><h3 id="mdChatDraftTitle"></h3><ul id="mdChatChanges"></ul><div class="md-chat-draft-actions"><button type="button" id="mdChatDiscard">Descartar</button><button type="button" id="mdChatApply">Aplicar alterações</button></div></section></div><button type="button" id="mdChatReload" hidden>Atualizar após salvamento</button><button type="button" id="mdChatConnect" hidden>Configurar GitHub de Tarefas</button><form id="mdChatForm" class="md-chat-composer"><label class="sr-only" for="mdChatInput">Seu pedido</label><textarea id="mdChatInput" rows="3" maxlength="8000" placeholder="Ex.: passe a tarefa da roda fônica para segunda-feira" required></textarea><button id="mdChatSend" type="submit">Enviar</button><small>Trabalho · Consulta a última versão salva no GitHub</small></form>';
     document.body.append(dialog);find('mdChatClose').onclick=close;find('mdChatLogin').onclick=login;
     find('mdChatLogout').onclick=()=>{accessToken='';expires=0;showDraft(null);controls();status('Desconectado do chat.');};
     find('mdChatForm').onsubmit=send;find('mdChatApply').onclick=apply;find('mdChatDiscard').onclick=()=>{showDraft(null);status('Proposta descartada.');};find('mdChatReload').onclick=reload;
+    find('mdChatConnect').onclick=()=>{if(busy||!connectionArea)return;const area=connectionArea;close();document.getElementById(area==='todo'?'tabTodoNative':'tabActions')?.click();document.getElementById(area==='todo'?'ntCloudSettings':'apCloudSettings')?.click();};
     dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();else lastFocus?.focus()});window.addEventListener('message',receiveLogin);
     window.addEventListener('projectflow:workspace-switch',()=>{accessToken='';history=[];loginTransaction=null;popup?.close();dialog.close()});
     append('assistant','Posso consultar suas tarefas, ações e cronogramas e preparar alterações para você revisar. O que vamos organizar?');

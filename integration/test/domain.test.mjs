@@ -48,6 +48,23 @@ test('stale versions and unknown projects never write', async () => {
   await assert.rejects(execute(store, 'create_task', { ...createInput, project: 'Inventado' }), { code: 'unknown_project' });
   assert.equal(store.writes.length, 0);
 });
+test('explicit task projects preserve all other data, reject stale versions and reuse equivalent names', async () => {
+  const store = new FakeStore(), before = structuredClone(store.data);
+  await assert.rejects(execute(store, 'create_task_project', { ...writeInput, expectedVersion: '0'.repeat(40), title: 'Geral' }), { code: 'version_conflict' });
+  await assert.rejects(execute(store, 'create_task_project', { ...writeInput, title: '  ' }), { code: 'invalid_input' });
+  assert.equal(store.writes.length, 0);
+  const result = await execute(store, 'create_task_project', { ...writeInput, title: '  Geral  ' });
+  assert.equal(result.project.title, 'Geral');
+  assert.deepEqual(store.data.todo.settings.projects, [...before.todo.settings.projects, 'Geral']);
+  assert.deepEqual(store.data.todo.tasks, before.todo.tasks);
+  assert.deepEqual(store.data.todo.settings.config, before.todo.settings.config);
+  assert.deepEqual(store.data.plans, before.plans); assert.deepEqual(store.data.schedules, before.schedules);
+  assert.equal(store.data.todo.extraEnvelope, before.todo.extraEnvelope);
+  const again = await execute(store, 'create_task_project', { ...writeInput, expectedVersion: store.version, title: 'gÉral' });
+  assert.equal(again.unchanged, true); assert.equal(again.project.title, 'Geral'); assert.equal(store.writes.length, 1);
+  await execute(store, 'create_task', { ...createInput, expectedVersion: store.version, project: result.project.title });
+  assert.equal(store.data.todo.tasks.at(-1).project, 'Geral');
+});
 test('updates preserve subtasks and metadata, date changes reset defer offset', async () => {
   const store = new FakeStore(), before = structuredClone(store.data.todo.tasks[1]);
   const result = await execute(store, 'update_task', { ...writeInput, id: 't2', patch: { date: '2026-10-20', notes: 'Updated' } });
