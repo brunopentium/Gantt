@@ -12,6 +12,18 @@ function setup(responses, extra = {}) {
     fetcher: async (url, options) => { requests.push({ url, options }); const next = responses.shift(); if (next instanceof Error) throw next; return next; }, ...extra });
   return { store, requests };
 }
+test('default transport calls native fetch without a store receiver', async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = function () {
+    assert.equal(this, undefined, 'native Workers fetch rejects an unrelated receiver');
+    return Promise.resolve(json({ private: true, has_pages: false, default_branch: 'main' }));
+  };
+  try {
+    const store = new GitHubStore({ repository: 'example/private-backups', token: 'fake-test-token' });
+    await store.connect();
+    assert.equal(store.branch, 'main');
+  } finally { globalThis.fetch = original; }
+});
 test('public repository and Pages-enabled backup repositories are refused', async () => {
   for (const metadata of [{ private: false }, { private: true, has_pages: true }]) {
     const { store, requests } = setup([json(metadata)]);

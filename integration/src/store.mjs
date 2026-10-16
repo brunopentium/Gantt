@@ -8,7 +8,7 @@ export const areas = { todo: 'todo.json', plans: 'planos-de-acao.json', schedule
 const maxBytes = 5 * 1024 * 1024;
 
 export class GitHubStore {
-  constructor({ repository, token, branch, workspaces = ['work'], fetcher = fetch }) {
+  constructor({ repository, token, branch, workspaces = ['work'], fetcher = (url, options) => fetch(url, options) }) {
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository || '') || !token) {
       throw new IntegrationError('configuration', 'Configure o repositório privado e GITHUB_TOKEN no servidor.', 503);
     }
