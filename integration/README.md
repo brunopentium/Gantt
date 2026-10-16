@@ -143,7 +143,7 @@ O botão **Conversar com assistente** abre um painel lateral (tela inteira no ce
 
 ### Convivência com o aplicativo e limites
 
-- Trabalho usa `backups/{todo,planos-de-acao,cronogramas}.json`; Pessoal usa `backups/pessoal/`. Pessoal exige habilitação explícita em `PROJECTFLOW_WORKSPACES`. A senha local da interface não autentica esta API.
+- Trabalho usa `backups/{todo,planos-de-acao,cronogramas}.json`; Pessoal usa `backups/pessoal/`. Pessoal exige habilitação explícita em `PROJECTFLOW_WORKSPACES`; o Worker deste projeto publica `work,personal`, conforme autorizado pelo proprietário. O padrão genérico do servidor e de `.env.example` continua apenas Trabalho. A senha local da interface não autentica esta API: o chat exige também o login OAuth autorizado. O cliente fixa o ambiente ativo na consulta e na aplicação, mostra seu nome na proposta e limpa sessão/proposta na troca de ambiente. O servidor rejeita propostas aplicadas em ambiente diferente.
 - Toda gravação exige o SHA consultado e também usa esse SHA no `PUT` do GitHub. Conflitos não são repetidos automaticamente. Os commits entram no histórico existente da área.
 - Uma aba já aberta pode manter uma cópia antiga. **Salve edições locais antes de usar a integração**; depois da alteração remota use a conexão do aplicativo para abrir a última versão. O mecanismo existente preserva edições locais e pode exigir resolução de conflitos. O serviço não força a atualização da aba.
 - Consultas agregadas leem as três áreas separadamente e informam cada versão; não são uma transação simultânea.

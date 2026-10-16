@@ -151,6 +151,7 @@ export async function chat(env, principal, raw, store, { fetcher = (url, options
   const parsed = chatInput.safeParse(raw);
   if (!parsed.success || raw.messages?.at(-1)?.role !== 'user') throw new IntegrationError('invalid_input', 'Envie um pedido de até 8.000 caracteres.');
   const input = parsed.data, day = input.day || today(new Date(now)), memory = new PlanningStore(store), operations = [];
+  requireWorkspace(env,input.workspace);
   const selectedModel = selectChatModel(env, input.model);
   const seenTasks = new Set(), seenActions = new Set(), seenPlans = new Set(), seenSchedules = new Set(), seenActivities = new Set();
   function remember(value) {
@@ -245,9 +246,12 @@ export async function chat(env, principal, raw, store, { fetcher = (url, options
   }
   return { reply, draft, workspace: input.workspace, model: selectedModel.id };
 }
-export async function applyChatDraft(env, principal, token, store, now = Date.now()) {
+function requireWorkspace(env,workspace){if(!(env.PROJECTFLOW_WORKSPACES||'work').split(',').map(s=>s.trim()).includes(workspace))throw new IntegrationError('workspace_forbidden','Este ambiente não foi habilitado no servidor.',403);}
+export async function applyChatDraft(env, principal, token, store, now = Date.now(), workspace) {
   requireWrite(principal);
   const data = unseal(token, env, principal, now), memory = new PlanningStore(store);
+  requireWorkspace(env,data.workspace);
+  if(workspace!==undefined&&workspace!==data.workspace)throw new IntegrationError('workspace_mismatch','A proposta pertence a outro ambiente. Faça um novo pedido no ambiente atual.',409);
   for (const [key, version] of Object.entries(data.versions)) {
     const [area, workspace] = key.split(':');
     if (workspace !== data.workspace || (await memory.read(area, workspace)).version !== version) throw new IntegrationError('version_conflict', 'Os dados mudaram desde a proposta. Peça uma nova; nenhuma alteração foi aplicada.', 409);

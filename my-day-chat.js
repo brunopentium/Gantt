@@ -2,6 +2,9 @@
 window.MyDayChat=(()=>{
   'use strict';
   const SERVER='https://projectflow-integration.brunocesardesouza26.workers.dev';
+  const WORKSPACE=window.WorkspaceProfile.personal?'personal':'work',WORKSPACE_LABEL=WORKSPACE==='personal'?'Pessoal':'Trabalho';
+  let workspaceActive=true;
+  const workspaceAllowed=()=>workspaceActive&&(config?.workspaces||['work']).includes(WORKSPACE);
   const MODEL_KEY='projectflow:chat:model:v1';
   let selectedModel='',modelSaved=true;
   try{selectedModel=localStorage.getItem(MODEL_KEY)||'';}catch{modelSaved=false;}
@@ -15,11 +18,11 @@ window.MyDayChat=(()=>{
   function status(message,error=false){find('mdChatStatus').textContent=message;find('mdChatStatus').classList.toggle('is-error',error)}
   function controls(){
     find('mdChatLogin').hidden=logged();find('mdChatLogout').hidden=!logged();
-    find('mdChatSend').disabled=busy||!logged()||!config?.enabled||!config?.models?.some(m=>m.id===selectedModel)||window.WorkspaceProfile.personal||blockedSync;
+    find('mdChatSend').disabled=busy||!logged()||!config?.enabled||!config?.models?.some(m=>m.id===selectedModel)||!workspaceAllowed()||blockedSync;
     find('mdChatInput').disabled=busy||blockedSync;
     find('mdChatModel').disabled=busy||!config?.models?.length;
     find('mdChatLogin').disabled=busy||!config?.clientId;
-    find('mdChatApply').disabled=busy||!pending||blockedSync;
+    find('mdChatApply').disabled=busy||!pending||!workspaceAllowed()||blockedSync;
     find('mdChatDiscard').disabled=busy;find('mdChatClose').disabled=busy;
     find('mdChatReload').hidden=!blockedSync;find('mdChatReload').disabled=busy;
     find('mdChatConnect').hidden=!connectionArea;find('mdChatConnect').disabled=busy;
@@ -54,7 +57,7 @@ window.MyDayChat=(()=>{
   function showDraft(draft){
     pending=draft;connectionArea='';const list=find('mdChatChanges');list.replaceChildren();
     if(draft){
-      find('mdChatDraftTitle').textContent=draft.changes.length+' '+(draft.changes.length===1?'item para alterar':'itens para alterar');
+      find('mdChatDraftTitle').textContent=draft.changes.length+' '+(draft.changes.length===1?'item para alterar':'itens para alterar')+' em '+WORKSPACE_LABEL;
       for(const change of draft.changes){const item=node('li');item.append(node('strong','',change.title));
         item.append(node('div','md-chat-context',change.kind==='task-project'?'Projetos de tarefas':change.planTitle|| ({'action-plan':'Plano de ação',schedule:'Cronograma','schedule-group':'Grupo de cronogramas'}[change.kind]||areaLabels[change.area])));
         for(const field of change.fields)item.append(node('div','md-chat-field',field.label+': '+(change.created?'':fmt(field.before)+' → ')+fmt(field.after)));
@@ -64,15 +67,17 @@ window.MyDayChat=(()=>{
     controls();
   }
   async function send(event){
-    event.preventDefault();if(busy||blockedSync||!config?.enabled||!config.models?.some(m=>m.id===selectedModel)||window.WorkspaceProfile.personal)return;
+    event.preventDefault();if(busy||blockedSync||!config?.enabled||!config.models?.some(m=>m.id===selectedModel)||!workspaceAllowed())return;
     if(!logged()){controls();status('Sua sessão expirou. Entre novamente para continuar.',true);return;}
     const field=find('mdChatInput'),text=field.value.trim();if(!text)return;
     showDraft(null);append('user',text);history.push({role:'user',content:text});field.value='';busy=true;controls();status('Consultando seus dados salvos…');
     try{
-      const result=await request('/chat',{workspace:'work',day:window.MyDay.date(),model:selectedModel,messages:history.slice(-15)});
+      const result=await request('/chat',{workspace:WORKSPACE,day:window.MyDay.date(),model:selectedModel,messages:history.slice(-15)});
+      if(!workspaceActive)return;
+      if(result.workspace!==WORKSPACE)throw new Error('A resposta pertence a outro ambiente. Faça o pedido novamente no ambiente atual.');
       append('assistant',result.reply);history.push({role:'assistant',content:result.reply});history=history.slice(-14);showDraft(result.draft);
       status(result.draft?'Revise as mudanças e toque em Aplicar.':'Consulta concluída.');
-    }catch(error){history.pop();append('assistant',error.message);status(error.message,true);field.value=text;}
+    }catch(error){if(!workspaceActive)return;history.pop();append('assistant',error.message);status(error.message,true);field.value=text;}
     finally{busy=false;controls();if(dialog.open&&(document.activeElement===document.body||dialog.contains(document.activeElement)))field.focus();}
   }
   function assertClean(required){
@@ -96,12 +101,12 @@ window.MyDayChat=(()=>{
     window.MyDay.refresh();window.WorkspaceAutosave.refresh();
   }
   async function apply(){
-    if(busy||!pending||blockedSync)return;
+    if(busy||!pending||blockedSync||!workspaceAllowed())return;
     busy=true;controls();let suspended=false,sent=false,confirmed=false,unlock=()=>{};const token=pending.token,required=[...new Set(pending.changes.map(c=>c.area))];
     try{
       await window.WorkspaceAutosave.suspend();suspended=true;assertClean(required);unlock=lockApp();
       status('Aplicando as alterações revisadas…');sent=true;
-      const result=await request('/chat/apply',{token});confirmed=true;showDraft(null);
+      const result=await request('/chat/apply',{token,workspace:WORKSPACE});confirmed=true;showDraft(null);if(!workspaceActive)return;
       const saved=result.results||[];
       if(saved.length){blockedSync=true;dialog.dataset.savedAreas=JSON.stringify(saved);await synchronize(saved);blockedSync=false;delete dialog.dataset.savedAreas;}
       if(!result.saved)throw new Error((result.partial?'Parte das alterações foi salva. ':'Nenhum salvamento completo foi confirmado. ')+(result.error?.message||result.message||''));
@@ -113,7 +118,7 @@ window.MyDayChat=(()=>{
     }finally{unlock();if(suspended)window.WorkspaceAutosave.resume();busy=false;controls();}
   }
   async function reload(){
-    if(busy)return;busy=true;controls();let suspended=false,unlock=()=>{};
+    if(busy||!workspaceAllowed())return;busy=true;controls();let suspended=false,unlock=()=>{};
     try{await window.WorkspaceAutosave.suspend();suspended=true;const saved=JSON.parse(dialog.dataset.savedAreas||'[]');assertClean(saved.map(r=>r.area));unlock=lockApp();await synchronize(saved);blockedSync=false;delete dialog.dataset.savedAreas;status('Tela atualizada. Confira os itens antes de fazer outro pedido.');}
     catch(error){status(error.message,true)}finally{unlock();if(suspended)window.WorkspaceAutosave.resume();busy=false;controls()}
   }
@@ -140,7 +145,7 @@ window.MyDayChat=(()=>{
       if(event.data.error||!event.data.code)throw new Error('Não foi possível concluir o login.');
       const token=await request('/chat/token',{code:event.data.code,verifier:transaction.verifier},{auth:false,timeout:25000});
       accessToken=token.access_token;expires=Date.now()+Math.max(0,token.expires_in-60)*1000;
-      status(config.enabled?'Conectado. Como posso ajudar?':'Login pronto. Falta configurar a chave OpenRouter no servidor.');
+      status(!workspaceAllowed()?'O ambiente '+WORKSPACE_LABEL+' não está habilitado no servidor.':config.enabled?'Conectado ao ambiente '+WORKSPACE_LABEL+'. Como posso ajudar?':'Login pronto. Falta configurar a chave OpenRouter no servidor.');
     }catch(error){status(error.message,true)}finally{popup?.close();popup=null;busy=false;controls()}
   }
   function lockApp(){const app=document.getElementById('app');if(!app)return()=>{};const previous=app.inert;app.inert=true;return()=>{app.inert=previous};}
@@ -149,15 +154,16 @@ window.MyDayChat=(()=>{
   function init(){
     if(dialog)return;
     dialog=node('dialog','md-chat');dialog.id='mdChatPanel';dialog.setAttribute('aria-labelledby','mdChatTitle');
-    dialog.innerHTML='<header class="md-chat-header"><div><h2 id="mdChatTitle">Assistente ProjectFlow</h2><p>Seu dia, organizado em uma conversa</p></div><button type="button" id="mdChatClose" aria-label="Fechar chat">×</button></header><div class="md-chat-connection"><span id="mdChatStatus" role="status">Conectando…</span><button type="button" id="mdChatLogin">Entrar</button><button type="button" id="mdChatLogout" hidden>Sair</button></div><div class="md-chat-model"><label for="mdChatModel">Modelo</label><select id="mdChatModel" aria-describedby="mdChatModelHint"></select><small id="mdChatModelHint">Carregando modelos…</small></div><div class="md-chat-scroll"><div id="mdChatMessages" role="log" aria-label="Conversa"></div><section id="mdChatDraft" class="md-chat-draft" hidden><h3 id="mdChatDraftTitle"></h3><ul id="mdChatChanges"></ul><div class="md-chat-draft-actions"><button type="button" id="mdChatDiscard">Descartar</button><button type="button" id="mdChatApply">Aplicar alterações</button></div></section></div><button type="button" id="mdChatReload" hidden>Atualizar após salvamento</button><button type="button" id="mdChatConnect" hidden>Configurar GitHub de Tarefas</button><form id="mdChatForm" class="md-chat-composer"><label class="sr-only" for="mdChatInput">Seu pedido</label><textarea id="mdChatInput" rows="3" maxlength="8000" placeholder="Ex.: passe a tarefa da roda fônica para segunda-feira" required></textarea><button id="mdChatSend" type="submit">Enviar</button><small>Trabalho · Enter quebra a linha · Shift + Enter envia</small></form>';
+    dialog.innerHTML='<header class="md-chat-header"><div><h2 id="mdChatTitle">Assistente ProjectFlow</h2><p>Seu dia, organizado em uma conversa</p></div><button type="button" id="mdChatClose" aria-label="Fechar chat">×</button></header><div class="md-chat-connection"><span id="mdChatStatus" role="status">Conectando…</span><button type="button" id="mdChatLogin">Entrar</button><button type="button" id="mdChatLogout" hidden>Sair</button></div><div class="md-chat-model"><label for="mdChatModel">Modelo</label><select id="mdChatModel" aria-describedby="mdChatModelHint"></select><small id="mdChatModelHint">Carregando modelos…</small></div><div class="md-chat-scroll"><div id="mdChatMessages" role="log" aria-label="Conversa"></div><section id="mdChatDraft" class="md-chat-draft" hidden><h3 id="mdChatDraftTitle"></h3><ul id="mdChatChanges"></ul><div class="md-chat-draft-actions"><button type="button" id="mdChatDiscard">Descartar</button><button type="button" id="mdChatApply">Aplicar alterações</button></div></section></div><button type="button" id="mdChatReload" hidden>Atualizar após salvamento</button><button type="button" id="mdChatConnect" hidden>Configurar GitHub de Tarefas</button><form id="mdChatForm" class="md-chat-composer"><label class="sr-only" for="mdChatInput">Seu pedido</label><textarea id="mdChatInput" rows="3" maxlength="8000" placeholder="Ex.: passe a tarefa da roda fônica para segunda-feira" required></textarea><button id="mdChatSend" type="submit">Enviar</button><small><span id="mdChatWorkspace"></span> · Enter quebra a linha · Shift + Enter envia</small></form>';
     document.body.append(dialog);find('mdChatClose').onclick=close;find('mdChatLogin').onclick=login;
     find('mdChatLogout').onclick=()=>{accessToken='';expires=0;showDraft(null);controls();status('Desconectado do chat.');};
     find('mdChatForm').onsubmit=send;find('mdChatInput').onkeydown=event=>{if(event.key==='Enter'&&event.shiftKey&&!event.isComposing){event.preventDefault();if(!event.repeat&&!find('mdChatSend').disabled)find('mdChatForm').requestSubmit();}};find('mdChatApply').onclick=apply;find('mdChatDiscard').onclick=()=>{showDraft(null);status('Proposta descartada.');};find('mdChatReload').onclick=reload;
     find('mdChatConnect').onclick=()=>{if(busy||!connectionArea)return;const area=connectionArea;close();document.getElementById({todo:'tabTodoNative',plans:'tabActions',schedules:'tabGantt'}[area])?.click();document.getElementById({todo:'ntCloudSettings',plans:'apCloudSettings',schedules:'btnCloudBackup'}[area])?.click();};
     dialog.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Escape'&&!event.defaultPrevented){event.preventDefault();close();}});window.addEventListener('message',receiveLogin);
-    window.addEventListener('projectflow:workspace-switch',()=>{accessToken='';history=[];loginTransaction=null;popup?.close();hide()});
+    window.addEventListener('projectflow:workspace-switch',()=>{workspaceActive=false;accessToken='';expires=0;history=[];showDraft(null);loginTransaction=null;popup?.close();hide();controls()});
     append('assistant','Posso consultar suas tarefas, ações e cronogramas e preparar alterações para você revisar. O que vamos organizar?');
-    request('/chat/config',undefined,{auth:false,timeout:15000}).then(value=>{config=value;setupModels();status(window.WorkspaceProfile.personal?'Esta versão do chat está disponível em Trabalho.':value.enabled?'Entre para conversar sobre seu dia.':'Falta configurar a chave OpenRouter no servidor.');controls()}).catch(error=>{status(error.message,true);controls()});controls();
+    find('mdChatWorkspace').textContent=WORKSPACE_LABEL;
+    request('/chat/config',undefined,{auth:false,timeout:15000}).then(value=>{config=value;setupModels();status(!workspaceAllowed()?'O ambiente '+WORKSPACE_LABEL+' não está habilitado no servidor.':value.enabled?'Entre para conversar sobre seus dados de '+WORKSPACE_LABEL+'.':'Falta configurar a chave OpenRouter no servidor.');controls()}).catch(error=>{status(error.message,true);controls()});controls();
   }
   function open(){init();lastFocus=document.activeElement;if(!dialog.open)dialog.show();document.body.classList.toggle('md-chat-open',true);controls();find(logged()?'mdChatInput':'mdChatLogin').focus();}
   return {init,open,close};
