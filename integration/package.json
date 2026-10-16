@@ -1,0 +1,21 @@
+{
+  "name": "projectflow-integration",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.17" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/http.mjs",
+    "stdio": "node --env-file-if-exists=.env src/stdio.mjs",
+    "cli": "node --env-file-if-exists=.env src/cli.mjs",
+    "test": "node --test test/*.test.mjs",
+    "build:worker": "wrangler deploy --dry-run --outdir .worker-build",
+    "deploy:worker": "wrangler deploy"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "jose": "6.2.12",
+    "zod": "4.6.7"
+  },
+  "devDependencies": { "wrangler": "4.151.0" }
+}

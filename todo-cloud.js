@@ -144,5 +144,5 @@ window.TodoCloud=(()=>{
     })();
     return startPromise;
   }
-  return {init,start,changed,state,autoConnect:async()=>{await connectionReady;if(state().ready)return {ok:true};return blocked?{ok:false,blocked:true}:latest(false,true)},autoSave:()=>blocked?Promise.resolve({ok:false,blocked:true}):save(null,true),save,waitForConnection:promise=>{connectionReady=promise}};
+  return {init,start,changed,state,refreshRemote:()=>latest(false,true),autoConnect:async()=>{await connectionReady;if(state().ready)return {ok:true};return blocked?{ok:false,blocked:true}:latest(false,true)},autoSave:()=>blocked?Promise.resolve({ok:false,blocked:true}):save(null,true),save,waitForConnection:promise=>{connectionReady=promise}};
 })();

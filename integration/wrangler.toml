@@ -1,0 +1,20 @@
+name = "projectflow-integration"
+main = "src/worker.mjs"
+compatibility_date = "2026-10-16"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+# Configurar estas variáveis no painel Cloudflare ou antes do deploy.
+# Nunca colocar tokens neste arquivo.
+[vars]
+GITHUB_REPOSITORY = "brunopentium/gantt-backups"
+# Leitura e gravação validadas antes em branch privada com dados fictícios.
+GITHUB_BRANCH = "main"
+PROJECTFLOW_WORKSPACES = "work"
+PUBLIC_URL = "https://projectflow-integration.brunocesardesouza26.workers.dev"
+OAUTH_ISSUER = "https://dev-5ovnmm62q24tx6eb.us.auth0.com/"
+OAUTH_JWKS_URL = "https://dev-5ovnmm62q24tx6eb.us.auth0.com/.well-known/jwks.json"
+OAUTH_AUDIENCE = "https://projectflow-integration.brunocesardesouza26.workers.dev/mcp"
+ALLOWED_ORIGINS = "https://projectflow-integration.brunocesardesouza26.workers.dev,https://orgoffice.pages.dev,https://codex-projectflow-mcp-integr.orgoffice.pages.dev"
+CHAT_CLIENT_ID = "tpc_vzAKSF9SHJ4agKTi5Trpp9"
+OPENROUTER_MODEL = "openai/gpt-6-luna"

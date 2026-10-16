@@ -1,5 +1,9 @@
 # ProjectFlow — Gantt Manager
 
+## Integração opcional para assistentes
+
+A pasta [`integration/`](integration/README.md) contém CLI, API autenticada e MCP para operar tarefas/ações pelos backups privados existentes. Pode rodar localmente ou como Cloudflare Worker/serviço Node. É separada do frontend e exige configuração e instalação próprias; adicionar os arquivos não publica o servidor nem conecta o ChatGPT. Veja o guia para ativação, OAuth, limites e conflitos.
+
 Aplicativo estático de cronogramas hospedado no GitHub Pages. As edições são mantidas no navegador enquanto você trabalha. A integração opcional com GitHub oferece salvamento automático, abertura da última versão e histórico de versões para cronogramas, planos de ação e Task.
 
 ## Task e navegação
