@@ -26,7 +26,7 @@ test('work/personal paths are isolated, branch names encoded, secrets stay in he
   const { store, requests } = setup([json({ private: true, has_pages: false, default_branch: 'data/main' }), json(file(fixtures().todo))], { workspaces: ['work', 'personal'] });
   const snapshot = await store.read('todo', 'personal');
   assert.equal(snapshot.path, 'backups/pessoal/todo.json'); assert.match(requests[1].url, /ref=data%2Fmain$/);
-  assert.equal(requests[1].options.headers.Authorization, 'Bearer fake-test-token'); assert.equal(requests[1].options.redirect, 'error');
+  assert.equal(requests[1].options.headers.Authorization, 'Bearer fake-test-token'); assert.equal(requests[1].options.redirect, 'manual');
   assert.equal(JSON.stringify(snapshot).includes('fake-test-token'), false);
 });
 test('saving uses the exact source SHA and preserves unknown envelope data', async () => {
@@ -38,6 +38,14 @@ test('saving uses the exact source SHA and preserves unknown envelope data', asy
   const body = JSON.parse(requests[2].options.body), saved = JSON.parse(Buffer.from(body.content, 'base64'));
   assert.equal(body.sha, version); assert.equal(body.branch, 'main'); assert.equal(saved.extraEnvelope, 'keep');
   assert.equal(result.saved, true); assert.equal(result.commit, 'c'.repeat(40));
+});
+test('redirects are rejected without following or forwarding credentials', async () => {
+  for (const status of [301, 302, 307, 308]) {
+    const { store, requests } = setup([new Response(null, { status, headers: { Location: 'https://other.example/private' } })]);
+    await assert.rejects(store.read('todo', 'work'), { code: 'github_redirect' });
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].options.redirect, 'manual');
+  }
 });
 test('concurrent saves, missing files, malformed data and upstream failures are never success', async () => {
   for (const [response, code] of [[json({}, 404), 'backup_missing'], [json({}, 409), 'version_conflict'],

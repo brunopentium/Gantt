@@ -26,13 +26,17 @@ export class GitHubStore {
     let response;
     try {
       response = await this.fetcher(`https://api.github.com/repos/${this.repository}${path}`, {
-        ...options, redirect: 'error', signal: AbortSignal.timeout(15000),
+        ...options, redirect: 'manual', signal: AbortSignal.timeout(15000),
         headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${this.token}`,
           'X-GitHub-Api-Version': '2022-11-28', 'User-Agent': 'ProjectFlow-Integration/1.0',
           ...(options.body ? { 'Content-Type': 'application/json' } : {}) }
       });
     } catch {
       throw new IntegrationError('upstream_unavailable', 'Não foi possível confirmar a operação no GitHub. Consulte novamente antes de repetir a gravação.', 502);
+    }
+    // Workers supports manual/follow only. Never forward credentials to a redirect.
+    if (response.status >= 300 && response.status < 400) {
+      throw new IntegrationError('github_redirect', 'GitHub redirecionou a operação. Revise o repositório configurado antes de tentar novamente.', 502);
     }
     if (!response.ok) {
       const errors = {
