@@ -7,6 +7,7 @@ import { httpConfig } from '../src/auth.mjs';
 import { fixtures } from './fixtures.mjs';
 import { validateDocument } from '../src/schemas.mjs';
 import { IntegrationError } from '../src/store.mjs';
+import { chatModels } from '../src/chat-models.mjs';
 
 const env={OPENROUTER_API_KEY:'fake-openrouter-key',GITHUB_TOKEN:'fake-github-secret',GITHUB_REPOSITORY:'example/private',GITHUB_BRANCH:'main',CHAT_CLIENT_ID:'public-client'};
 const principal={subject:'bruno',scopes:['projectflow:read','projectflow:write']};
@@ -35,7 +36,7 @@ async function draft(store=new Store(),ops=[call('update_task',{id:'t1',patch:{d
 test('the selected model is validated before reading data and remains fixed throughout tool rounds',async()=>{
   const store=new Store();let called=false;
   await assert.rejects(chat(env,principal,{...input,model:'unlisted/expensive'},store,{now,fetcher:async()=>{called=true;}}),{code:'invalid_model'});assert(!called);assert.equal(store.writes.length,0);
-  for(const id of ['openai/gpt-6-luna','deepseek/deepseek-v4.1-flash','qwen/qwen3.8-flash','openrouter/free','google/gemma-4-31b-it:free']){
+  for(const {id} of chatModels(env)){
     const seen=[],reasoning=[{type:'reasoning.encrypted',data:'synthetic-tool-continuation'}];const result=await chat(env,principal,{...input,model:id},new Store(),{now,fetcher:model([{tool_calls:[call('list_tasks',{limit:5})],reasoning_details:reasoning},{content:'**Hoje**\n\n- Tarefa A.'}],body=>{
       seen.push(body.model);assert.equal(body.provider.require_parameters,true);
       if(seen.length===2)assert.deepEqual(body.messages.find(m=>m.tool_calls)?.reasoning_details,reasoning);
