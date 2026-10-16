@@ -48,6 +48,7 @@ export const inputs = {
   group_schedule_activities: z.object({workspace,expectedVersion:version,requestId,projectId:identifier,title,activityIds,color:barColor.optional()}).strict(),
   move_schedule_activities: z.object({workspace,expectedVersion:version,projectId:identifier,activityIds,parentActivityId:identifier.nullable().default(null),afterActivityId:identifier.nullable().default(null)}).strict(),
   set_schedule_activity_colors: z.object({workspace,expectedVersion:version,projectId:identifier,activityIds,color:barColor,includeDescendants:z.boolean().default(false)}).strict(),
+  set_schedule_row_background: z.object({workspace,expectedVersion:version,projectId:identifier,activityIds,color:barColor.nullable().optional().describe('Cor explícita; null remove o fundo. Não combine com matchBarColor:true.'),matchBarColor:z.boolean().default(false).describe('Usar a cor da própria barra de cada linha, em vez de color.'),includeDescendants:z.boolean().default(false)}).strict(),
   create_task: z.object({ workspace, expectedVersion: version, requestId: z.string().min(8).max(100), title, project: title, date,
     deadline: optionalDate.default(''), priority: rating.default(3), difficulty: rating.default(3), notes: text.default('') }).strict(),
   update_task: z.object({ workspace, expectedVersion: version, id: identifier, patch: taskPatch }).strict(),

@@ -84,3 +84,26 @@ export function colorScheduleActivities(schedule,input){
   }
   const tasks=schedule.tasks.filter(t=>chosen.has(id(t)));tasks.forEach(t=>{t.color=input.color;});return tasks;
 }
+
+export function backgroundScheduleRows(schedule,input){
+  const explicit=input.color!==undefined;
+  if(explicit===input.matchBarColor)fail('Informe color (null para remover) ou matchBarColor:true, sem combinar os dois.');
+  const info=scheduleStructure(schedule),chosen=new Set();
+  for(const key of input.activityIds){const node=info.byId.get(key);if(!node)fail('Uma atividade selecionada não existe neste cronograma.');
+    for(const item of info.nodes.slice(node.index,input.includeDescendants?node.end:node.index+1))chosen.add(item.id);
+  }
+  const tasks=schedule.tasks.filter(t=>chosen.has(id(t)));
+  const colors=tasks.map(t=>input.matchBarColor?(t.color||'#4a9eff'):input.color);
+  if(colors.some(color=>color!==null&&!/^#[0-9a-fA-F]{6}$/.test(color)))fail('Uma barra tem cor inválida. Informe uma cor hexadecimal para o fundo da linha.');
+  const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
+  if(schedule.fmt!=null&&!object(schedule.fmt))fail('A formatação do cronograma é inválida.');
+  for(const task of tasks){const style=schedule.fmt?.[id(task)+'_row'];if(style!=null&&!object(style))fail('A formatação de uma linha é inválida.');}
+  for(const [index,task] of tasks.entries()){
+    const key=id(task)+'_row',color=colors[index];
+    if(color===null){
+      const style=schedule.fmt?.[key];
+      if(style){delete style.bg;if(!Object.keys(style).length)delete schedule.fmt[key];}
+    }else{schedule.fmt??={};schedule.fmt[key]={...schedule.fmt[key],bg:color};}
+  }
+  return tasks;
+}

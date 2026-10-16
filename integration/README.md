@@ -21,7 +21,8 @@ Integração separada do frontend, usando os mesmos backups privados do aplicati
 | `list_schedule_structure` | Consultar linhas-pai, hierarquia, atividades concluídas, cores e dependências por ID |
 | `group_schedule_activities` | Criar uma linha-pai real e agrupar atividades irmãs, preservando suas subárvores |
 | `move_schedule_activities` | Mover atividades e grupos inteiros para outro pai ou para a raiz |
-| `set_schedule_activity_colors` | Colorir atividades, linhas-pai ou subárvores inteiras |
+| `set_schedule_activity_colors` | Colorir barras de atividades, linhas-pai ou subárvores inteiras |
+| `set_schedule_row_background` | Alterar/remover o fundo das linhas, ou copiar a cor da própria barra de cada linha |
 | `update_action` | Atualizar a ação original; datas vinculadas exigem a interface |
 | `list_schedule_activities` | Consultar atividades abertas pelo intervalo planejado |
 | `get_my_day` | Hoje, atrasados, próximos sete dias, sem data, bloqueados e cronogramas |
@@ -173,3 +174,5 @@ npm run build:worker
 ```
 
 Os testes usam dados fictícios, GitHub simulado, JWTs de teste e clientes MCP reais em conexão local. Cobrem datas, versões, duplicatas, preservação, validadores originais, vínculos, OAuth, escopos, ambientes, API e MCP nas entradas Node/Worker. Os testes automatizados locais não leem nem modificam backups privados do usuário. A validação remota de leitura/gravação foi executada somente na branch privada `codex/projectflow-integration-test`, criada com dados fictícios; a branch real `main` não recebeu essas gravações.
+
+O fundo de linha usa o campo nativo `fmt[activityId + '_row'].bg`. `set_schedule_row_background` aceita uma cor hexadecimal ou `null` para limpar, ou `matchBarColor:true` para copiar a cor personalizada de cada barra. Sem cor na barra, usa o padrão nativo `#4a9eff`. `includeDescendants` é falso por padrão. A proposta mostra “Cor de fundo da linha” mesmo quando não há alterações nas atividades. Formatações de texto e de células são preservadas; um fundo específico de célula continua sobrepondo o fundo da linha. Esta operação não cria vínculo automático com mudanças futuras na cor da barra.

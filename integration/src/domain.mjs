@@ -93,7 +93,7 @@ export async function execute(store, name, raw) {
     if(!project)throw new IntegrationError('not_found','Cronograma não encontrado.',404);
     const {nodes}=scheduleStructure(project),rows=nodes.map(n=>({source:'gantt',id:n.id,projectId:project.id,projectTitle:project.title,title:n.task.name,
       parentActivityId:n.parentId,row:n.index+1,indent:n.depth,summary:n.children.length>0,children:n.children,
-      start:n.task.start||'',end:n.task.end||'',duration:n.task.dur,unit:n.task.unit||'bd',pct:n.task.pct,color:n.task.color||'#4a9eff',
+      start:n.task.start||'',end:n.task.end||'',duration:n.task.dur,unit:n.task.unit||'bd',pct:n.task.pct,color:n.task.color||'#4a9eff',rowBackgroundColor:project.fmt?.[n.id+'_row']?.bg??null,
       dependencies:scheduleDependencies(project.tasks,n.task.pred).map(p=>({id:String(project.tasks[p.index].id),type:p.type,lag:p.lag}))}));
     return {workspace,version:snapshot.version,project:{source:'schedule',id:project.id,title:project.title,colorMode:project.view?.statusOn?'status':'custom'},...page(rows,input)};
   }
