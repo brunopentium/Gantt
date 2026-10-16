@@ -8,6 +8,8 @@ workers_dev = true
 # Nunca colocar tokens neste arquivo.
 [vars]
 GITHUB_REPOSITORY = "brunopentium/gantt-backups"
+# Temporário: validar a integração com dados fictícios antes de habilitar main.
+GITHUB_BRANCH = "codex/projectflow-integration-test"
 PROJECTFLOW_WORKSPACES = "work"
 PUBLIC_URL = "https://projectflow-integration.brunocesardesouza26.workers.dev"
 OAUTH_ISSUER = "https://dev-5ovnmm62q24tx6eb.us.auth0.com/"
