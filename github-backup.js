@@ -116,7 +116,7 @@ window.GanttBackup = (() => {
         ready=true;boundConnection=signature();status('Repository connected — save to create the first version');return {ok:true};
       }
       const data=JSON.parse(decode(remote.content));checked(data);
-      api.flush();const current=content(),dirty=!!config.fingerprint&&current!==config.fingerprint&&current!==covered||current!==startup;
+      api.flush();const current=content(),dirty=config.fingerprint?current!==config.fingerprint&&current!==covered:current!==startup;
       const legacyPlans=Array.isArray(data.actionPlans)&&!read(localStorage,window.WorkspaceProfile.key('pf_github_action_plans_v1'),{}).repo;
       if(!prompt&&remote.sha===config.sha&&config.fingerprint&&(!legacyPlans||dirty)){ready=true;boundConnection=signature();status(dirty?'Local data kept; changes pending':'Latest GitHub version loaded');return {ok:true,pending:dirty}}
       if(!prompt&&dirty)throw failure('Local data kept; a different remote version requires Connect / load latest version.');
@@ -225,5 +225,5 @@ window.GanttBackup = (() => {
   function planEditStart(){syncConnection();const c=content();return c===lastContent||c===covered||c===pendingCover}
   function planEditComplete(eligible){if(eligible)pendingCover=content()}
   function acknowledgePlans(expected){if(pendingCover&&(expected===undefined||expected===pendingCover)&&pendingCover===content()){covered=pendingCover;config.coveredFingerprint=covered;pendingCover='';persist();changed()}}
-  return {init,changed,state,autoConnect:()=>state().ready?Promise.resolve({ok:true}):blocked?Promise.resolve({ok:false,blocked:true}):latest(false,true),autoSave:()=>blocked?Promise.resolve({ok:false,blocked:true}):backup(null,true),save:backup,planEditStart,planEditComplete,planSaveStart:()=>pendingCover,acknowledgePlans,remoteTime:()=>read(localStorage,KEY,{}).remoteTime};
+  return {init,changed,state,refreshRemote:()=>latest(false,true),autoConnect:()=>state().ready?Promise.resolve({ok:true}):blocked?Promise.resolve({ok:false,blocked:true}):latest(false,true),autoSave:()=>blocked?Promise.resolve({ok:false,blocked:true}):backup(null,true),save:backup,planEditStart,planEditComplete,planSaveStart:()=>pendingCover,acknowledgePlans,remoteTime:()=>read(localStorage,KEY,{}).remoteTime};
 })();

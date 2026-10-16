@@ -14,6 +14,10 @@ Integração separada do frontend, usando os mesmos backups privados do aplicati
 | `update_task` | Atualizar campos solicitados de uma tarefa existente |
 | `reschedule_tasks` | Simular/aplicar Configurações → A partir de hoje para uma data explícita |
 | `list_actions` | Planos/subplanos e ações, responsáveis e datas vinculadas resolvidas |
+| `create_action_plan` / `update_action_plan` | Criar e editar planos/subplanos, hierarquia, descrição, agenda, notas e participantes |
+| `create_action` | Criar ação independente em plano consultado |
+| `create_schedule` / `update_schedule` | Criar e editar cronogramas e grupos |
+| `create_schedule_activity` / `update_schedule_activity` | Criar e editar atividades/marcos, progresso, datas, duração e dependências por ID |
 | `update_action` | Atualizar a ação original; datas vinculadas exigem a interface |
 | `list_schedule_activities` | Consultar atividades abertas pelo intervalo planejado |
 | `get_my_day` | Hoje, atrasados, próximos sete dias, sem data, bloqueados e cronogramas |
@@ -123,7 +127,7 @@ Para CLI remota, configure `PROJECTFLOW_URL` (origem do serviço) e `PROJECTFLOW
 
 ## Chat OpenRouter no Meu Dia
 
-O botão **Conversar com assistente** abre um painel lateral (tela inteira no celular). Usa login Auth0 com PKCE, usuário autorizado e os escopos existentes. O token de acesso fica somente na memória da aba. Nenhuma chave OpenRouter é enviada ao navegador.
+O botão **Conversar com assistente** abre um painel lateral (tela inteira no celular). Enter quebra a linha e Shift + Enter envia. Usa login Auth0 com PKCE, usuário autorizado e os escopos existentes. O token de acesso fica somente na memória da aba. Nenhuma chave OpenRouter é enviada ao navegador.
 
 - Worker: configurar o segredo `OPENROUTER_API_KEY` em **Settings → Variables and Secrets → Add → Secret**. O modelo fica em `OPENROUTER_MODEL`, inicialmente `openai/gpt-6-luna`.
 - `CHAT_CLIENT_ID` é um cliente público dedicado, registrado com callback `${PUBLIC_URL}/chat/callback`, authorization code e autenticação de token `none`. `ALLOWED_ORIGINS` contém somente o site e a prévia autorizados, sem curingas.
@@ -131,7 +135,7 @@ O botão **Conversar com assistente** abre um painel lateral (tela inteira no ce
 - `/chat` consulta os backups e executa as operações do domínio em uma cópia temporária. O resultado contém uma proposta assinada, vinculada ao usuário/repositório/branch e válida por 15 minutos. Nenhuma ferramenta do modelo grava diretamente.
 - **Aplicar alterações** chama `/chat/apply`: exige escopo de escrita, assinatura íntegra e as versões consultadas ainda atuais. Todas as operações são validadas antes do primeiro PUT; há no máximo uma gravação por área. Se outra área falhar, a resposta lista somente os salvamentos confirmados, sem repetir automaticamente.
 - Antes de aplicar, o aplicativo pausa o salvamento automático e exige somente as áreas alteradas conectadas e sem edições pendentes. Depois recarrega as áreas alteradas, guardando cópia de recuperação. A recarga de planos pelo chat não reaplica datas vinculadas ao Gantt.
-- Projetos de tarefas podem ser criados explicitamente pelo chat, inclusive junto com a primeira tarefa na mesma proposta e gravação. Isso não cria um plano de ação nem um cronograma.
+- Qualquer projeto de tarefas informado no pedido pode ser criado automaticamente junto com a tarefa na mesma proposta e gravação. Projetos de tarefas, planos de ação e cronogramas são entidades distintas. Nomes configurados, inclusive Geral, são preservados pela interface.
 - O chat exige conexão com a internet e saldo/limite disponível na chave OpenRouter. O servidor limita pedidos e chamadas por conversa; o limite por minuto em memória é uma proteção adicional, não um teto financeiro global. Configure também o limite da chave na OpenRouter.
 - A prévia usa o mesmo backend de Trabalho: uma proposta aplicada altera os backups reais. A publicação da prévia, por si só, não altera os dados nem o frontend principal.
 
@@ -141,7 +145,7 @@ O botão **Conversar com assistente** abre um painel lateral (tela inteira no ce
 - Toda gravação exige o SHA consultado e também usa esse SHA no `PUT` do GitHub. Conflitos não são repetidos automaticamente. Os commits entram no histórico existente da área.
 - Uma aba já aberta pode manter uma cópia antiga. **Salve edições locais antes de usar a integração**; depois da alteração remota use a conexão do aplicativo para abrir a última versão. O mecanismo existente preserva edições locais e pode exigir resolução de conflitos. O serviço não força a atualização da aba.
 - Consultas agregadas leem as três áreas separadamente e informam cada versão; não são uma transação simultânea.
-- Esta versão não exclui dados nem cria planos de ação, ações ou cronogramas. Também não altera dependências, datas vinculadas ou avaliações diárias nem inclui atividades no Meu dia. Consultas não inventam progresso: 0% registrado continua 0%.
+- Esta versão não exclui dados nem altera avaliações diárias ou inclusão no Meu dia. As ações novas são independentes; a edição direta de datas de ações vinculadas ainda exige atuar na atividade do cronograma. Datas dependentes de linhas de resumo exigem a interface; as demais dependências FS/SS/FF/SF são validadas e recalculadas. Consultas não inventam progresso: 0% registrado continua 0%.
 - Arquivos ausentes/inválidos não viram listas vazias: conecte e salve a área no aplicativo primeiro. Campos desconhecidos do formato atual são preservados.
 
 ## Regra proposta para o Assistente ProjectFlow

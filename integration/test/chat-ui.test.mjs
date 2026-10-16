@@ -8,7 +8,7 @@ const source = await readFile(new URL('../../my-day-chat.js', import.meta.url), 
 const server = 'https://projectflow-integration.brunocesardesouza26.workers.dev';
 // Exercise the actual form handlers with synthetic UI, OAuth and cloud adapters.
 // This checks synchronization decisions, not rendering or a real login.
-async function app(overrides = {}) {
+async function app(overrides = {}, area = 'todo') {
   const elements = new Map(), events = new Map(), calls = [], refreshed = [], opened = [];
   let popup, uncertain = false;
   function element() {
@@ -17,7 +17,7 @@ async function app(overrides = {}) {
       querySelector(selector) { return elements.get(selector.slice(1)); },
       set innerHTML(value) { for (const match of value.matchAll(/id="([^"]+)"/g)) elements.set(match[1], element()); } };
   }
-  for (const id of ['tabTodoNative', 'tabActions', 'ntCloudSettings', 'apCloudSettings']) elements.set(id, { click: () => opened.push(id) });
+  for (const id of ['tabTodoNative', 'tabActions', 'tabGantt', 'ntCloudSettings', 'apCloudSettings','btnCloudBackup']) elements.set(id, { click: () => opened.push(id) });
   const clean = { connected: true, ready: true, busy: false, blocked: false, dirty: false, repo: 'example/private' };
   const states = { todo: { ...clean }, plans: { ...clean }, schedules: { ...clean }, ...overrides };
   const adapter = area => ({ state: () => states[area], refreshRemote: async () => { refreshed.push(area); return { ok: true }; } });
@@ -31,10 +31,10 @@ async function app(overrides = {}) {
       if (path === '/chat/config') return Response.json({ enabled: true, clientId: 'public', issuer: 'https://issuer.example/', redirectUri: server + '/chat/callback', audience: server + '/mcp', repository: 'example/private' });
       if (path === '/chat/token') return Response.json({ access_token: 'synthetic-access', expires_in: 600 });
       assert.equal(options.headers.Authorization, 'Bearer synthetic-access');
-      if (path === '/chat') return Response.json({ reply: 'Revise', draft: { token: 'synthetic-draft', changes: [{ area: 'todo', kind: 'task-project', title: 'Geral', created: true, fields: [{ label: 'Novo projeto de tarefas', after: 'Geral' }] }] } });
+      if (path === '/chat') return Response.json({ reply: 'Revise', draft: { token: 'synthetic-draft', changes: [{ area, kind: 'task-project', title: 'Geral', created: true, fields: [{ label: 'Novo projeto de tarefas', after: 'Geral' }] }] } });
       assert.equal(path, '/chat/apply');
       if (uncertain) throw new Error('synthetic network failure');
-      return Response.json({ saved: true, changed: 1, results: [{ area: 'todo', saved: true }] });
+      return Response.json({ saved: true, changed: 1, results: [{ area, saved: true }] });
     } };
   context.window = context; vm.createContext(context); vm.runInContext(source, context);
   context.MyDayChat.init(); await new Promise(setImmediate);
@@ -71,4 +71,22 @@ test('an uncertain save blocks more requests and recovery reloads only the propo
   assert.equal(h.elements.get('mdChatSend').disabled, true); assert.equal(h.elements.get('mdChatReload').hidden, false);
   await h.elements.get('mdChatReload').onclick();
   assert.deepEqual(h.refreshed, ['todo']); assert.equal(h.elements.get('mdChatSend').disabled, false);
+});
+test('Enter keeps its newline behavior; Shift+Enter submits once and respects composition and disabled controls',async()=>{
+  const h=await app();let submissions=0,prevented=0;
+  h.elements.get('mdChatForm').requestSubmit=()=>submissions++;
+  const key=props=>h.elements.get('mdChatInput').onkeydown({key:'Enter',shiftKey:false,isComposing:false,repeat:false,preventDefault:()=>prevented++,...props});
+  key({});assert.equal(submissions,0);assert.equal(prevented,0);
+  key({shiftKey:true});assert.equal(submissions,1);assert.equal(prevented,1);
+  key({shiftKey:true,repeat:true});key({shiftKey:true,isComposing:true});assert.equal(submissions,1);
+  h.elements.get('mdChatSend').disabled=true;key({shiftKey:true});assert.equal(submissions,1);
+});
+test('schedule changes reload schedules and cannot overwrite pending linked action dates',async()=>{
+  const h=await app({todo:{connected:false},plans:{connected:false}},'schedules');
+  await h.elements.get('mdChatApply').onclick();assert.deepEqual(h.refreshed,['schedules']);
+  const blocked=await app({},'schedules');blocked.states.plans.linkedDirty=true;
+  await blocked.elements.get('mdChatApply').onclick();assert(!blocked.calls.includes('/chat/apply'));assert.match(blocked.elements.get('mdChatStatus').textContent,/ações vinculadas/);
+  const missing=await app({},'schedules');missing.states.schedules.connected=false;
+  await missing.elements.get('mdChatApply').onclick();missing.elements.get('mdChatConnect').onclick();
+  assert.deepEqual(missing.opened,['tabGantt','btnCloudBackup']);
 });

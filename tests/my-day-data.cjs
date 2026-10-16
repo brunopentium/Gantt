@@ -65,6 +65,9 @@ const old=context.NativeTodo.data();frame.contentWindow.TaskMaster={snapshot:()=
 context.MyDayData.update({source:'todo',id:'shift'},{date:'2026-10-12',notes:'Atualizada'});
 context.MyDayData.update({source:'todo',id:'shift'},{status:'Concluída'});
 context.NativeTodo.commit(old);
+const legacyRender=clone(old);delete legacyRender._revision;
+frame.contentWindow.TaskMaster={snapshot:()=>clone(legacyRender)};
+context.NativeTodo.commit(legacyRender);context.NativeTodo.flush();
 const actual=context.NativeTodo.data().tasks.find(t=>t.id==='shift');
 assert.equal(actual.date,'2026-10-12');assert.equal(actual.deferBusinessDays,0);assert.equal(actual.notes,'Atualizada');assert.equal(actual.status,'Concluída');assert.equal(actual.metadata.keep,true);assert.deepEqual(clone(actual.tags),['original']);assert.equal(actual.subtasks[0].text,'Original');
 assert.deepEqual(clone(context.NativeTodo.data().settings),todo.settings);
