@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { IntegrationError } from './store.mjs';
 import { validateDocument } from './schemas.mjs';
 import { recalculateSchedule } from './schedule.mjs';
-export const planningAreas={create_action_plan:'plans',update_action_plan:'plans',create_action:'plans',create_schedule:'schedules',update_schedule:'schedules',create_schedule_activity:'schedules',update_schedule_activity:'schedules'};
+import {groupScheduleActivities,moveScheduleActivities,colorScheduleActivities} from './schedule-structure.mjs';
+export const planningAreas={create_action_plan:'plans',update_action_plan:'plans',create_action:'plans',create_schedule:'schedules',update_schedule:'schedules',create_schedule_activity:'schedules',update_schedule_activity:'schedules',group_schedule_activities:'schedules',move_schedule_activities:'schedules',set_schedule_activity_colors:'schedules'};
 const fail=(code,message)=>{throw new IntegrationError(code,message);};
 const own=(o,k)=>Object.hasOwn(o,k);
 function parent(records,id,parentId){
@@ -47,6 +48,14 @@ export async function executePlanning(store,name,input){
       if(own(input.patch,'parentId'))parent(records,schedule.id,input.patch.parentId);Object.assign(schedule,input.patch);result={schedule:{...schedule,source:'schedule'}};
     }else{
       const schedule=records.find(p=>p.id===input.projectId);if(!schedule||schedule.kind==='group')fail('not_found','Selecione um cronograma, não um grupo.');
+      const activity=task=>({...task,source:'gantt',projectId:schedule.id,projectTitle:schedule.title});
+      if(name==='group_schedule_activities'){
+        const payload={title:input.title,activityIds:[...input.activityIds].sort(),...(input.color?{color:input.color}:{})},c=creation(schedule.tasks,input,'summary',payload);
+        const task=c.existing||{id:c.id,name:input.title,pct:0,dur:1,unit:'bd',start:'',end:'',pred:'',indent:0,collapsed:false,mile:false,color:input.color||'#4a9eff',metadata:c.metadata};
+        if(!c.existing)groupScheduleActivities(schedule,input,task);result={activity:activity(task)};
+      }else if(name==='move_schedule_activities')result={activities:moveScheduleActivities(schedule,input).map(activity)};
+      else if(name==='set_schedule_activity_colors')result={activities:colorScheduleActivities(schedule,input).map(activity)};
+      else{
       let task,patch;
       if(name==='create_schedule_activity'){
         const {workspace,expectedVersion,requestId,projectId,...payload}=input,c=creation(schedule.tasks,input,'activity',payload);
@@ -54,14 +63,16 @@ export async function executePlanning(store,name,input){
         if(!c.existing)schedule.tasks.push(task);patch=c.existing?{}:payload;
       }else{task=schedule.tasks.find(t=>String(t.id)===input.id);if(!task)fail('not_found','Atividade não encontrada.');patch=input.patch;}
       const index=schedule.tasks.indexOf(task),isSummary=!!schedule.tasks[index+1]&&schedule.tasks[index+1].indent>task.indent;
-      if(isSummary&&Object.keys(patch).some(k=>k!=='title'))fail('summary_requires_children','Datas e progresso de uma linha de resumo vêm das subtarefas. Altere as atividades filhas.');
+      if(isSummary&&Object.keys(patch).some(k=>!['title','color'].includes(k)))fail('summary_requires_children','Datas e progresso de uma linha de resumo vêm das subtarefas. Altere as atividades filhas.');
       if(own(patch,'start')&&task.pred&&!own(patch,'dependencies'))fail('dependent_start','O início segue dependências. Altere a duração ou as dependências, ou peça explicitamente para removê-las.');
       if(own(patch,'title'))task.name=patch.title;if(own(patch,'start'))task.start=patch.start;if(own(patch,'duration'))task.dur=patch.duration;
       if(own(patch,'unit'))task.unit=patch.unit;if(own(patch,'pct'))task.pct=patch.pct;if(own(patch,'milestone'))task.mile=patch.milestone;
+      if(own(patch,'color'))task.color=patch.color;
       if(own(patch,'dependencies'))task.pred=patch.dependencies.map(p=>{const n=schedule.tasks.findIndex(t=>String(t.id)===p.id);if(n<0)fail('not_found','Predecessora não encontrada neste cronograma.');return (n+1)+p.type+(p.lag?(p.lag>0?'+':'')+p.lag:'');}).join(';');
       if(task.mile)task.dur=0;
-      recalculateSchedule(schedule,{dates:Object.keys(patch).some(k=>['start','duration','unit','milestone','dependencies'].includes(k))});
+      if(Object.keys(patch).some(k=>k!=='color'))recalculateSchedule(schedule,{dates:Object.keys(patch).some(k=>['start','duration','unit','milestone','dependencies'].includes(k))});
       result={activity:{...task,source:'gantt',projectId:schedule.id,projectTitle:schedule.title}};
+      }
     }
   }
   try{validateDocument(area,data);}catch{fail('invalid_backup','A alteração gerou uma estrutura inválida. Nenhum dado foi salvo.');}

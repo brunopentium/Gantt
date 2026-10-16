@@ -38,7 +38,7 @@ test('Worker supports MCP initialization, schemas and real tool dispatch', async
   } });
   assert.equal(init.status, 200); assert.equal((await init.json()).result.serverInfo.name, 'projectflow');
   const tools = await (await call('/mcp', { jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} })).json();
-  assert.equal(tools.result.tools.length, 16);
+  assert.equal(tools.result.tools.length, 20);
   const data = await (await call('/mcp', { jsonrpc: '2.0', id: 3, method: 'tools/call', params: {
     name: 'list_tasks', arguments: { workspace: 'work', day: '2026-10-16' }
   } })).json();

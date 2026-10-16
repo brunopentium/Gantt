@@ -2,7 +2,7 @@
 
 Integração separada do frontend, usando os mesmos backups privados do aplicativo. O código não automatiza cliques nem acessa o armazenamento do navegador.
 
-**Estado:** Worker publicado em `https://projectflow-integration.brunocesardesouza26.workers.dev`, com conexão OAuth instalada no ChatGPT. Leitura, criação sem duplicação e atualização foram validadas remotamente em uma branch privada com dados fictícios. O ambiente Trabalho usa os backups da branch `main`; Pessoal permanece desabilitado. Credenciais ficam em segredos do Worker.
+**Estado:** Worker publicado em `https://projectflow-integration.brunocesardesouza26.workers.dev`, com conexão OAuth instalada no ChatGPT. Leitura, criação sem duplicação e atualização foram validadas remotamente em uma branch privada com dados fictícios. Trabalho e Pessoal estão habilitados e usam caminhos separados na branch `main`. Credenciais ficam em segredos do Worker.
 
 ## Operações
 
@@ -17,7 +17,11 @@ Integração separada do frontend, usando os mesmos backups privados do aplicati
 | `create_action_plan` / `update_action_plan` | Criar e editar planos/subplanos, hierarquia, descrição, agenda, notas e participantes |
 | `create_action` | Criar ação independente em plano consultado |
 | `create_schedule` / `update_schedule` | Criar e editar cronogramas e grupos |
-| `create_schedule_activity` / `update_schedule_activity` | Criar e editar atividades/marcos, progresso, datas, duração e dependências por ID |
+| `create_schedule_activity` / `update_schedule_activity` | Criar e editar atividades/marcos, cores, progresso, datas, duração e dependências por ID |
+| `list_schedule_structure` | Consultar linhas-pai, hierarquia, atividades concluídas, cores e dependências por ID |
+| `group_schedule_activities` | Criar uma linha-pai real e agrupar atividades irmãs, preservando suas subárvores |
+| `move_schedule_activities` | Mover atividades e grupos inteiros para outro pai ou para a raiz |
+| `set_schedule_activity_colors` | Colorir atividades, linhas-pai ou subárvores inteiras |
 | `update_action` | Atualizar a ação original; datas vinculadas exigem a interface |
 | `list_schedule_activities` | Consultar atividades abertas pelo intervalo planejado |
 | `get_my_day` | Hoje, atrasados, próximos sete dias, sem data, bloqueados e cronogramas |
@@ -138,6 +142,8 @@ O botão **Conversar com assistente** abre um painel lateral (tela inteira no ce
 - **Aplicar alterações** chama `/chat/apply`: exige escopo de escrita, assinatura íntegra e as versões consultadas ainda atuais. Todas as operações são validadas antes do primeiro PUT; há no máximo uma gravação por área. Se outra área falhar, a resposta lista somente os salvamentos confirmados, sem repetir automaticamente.
 - Antes de aplicar, o aplicativo pausa o salvamento automático e exige somente as áreas alteradas conectadas e sem edições pendentes. Depois recarrega as áreas alteradas, guardando cópia de recuperação. A recarga de planos pelo chat não reaplica datas vinculadas ao Gantt.
 - Qualquer projeto de tarefas informado no pedido pode ser criado automaticamente junto com a tarefa na mesma proposta e gravação. Projetos de tarefas, planos de ação e cronogramas são entidades distintas. Nomes configurados, inclusive Geral, são preservados pela interface.
+- Para reorganizar cronogramas, o assistente consulta `list_schedule_structure` (inclusive grupos e concluídas), seleciona IDs e prepara agrupamento, movimento ou cores. As dependências por número de linha são remapeadas pelos IDs de origem; IDs, vínculos de ações, formato, metadados, datas e progresso das atividades são preservados. Datas e progresso das linhas-pai derivam de seus descendentes. A revisão mostra pai, nível, posição, cor e eventuais números de predecessoras atualizados. Cores de linhas-pai aparecem na tela e nas exportações PDF/Excel; o modo Status mantém sua sobreposição nas barras comuns.
+- Agrupamentos novos exigem ao menos uma atividade e aceitam até 100 raízes irmãs, inclusive não consecutivas, mantendo a ordem original. Selecionar pai e filho juntos é ambíguo e recusado. Movimentos não podem criar ciclos nem deixar um grupo vazio; mova o grupo inteiro ou mantenha uma atividade nele. Uma reorganização que mudaria datas de sucessores ligados a resumos é recusada para não alterar datas implicitamente. Não há exclusão de linhas-pai por essas ferramentas.
 - O chat exige conexão com a internet e saldo/limite disponível na chave OpenRouter. O servidor limita pedidos e chamadas por conversa; o limite por minuto em memória é uma proteção adicional, não um teto financeiro global. Configure também o limite da chave na OpenRouter.
 - A prévia usa o mesmo backend de Trabalho: uma proposta aplicada altera os backups reais. A publicação da prévia, por si só, não altera os dados nem o frontend principal.
 

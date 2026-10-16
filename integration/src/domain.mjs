@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { inputs, validDate } from './schemas.mjs';
 import { IntegrationError } from './store.mjs';
 import { executePlanning, planningAreas } from './planning.mjs';
+import { scheduleStructure } from './schedule-structure.mjs';
+import { scheduleDependencies } from './schedule.mjs';
 
 const clone = value => structuredClone(value);
 const own = (obj, field) => Object.hasOwn(obj, field);
@@ -86,6 +88,15 @@ export async function execute(store, name, raw) {
   const input = parsed.data, day = input.day || today(), workspace = input.workspace;
   if (Object.hasOwn(planningAreas,name)) return executePlanning(store,name,input);
   const read = area => store.read(area, workspace);
+  if(name==='list_schedule_structure'){
+    const snapshot=await read('schedules'),project=snapshot.data.projects.find(p=>p.id===input.projectId&&p.kind!=='group');
+    if(!project)throw new IntegrationError('not_found','Cronograma não encontrado.',404);
+    const {nodes}=scheduleStructure(project),rows=nodes.map(n=>({source:'gantt',id:n.id,projectId:project.id,projectTitle:project.title,title:n.task.name,
+      parentActivityId:n.parentId,row:n.index+1,indent:n.depth,summary:n.children.length>0,children:n.children,
+      start:n.task.start||'',end:n.task.end||'',duration:n.task.dur,unit:n.task.unit||'bd',pct:n.task.pct,color:n.task.color||'#4a9eff',
+      dependencies:scheduleDependencies(project.tasks,n.task.pred).map(p=>({id:String(project.tasks[p.index].id),type:p.type,lag:p.lag}))}));
+    return {workspace,version:snapshot.version,project:{source:'schedule',id:project.id,title:project.title,colorMode:project.view?.statusOn?'status':'custom'},...page(rows,input)};
+  }
   if (name === 'list_tasks') {
     const snapshot = await read('todo');
     const tasks = todoRows(snapshot.data).filter(t => (!input.project || t.project === input.project)

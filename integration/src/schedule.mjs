@@ -21,7 +21,7 @@ export function scheduleDependencies(tasks, value) {
     return { index:+m[1]-1,type:(m[2]||'FS').toUpperCase(),lag:+(m[3]||0) };
   });
 }
-export function recalculateSchedule(project, {dates=true}={}) {
+export function recalculateSchedule(project, {dates=true,summaryDates=dates}={}) {
   const tasks=project.tasks;
   if(tasks.length>5000)fail('Divida este cronograma antes de alterar datas pelo chat.');
   const deps=tasks.map(t=>scheduleDependencies(tasks,t.pred)),state=new Map();
@@ -52,7 +52,7 @@ export function recalculateSchedule(project, {dates=true}={}) {
   for(let i=tasks.length-1;i>=0;i--)if(summary(tasks,i)){
     const children=[];for(let j=i+1;j<tasks.length&&tasks[j].indent>tasks[i].indent;j++)children.push(tasks[j]);
     const t=tasks[i];t.pct=Math.round(children.reduce((n,c)=>n+(c.pct||0),0)/children.length);
-    if(dates){const starts=children.map(c=>c.start).filter(Boolean).sort(),ends=children.map(c=>c.end).filter(Boolean).sort();
+    if(summaryDates){const starts=children.map(c=>c.start).filter(Boolean).sort(),ends=children.map(c=>c.end).filter(Boolean).sort();
       if(starts.length)t.start=starts[0];if(ends.length)t.end=ends.at(-1);
       if(t.start&&t.end){let d=date(t.start),count=0;while(d<=date(t.end)){if(t.unit==='cd'||!weekend(d))count++;d=move(d,1);}t.dur=Math.max(1,count);}
     }

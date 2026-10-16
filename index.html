@@ -103,8 +103,8 @@ input{font-family:inherit}
 .gbar:hover{filter:brightness(1.25)}
 .gbar .gprog{position:absolute;left:0;top:0;bottom:0;background:rgba(0,0,0,.25);border-radius:3px;pointer-events:none}
 .gbar .glbl{position:absolute;left:calc(100% + 4px);font-size:9px;color:var(--text3);white-space:nowrap;pointer-events:none;top:50%;transform:translateY(-50%)}
-.gbar.summary{height:8px;top:11px;border-radius:0;background:var(--bg4)}
-.gbar.summary::before,.gbar.summary::after{content:'';position:absolute;bottom:-4px;border-left:4px solid transparent;border-right:4px solid transparent;border-top:4px solid var(--bg4)}
+.gbar.summary{height:8px;top:11px;border-radius:0;background:var(--summary-color,var(--bg4))}
+.gbar.summary::before,.gbar.summary::after{content:'';position:absolute;bottom:-4px;border-left:4px solid transparent;border-right:4px solid transparent;border-top:4px solid var(--summary-color,var(--bg4))}
 .gbar.summary::before{left:-1px}
 .gbar.summary::after{right:-1px}
 .gbar.crit{box-shadow:0 0 0 2px var(--red),0 0 8px rgba(224,80,80,.3)}
@@ -254,7 +254,7 @@ input{font-family:inherit}
 <script src="plan-exports.js?v=20261009-participant-owners"></script>
 <script src="plan-cloud.js?v=20261016-chat-sync"></script>
 <script src="github-backup.js?v=20261016-chat-sync"></script>
-<script src="gantt-print.js?v=20261008-english-navigation"></script>
+<script src="gantt-print.js?v=20261016-chat-structure"></script>
 <script src="plan-print.js?v=20261008-english-navigation"></script>
 <script src="gantt-mobile.js?v=20261011-mobile-zoom"></script>
 <script src="todo-native.js?v=20261016-chat-sync"></script>
@@ -265,7 +265,7 @@ input{font-family:inherit}
 <script src="my-day-data.js?v=20261014-schedule-inclusion"></script>
 <script src="my-day.js?v=20261016-chat"></script>
 <script src="chat-format.js?v=20261016-chat-models"></script>
-<script src="my-day-chat.js?v=20261016-chat-personal"></script>
+<script src="my-day-chat.js?v=20261016-chat-structure"></script>
 <script src="app-navigation.js?v=20261014-personal"></script>
 <script>
 // ========== STATE ==========
@@ -503,7 +503,8 @@ function renderGantt(){
       h+=`<div class="gmile ${cc}" data-id="${t.id}" style="left:${x-6}px;top:${y+9}px;background:${t.color}"></div>`;
     }else if(sm){
       let w=barW(t.start,t.end,rng);
-      h+=`<div class="gbar summary ${cc}" data-id="${t.id}" style="left:${x}px;width:${w}px;top:${y+11}px"></div>`;
+      let summaryColor=/^#[0-9a-f]{6}$/i.test(t.color||'')?t.color:'#687386';
+      h+=`<div class="gbar summary ${cc}" data-id="${t.id}" style="left:${x}px;width:${w}px;top:${y+11}px;--summary-color:${summaryColor}"></div>`;
     }else{
       let w=barW(t.start,t.end,rng),pw=t.pct/100*w;
       if(statusOn){
@@ -1147,7 +1148,7 @@ function buildXLSXBlob(){
       let pr=periods[p],barStyle=null,txt='';
       if(t.start&&t.end&&t.start<=pr.e&&t.end>=pr.s){
         if(t.mile||t.dur===0){barStyle=style({bg:t.color||'#e0a030',fc:'FFFFFF',b:true,align:'center'});txt='M'}
-        else if(sm){barStyle=sSummary}
+        else if(sm){barStyle=style({bg:t.color||'#687386'})}
         else if(statusOn){
           let dur=Math.max(1,daysBtw(t.start,t.end)+1),doneDays=Math.floor(dur*(t.pct||0)/100),doneEnd=new Date(t.start);doneEnd.setDate(doneEnd.getDate()+doneDays-1);
           barStyle=pr.e<=doneEnd?sDone:(pr.s<td?sLate:sRemain);

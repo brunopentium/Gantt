@@ -27,8 +27,10 @@ const parentId = z.string().min(1).max(200).nullable();
 const documentPatch = z.object({ agenda: text.optional(), notes: text.optional(), participants: z.array(z.string().trim().min(1).max(500)).max(100).optional() }).strict();
 const planPatch = z.object({ title: title.optional(), description: text.optional(), parentId: parentId.optional(), document: documentPatch.optional() }).strict().refine(v => Object.keys(v).length > 0);
 const dependency = z.object({ id: identifier, type: z.enum(['FS','SS','FF','SF']).default('FS'), lag: z.number().int().min(-10000).max(10000).default(0) }).strict();
+const barColor = z.string().regex(/^#[0-9a-fA-F]{6}$/).describe('Cor hexadecimal #RRGGBB.');
+const activityIds = z.array(identifier).min(1).max(100).refine(ids=>new Set(ids).size===ids.length,'IDs repetidos.');
 const scheduleFields = { title: title.optional(), start: date.optional(), duration: z.number().int().min(1).max(10000).optional(),
-  unit: z.enum(['bd','cd']).optional(), pct: z.number().min(0).max(100).optional(), milestone: z.boolean().optional(), dependencies: z.array(dependency).max(100).optional() };
+  unit: z.enum(['bd','cd']).optional(), pct: z.number().min(0).max(100).optional(), milestone: z.boolean().optional(), color: barColor.optional(), dependencies: z.array(dependency).max(100).optional() };
 
 export const inputs = {
   list_tasks: z.object({ workspace, day: date.optional(), project: title.optional(), status: z.enum(todoStatuses).optional(), overdueOnly: z.boolean().default(false), ...pagination }).strict(),
@@ -42,6 +44,10 @@ export const inputs = {
   create_schedule_activity: z.object({ workspace, expectedVersion: version, requestId, projectId: identifier, ...scheduleFields, title, start: date,
     duration: z.number().int().min(1).max(10000).default(1), unit: z.enum(['bd','cd']).default('bd'), pct: z.number().min(0).max(100).default(0), milestone: z.boolean().default(false), dependencies: z.array(dependency).max(100).default([]) }).strict(),
   update_schedule_activity: z.object({ workspace, expectedVersion: version, projectId: identifier, id: identifier, patch: z.object(scheduleFields).strict().refine(v=>Object.keys(v).length>0) }).strict(),
+  list_schedule_structure: z.object({workspace,projectId:identifier,...pagination}).strict(),
+  group_schedule_activities: z.object({workspace,expectedVersion:version,requestId,projectId:identifier,title,activityIds,color:barColor.optional()}).strict(),
+  move_schedule_activities: z.object({workspace,expectedVersion:version,projectId:identifier,activityIds,parentActivityId:identifier.nullable().default(null),afterActivityId:identifier.nullable().default(null)}).strict(),
+  set_schedule_activity_colors: z.object({workspace,expectedVersion:version,projectId:identifier,activityIds,color:barColor,includeDescendants:z.boolean().default(false)}).strict(),
   create_task: z.object({ workspace, expectedVersion: version, requestId: z.string().min(8).max(100), title, project: title, date,
     deadline: optionalDate.default(''), priority: rating.default(3), difficulty: rating.default(3), notes: text.default('') }).strict(),
   update_task: z.object({ workspace, expectedVersion: version, id: identifier, patch: taskPatch }).strict(),
