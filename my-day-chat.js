@@ -103,7 +103,7 @@ window.MyDayChat=(()=>{
       const challenge=btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
       const url=new URL('/authorize',config.issuer);
       url.search=new URLSearchParams({client_id:config.clientId,response_type:'code',redirect_uri:config.redirectUri,
-        audience:config.audience,scope:'openid projectflow:read projectflow:write',state:transaction.state,code_challenge:challenge,code_challenge_method:'S256'});
+        audience:config.audience,scope:'projectflow:read projectflow:write',state:transaction.state,code_challenge:challenge,code_challenge_method:'S256'});
       popup.location=url.href;
       const timer=setInterval(()=>{if(loginTransaction!==transaction||popup?.closed||Date.now()-transaction.started>300000){clearInterval(timer);if(loginTransaction===transaction){loginTransaction=null;busy=false;controls();status('Login encerrado. Clique em Entrar para tentar novamente.')}}},500);
     }catch(error){loginTransaction=null;popup.close();busy=false;controls();status('Não foi possível abrir o login.',true);}
