@@ -40,7 +40,7 @@ window.GanttPrint=(()=>{
         if(t.hasDate){
           const x=chartX+Math.max(0,Math.min(1,t.x))*chartWidth,w=Math.max(1,Math.min(chartX+chartWidth-x,t.w*chartWidth)),h=Math.min(13,rowHeight*.62),barY=mid-h/2;
           if(t.mile){const r=Math.min(5,rowHeight*.28);svg+=`<path d="M ${x} ${mid-r} L ${Math.min(chartX+chartWidth,x+r)} ${mid} L ${x} ${mid+r} L ${Math.max(chartX,x-r)} ${mid} Z" fill="${esc(t.color)}"/>`}
-          else if(t.summary)svg+=`<rect x="${x}" y="${mid-2}" width="${w}" height="4" fill="#687386"/>`;
+          else if(t.summary)svg+=`<rect x="${x}" y="${mid-2}" width="${w}" height="4" fill="${esc(/^#[0-9a-f]{6}$/i.test(t.color||'')?t.color:'#687386')}"/>`;
           else{
             svg+=`<rect x="${x}" y="${barY}" width="${w}" height="${h}" rx="1.5" fill="${esc(data.status?'#c7d0dd':t.color)}"/>`;
             const done=Math.min(w,Math.max(0,t.pct/100*w));if(done)svg+=`<rect x="${x}" y="${barY}" width="${done}" height="${h}" rx="1" fill="#24946d"/>`;

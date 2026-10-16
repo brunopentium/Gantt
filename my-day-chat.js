@@ -59,7 +59,7 @@ window.MyDayChat=(()=>{
     if(draft){
       find('mdChatDraftTitle').textContent=draft.changes.length+' '+(draft.changes.length===1?'item para alterar':'itens para alterar')+' em '+WORKSPACE_LABEL;
       for(const change of draft.changes){const item=node('li');item.append(node('strong','',change.title));
-        item.append(node('div','md-chat-context',change.kind==='task-project'?'Projetos de tarefas':change.planTitle|| ({'action-plan':'Plano de ação',schedule:'Cronograma','schedule-group':'Grupo de cronogramas'}[change.kind]||areaLabels[change.area])));
+        item.append(node('div','md-chat-context',change.kind==='task-project'?'Projetos de tarefas':change.planTitle|| ({'action-plan':'Plano de ação','schedule-summary':'Grupo de atividades',schedule:'Cronograma','schedule-group':'Grupo de cronogramas'}[change.kind]||areaLabels[change.area])));
         for(const field of change.fields)item.append(node('div','md-chat-field',field.label+': '+(change.created?'':fmt(field.before)+' → ')+fmt(field.after)));
         list.append(item);
       }

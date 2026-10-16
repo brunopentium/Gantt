@@ -142,6 +142,29 @@ test('plans and schedules with their first items stage without writes and commit
   await applyChatDraft(env,principal,result.draft.token,store,now+1);assert.deepEqual(store.writes.map(w=>w.area),['plans','schedules']);
   assert.deepEqual(store.data.todo,before.todo);assert.equal(store.data.plans.actionPlans.at(-1).actions.length,1);assert.equal(store.data.schedules.projects.at(-1).tasks.length,1);
 });
+test('chat reads hierarchy, stages a real parent, moves activities and colors the group in one reviewed save',async()=>{
+  const store=new Store(),before=structuredClone(store.data);let round=0,parent;
+  const result=await chat(env,principal,input,store,{now,fetcher:async(url,options)=>{
+    const body=JSON.parse(options.body);let message;
+    if(round++===0)message={tool_calls:[call('list_schedule_structure',{projectId:'s1',limit:100},'structure')]};
+    else if(round===2){const structure=JSON.parse(body.messages.find(m=>m.tool_call_id==='structure').content);assert(structure.items.some(t=>t.id==='summary'&&t.summary));message={tool_calls:[call('group_schedule_activities',{projectId:'s1',title:'Divulgação',activityIds:['overdue','future'],color:'#9070e0'},'group')]};}
+    else if(round===3){parent=JSON.parse(body.messages.find(m=>m.tool_call_id==='group').content).activity.id;message={tool_calls:[call('move_schedule_activities',{projectId:'s1',activityIds:['done'],parentActivityId:parent},'move'),call('set_schedule_activity_colors',{projectId:'s1',activityIds:[parent],color:'#40b080',includeDescendants:true},'color')]};}
+    else message={content:'Revise os grupos e cores.'};
+    return Response.json({choices:[{message}]});
+  }});
+  assert.equal(store.writes.length,0);assert.deepEqual(store.data,before);
+  const summary=result.draft.changes.find(c=>c.id===parent);assert.equal(summary.kind,'schedule-summary');assert(summary.created);assert(summary.fields.some(f=>f.field==='color'&&f.after==='#40b080'));
+  assert(result.draft.changes.some(c=>c.id==='done'&&c.fields.some(f=>f.field==='parentActivityId'&&f.after==='Divulgação')));
+  const saved=await applyChatDraft(env,principal,result.draft.token,store,now+1,'work');assert(saved.saved);assert.deepEqual(store.writes.map(w=>w.area),['schedules']);
+  const tasks=store.data.schedules.projects.find(p=>p.id==='s1').tasks;assert.deepEqual(tasks.map(t=>t.id),['summary','leaf',parent,'overdue','future','done']);assert.equal(tasks[1].pred,'6FS');
+  for(const t of before.schedules.projects[1].tasks){const actual=tasks.find(x=>x.id===t.id);assert.equal(actual.start,t.start);assert.equal(actual.end,t.end);assert.equal(actual.pct,t.pct);}
+  assert.deepEqual(store.data.plans,before.plans);assert.deepEqual(store.data.todo,before.todo);
+});
+test('chat rejects hierarchy and color mutations on records that were not consulted',async()=>{
+  for(const [name,args] of [['group_schedule_activities',{projectId:'s1',title:'Bad',activityIds:['missing']}],['move_schedule_activities',{projectId:'s1',activityIds:['summary'],parentActivityId:'missing'}],['set_schedule_activity_colors',{projectId:'s1',activityIds:['missing'],color:'#ffffff'}]]){
+    const store=new Store(),result=await draft(store,[call(name,args)]);assert.equal(result.draft,null);assert.equal(store.writes.length,0);
+  }
+});
 test('model cannot write an unobserved ID, override workspace or set unsupported linked dates',async()=>{
   const store=new Store(),result=await draft(store,[call('update_task',{id:'invented',workspace:'personal',patch:{date:'2026-10-19'}},'1'),call('update_action',{id:'linked',planId:'p1',patch:{end:'2026-11-10'}},'2')]);
   assert.equal(result.draft,null);assert.equal(store.writes.length,0);
