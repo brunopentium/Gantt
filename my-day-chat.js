@@ -8,6 +8,7 @@ window.MyDayChat=(()=>{
   const MODEL_KEY='projectflow:chat:model:v1';
   let selectedModel='',modelSaved=true;
   try{selectedModel=localStorage.getItem(MODEL_KEY)||'';}catch{modelSaved=false;}
+  let configRequest=null,configFailed=false;
   let dialog,config,accessToken='',expires=0,pending=null,history=[],busy=false,blockedSync=false,popup=null,loginTransaction=null,lastFocus=null,connectionArea='';
   const node=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text)e.textContent=text;return e};
   const find=id=>dialog.querySelector('#'+id);
@@ -17,6 +18,7 @@ window.MyDayChat=(()=>{
   const areaLabels={todo:'Tarefas',plans:'Planos de ação',schedules:'Cronogramas'};
   function status(message,error=false){find('mdChatStatus').textContent=message;find('mdChatStatus').classList.toggle('is-error',error)}
   function controls(){
+    find('mdChatRetry').hidden=!configFailed;find('mdChatRetry').disabled=busy||!!configRequest;find('mdChatService').hidden=!configFailed;
     find('mdChatLogin').hidden=logged();find('mdChatLogout').hidden=!logged();
     find('mdChatSend').disabled=busy||!logged()||!config?.enabled||!config?.models?.some(m=>m.id===selectedModel)||!workspaceAllowed()||blockedSync;
     find('mdChatInput').disabled=busy||blockedSync;
@@ -35,10 +37,19 @@ window.MyDayChat=(()=>{
     try{response=await fetch(SERVER+path,{method:body===undefined?'GET':'POST',credentials:'omit',redirect:'error',cache:'no-store',
       signal:AbortSignal.timeout(timeout),headers:{...(body===undefined?{}:{'Content-Type':'application/json'}),...(auth?{Authorization:'Bearer '+accessToken}:{})},
       ...(body===undefined?{}:{body:JSON.stringify(body)})});}
-    catch{throw new Error('A conexão não confirmou o resultado. Confira o estado atual antes de repetir uma alteração.');}
+    catch(error){if(path==='/chat/config')throw new Error((error.name==='TimeoutError'||error.name==='AbortError'?'O serviço do assistente demorou para responder.':'Não foi possível alcançar o serviço do assistente.')+' Os modelos ainda não foram carregados. Use Tentar reconectar; se persistir, abra Verificar conexão neste dispositivo.');throw new Error('A conexão não confirmou o resultado. Confira o estado atual antes de repetir uma alteração.');}
     let data;try{data=await response.json()}catch{throw new Error('O servidor não retornou uma resposta válida.');}
     if(!response.ok){if(response.status===401){accessToken='';controls()}throw new Error(data.error?.message||'Não foi possível concluir o pedido.');}
     return data;
+  }
+  function loadConfig(){
+    if(configRequest||!workspaceActive)return configRequest||Promise.resolve();
+    status(configFailed?'Tentando reconectar ao assistente…':'Conectando ao assistente…');
+    configRequest=Promise.resolve().then(()=>request('/chat/config',undefined,{auth:false,timeout:15000})).then(value=>{
+      if(!workspaceActive)return;config=value;setupModels();configFailed=false;
+      status(!workspaceAllowed()?'O ambiente '+WORKSPACE_LABEL+' não está habilitado no servidor.':value.enabled?'Entre para conversar sobre seus dados de '+WORKSPACE_LABEL+'.':'Falta configurar a chave OpenRouter no servidor.');
+    }).catch(error=>{if(!workspaceActive)return;configFailed=true;status('Não foi possível carregar a conexão inicial do assistente. '+error.message,true);find('mdChatModelHint').textContent='Modelos não carregados. Nenhuma solicitação à IA ou alteração de dados foi enviada.';}).finally(()=>{configRequest=null;controls()});
+    controls();return configRequest;
   }
   function modelHint(){const model=config?.models?.find(m=>m.id===selectedModel);find('mdChatModelHint').textContent=!model?'O modelo salvo não está disponível. Selecione outro para continuar.':(model.free?'Gratuito · sujeito a limites e disponibilidade.':'Pago · usa os créditos da sua OpenRouter.')+(modelSaved?' Escolha salva neste navegador.':' Escolha válida só nesta sessão; o navegador bloqueou o armazenamento.');}
   function setupModels(){
@@ -154,8 +165,8 @@ window.MyDayChat=(()=>{
   function init(){
     if(dialog)return;
     dialog=node('dialog','md-chat');dialog.id='mdChatPanel';dialog.setAttribute('aria-labelledby','mdChatTitle');
-    dialog.innerHTML='<header class="md-chat-header"><div><h2 id="mdChatTitle">Assistente ProjectFlow</h2><p>Seu dia, organizado em uma conversa</p></div><button type="button" id="mdChatClose" aria-label="Fechar chat">×</button></header><div class="md-chat-connection"><span id="mdChatStatus" role="status">Conectando…</span><button type="button" id="mdChatLogin">Entrar</button><button type="button" id="mdChatLogout" hidden>Sair</button></div><div class="md-chat-model"><label for="mdChatModel">Modelo</label><select id="mdChatModel" aria-describedby="mdChatModelHint"></select><small id="mdChatModelHint">Carregando modelos…</small></div><div class="md-chat-scroll"><div id="mdChatMessages" role="log" aria-label="Conversa"></div><section id="mdChatDraft" class="md-chat-draft" hidden><h3 id="mdChatDraftTitle"></h3><ul id="mdChatChanges"></ul><div class="md-chat-draft-actions"><button type="button" id="mdChatDiscard">Descartar</button><button type="button" id="mdChatApply">Aplicar alterações</button></div></section></div><button type="button" id="mdChatReload" hidden>Atualizar após salvamento</button><button type="button" id="mdChatConnect" hidden>Configurar GitHub de Tarefas</button><form id="mdChatForm" class="md-chat-composer"><label class="sr-only" for="mdChatInput">Seu pedido</label><textarea id="mdChatInput" rows="3" maxlength="8000" placeholder="Ex.: passe a tarefa da roda fônica para segunda-feira" required></textarea><button id="mdChatSend" type="submit">Enviar</button><small><span id="mdChatWorkspace"></span> · Enter quebra a linha · Shift + Enter envia</small></form>';
-    document.body.append(dialog);find('mdChatClose').onclick=close;find('mdChatLogin').onclick=login;
+    dialog.innerHTML='<header class="md-chat-header"><div><h2 id="mdChatTitle">Assistente ProjectFlow</h2><p>Seu dia, organizado em uma conversa</p></div><button type="button" id="mdChatClose" aria-label="Fechar chat">×</button></header><div class="md-chat-connection"><span id="mdChatStatus" role="status">Conectando…</span><button type="button" id="mdChatRetry" hidden>Tentar reconectar</button><a id="mdChatService" href="'+SERVER+'/chat/config" target="_blank" rel="noopener noreferrer" hidden>Verificar conexão</a><button type="button" id="mdChatLogin">Entrar</button><button type="button" id="mdChatLogout" hidden>Sair</button></div><div class="md-chat-model"><label for="mdChatModel">Modelo</label><select id="mdChatModel" aria-describedby="mdChatModelHint"></select><small id="mdChatModelHint">Carregando modelos…</small></div><div class="md-chat-scroll"><div id="mdChatMessages" role="log" aria-label="Conversa"></div><section id="mdChatDraft" class="md-chat-draft" hidden><h3 id="mdChatDraftTitle"></h3><ul id="mdChatChanges"></ul><div class="md-chat-draft-actions"><button type="button" id="mdChatDiscard">Descartar</button><button type="button" id="mdChatApply">Aplicar alterações</button></div></section></div><button type="button" id="mdChatReload" hidden>Atualizar após salvamento</button><button type="button" id="mdChatConnect" hidden>Configurar GitHub de Tarefas</button><form id="mdChatForm" class="md-chat-composer"><label class="sr-only" for="mdChatInput">Seu pedido</label><textarea id="mdChatInput" rows="3" maxlength="8000" placeholder="Ex.: passe a tarefa da roda fônica para segunda-feira" required></textarea><button id="mdChatSend" type="submit">Enviar</button><small><span id="mdChatWorkspace"></span> · Enter quebra a linha · Shift + Enter envia</small></form>';
+    document.body.append(dialog);find('mdChatRetry').onclick=loadConfig;find('mdChatClose').onclick=close;find('mdChatLogin').onclick=login;
     find('mdChatLogout').onclick=()=>{accessToken='';expires=0;showDraft(null);controls();status('Desconectado do chat.');};
     find('mdChatForm').onsubmit=send;find('mdChatInput').onkeydown=event=>{if(event.key==='Enter'&&event.shiftKey&&!event.isComposing){event.preventDefault();if(!event.repeat&&!find('mdChatSend').disabled)find('mdChatForm').requestSubmit();}};find('mdChatApply').onclick=apply;find('mdChatDiscard').onclick=()=>{showDraft(null);status('Proposta descartada.');};find('mdChatReload').onclick=reload;
     find('mdChatConnect').onclick=()=>{if(busy||!connectionArea)return;const area=connectionArea;close();document.getElementById({todo:'tabTodoNative',plans:'tabActions',schedules:'tabGantt'}[area])?.click();document.getElementById({todo:'ntCloudSettings',plans:'apCloudSettings',schedules:'btnCloudBackup'}[area])?.click();};
@@ -163,8 +174,9 @@ window.MyDayChat=(()=>{
     window.addEventListener('projectflow:workspace-switch',()=>{workspaceActive=false;accessToken='';expires=0;history=[];showDraft(null);loginTransaction=null;popup?.close();hide();controls()});
     append('assistant','Posso consultar suas tarefas, ações e cronogramas e preparar alterações para você revisar. O que vamos organizar?');
     find('mdChatWorkspace').textContent=WORKSPACE_LABEL;
-    request('/chat/config',undefined,{auth:false,timeout:15000}).then(value=>{config=value;setupModels();status(!workspaceAllowed()?'O ambiente '+WORKSPACE_LABEL+' não está habilitado no servidor.':value.enabled?'Entre para conversar sobre seus dados de '+WORKSPACE_LABEL+'.':'Falta configurar a chave OpenRouter no servidor.');controls()}).catch(error=>{status(error.message,true);controls()});controls();
+    window.addEventListener('online',()=>{if(configFailed&&dialog.open)loadConfig()});
+    loadConfig();
   }
-  function open(){init();lastFocus=document.activeElement;if(!dialog.open)dialog.show();document.body.classList.toggle('md-chat-open',true);controls();find(logged()?'mdChatInput':'mdChatLogin').focus();}
+  function open(){init();if(configFailed)loadConfig();lastFocus=document.activeElement;if(!dialog.open)dialog.show();document.body.classList.toggle('md-chat-open',true);controls();find(logged()?'mdChatInput':'mdChatLogin').focus();}
   return {init,open,close};
 })();
