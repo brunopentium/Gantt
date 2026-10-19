@@ -78,7 +78,7 @@ O assistente é o mesmo em todas as guias. A seção **Notas e imagens** começa
 
 ## Movimento direto e camadas
 
-Em **Selecionar**, clique e arraste o corpo de uma imagem, texto ou tabela (incluindo suas células e bordas) para mover. Um clique sem arrastar continua permitindo editar textos e células. Grupos são movidos juntos; **Navegar** continua permitindo rolar com um dedo no celular. O puxador de movimento permanece como alternativa. Para abrir a leitura/transcrição de uma imagem, selecione-a e use **Ler texto da imagem**, ou clique duas vezes nela.
+Em **Selecionar**, clique e arraste uma imagem para mover. Para textos e tabelas, arrastar sobre os caracteres seleciona o texto normalmente; arrastar pelas bordas, pelo espaço vazio da caixa ou por células vazias move o conjunto. A distinção usa a posição real do texto, inclusive com zoom. Um clique sem arrastar continua permitindo editar textos e células. Grupos são movidos juntos; **Navegar** continua permitindo rolar com um dedo no celular. O puxador de movimento permanece como alternativa. Para abrir a leitura/transcrição de uma imagem, selecione-a e use **Ler texto da imagem**, ou clique duas vezes nela.
 
 O menu **Camadas** oferece **Avançar uma camada**, **Recuar uma camada**, **Trazer para frente** e **Enviar para trás**. Vale também para seleções múltiplas, preservando sua ordem interna. A ordem é guardada com a página e respeitada pelas capturas, impressão e backups; **Desfazer/Refazer** também restaura as camadas.
 
@@ -91,3 +91,5 @@ Na guia Notas, os controles comuns de salvamento/recuperação ficam junto às g
 A navegação começa em 142 pixels (cerca de 30% menor). Arraste sua borda direita para escolher de 80 a 440 pixels; o limite também respeita a largura da tela. A largura é conservada neste navegador e neste ambiente, inclusive ao recolher/reabrir a lateral. O separador aceita setas para ajustar, Home para reduzir e End para ampliar.
 
 `tests/notes-compact-layout.cjs` verifica disposição compacta, criação de restauração, controles únicos e retorno às demais guias, largura por arraste/teclado, persistência e celular em Trabalho/Pessoal.
+
+`tests/notes-text-selection.cjs` verifica seleção nativa de trechos em caixas/células, substituição de trechos, ausência de alterações de dados ao selecionar, zoom 50/100/150% e movimento pelas quatro bordas/áreas vazias nos dois ambientes.
