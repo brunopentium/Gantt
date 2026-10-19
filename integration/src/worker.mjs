@@ -5,6 +5,7 @@ import { IntegrationError, storeFromEnv } from './store.mjs';
 import { execute } from './domain.mjs';
 import { chat, applyChatDraft, chatRateLimit } from './chat.mjs';
 import { chatVision } from './chat-vision.mjs';
+import { chatNotes } from './chat-notes.mjs';
 import { chatConfig, chatCallback, exchangeChatCode } from './chat-http.mjs';
 
 async function boundedJson(request, maxBytes=100000) {
@@ -22,7 +23,7 @@ async function boundedJson(request, maxBytes=100000) {
   try { return JSON.parse(new TextDecoder().decode(bytes)); }
   catch { throw new IntegrationError('invalid_input', 'Corpo JSON inválido.'); }
 }
-export function createWorkerHandler({ config, storeFactory, authenticate = createAuthenticator(config), env = {}, visionHandler = chatVision }) {
+export function createWorkerHandler({ config, storeFactory, authenticate = createAuthenticator(config), env = {}, visionHandler = chatVision, notesHandler = chatNotes }) {
   return async request => {
     const url = new URL(request.url), metadataUrl = `${config.publicUrl}/.well-known/oauth-protected-resource/mcp`;
     const headers = new Headers({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -45,7 +46,7 @@ export function createWorkerHandler({ config, storeFactory, authenticate = creat
         return json({ resource: `${config.publicUrl}/mcp`, authorization_servers: [config.issuer],
           scopes_supported: ['projectflow:read', 'projectflow:write'], bearer_methods_supported: ['header'] });
       }
-      if (!['/mcp', '/api', '/chat', '/chat/apply', '/chat/token', '/chat/vision'].includes(url.pathname)) throw new IntegrationError('not_found', 'Rota inexistente.', 404);
+      if (!['/mcp', '/api', '/chat', '/chat/apply', '/chat/token', '/chat/vision', '/chat/notes'].includes(url.pathname)) throw new IntegrationError('not_found', 'Rota inexistente.', 404);
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
       if (url.pathname === '/chat/token') {
         if (request.method !== 'POST' || !origin || !request.headers.get('content-type')?.startsWith('application/json')) throw new IntegrationError('invalid_input', 'Solicitação de login inválida.', 400);
@@ -57,10 +58,10 @@ export function createWorkerHandler({ config, storeFactory, authenticate = creat
       if (request.method !== 'POST') return new Response(null, { status: 405, headers: { ...Object.fromEntries(headers), Allow: 'POST, OPTIONS' } });
       if (!request.headers.get('content-type')?.startsWith('application/json')) throw new IntegrationError('invalid_input', 'Use Content-Type: application/json.', 415);
       const body = await boundedJson(request,url.pathname==='/chat/vision'?2600000:100000);
-      if (url.pathname === '/chat' || url.pathname === '/chat/apply' || url.pathname === '/chat/vision') {
+      if (url.pathname === '/chat' || url.pathname === '/chat/apply' || url.pathname === '/chat/vision' || url.pathname === '/chat/notes') {
         if (!origin) throw new IntegrationError('origin_denied', 'Abra o chat pelo ProjectFlow.', 403);
         chatRateLimit(principal.subject);
-        return json(url.pathname === '/chat/vision' ? await visionHandler(env,principal,body) : url.pathname === '/chat'
+        return json(url.pathname === '/chat/notes' ? await notesHandler(env,principal,body) : url.pathname === '/chat/vision' ? await visionHandler(env,principal,body) : url.pathname === '/chat'
           ? await chat(env, principal, body, storeFactory())
           : await applyChatDraft(env, principal, body.token, storeFactory(), Date.now(), body.workspace));
       }

@@ -31,11 +31,12 @@ window.NotesVision=(()=>{
   let box=document.getElementById('mdChatNoteCapture');
   if(!box){box=element('div');box.id='mdChatNoteCapture';box.className='md-chat-note-capture';const label=element('label','Analisar visualmente uma nota'),select=element('select'),actions=element('div'),feedback=element('small');select.id='mdChatCapturePage';select.setAttribute('aria-label','Página para análise visual');label.append(select);feedback.id='mdChatCaptureStatus';feedback.setAttribute('role','status');
    for(const [mode,title] of [['page','Capturar nota inteira'],['visible','Capturar área visível']]){const button=element('button',title);button.type='button';button.dataset.noteCapture=mode;button.onclick=async()=>{if(capturing||busy||!active)return;capturing=true;feedback.textContent='Preparando somente a folha da nota, sem menus ou botões…';captureControls(parent);try{await window.Notes.captureNode(select.value,mode);feedback.textContent='Captura adicionada. Confira a prévia abaixo antes de enviar.'}catch(e){feedback.textContent=e.message}finally{capturing=false;captureControls(parent)}};actions.append(button)}
+   const edit=element('button','Editar esta nota');edit.type='button';edit.id='mdChatEditNote';edit.onclick=()=>window.MyDayChat.editNote(select.value);actions.append(edit);
    box.append(label,actions,feedback);parent.before(box);
   }
   const select=box.querySelector('select'),pages=NotesSearch.scopes().filter(n=>n.kind==='page'),chosen=select.value||window.Notes?.currentPageId?.();select.replaceChildren();for(const p of pages){const option=element('option',p.path);option.value=p.id;select.append(option)}if(pages.some(p=>p.id===chosen))select.value=chosen;
   if(!pages.length){const option=element('option','Nenhuma página de Notas disponível');option.value='';select.append(option)}
-  function update(){select.disabled=busy||capturing||!active||!pages.length;box.querySelectorAll('button').forEach(b=>b.disabled=busy||capturing||!active||!pages.length||selection.length>=2)}
+  function update(){select.disabled=busy||capturing||!active||!pages.length;box.querySelectorAll('button').forEach(b=>b.disabled=busy||capturing||!active||!pages.length||selection.length>=2||(b.id==='mdChatEditNote'&&config?.features?.notesEdit?.version!==1))}
   update();
  }
  function render(parent,state){

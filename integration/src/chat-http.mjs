@@ -5,7 +5,7 @@ export function chatConfig(env, config) {
   return { enabled: !!env.OPENROUTER_API_KEY && !!env.CHAT_CLIENT_ID, clientId: env.CHAT_CLIENT_ID || '', issuer: config.issuer,
     audience: config.audience, redirectUri: config.publicUrl + '/chat/callback', repository: env.GITHUB_REPOSITORY,
     branch: env.GITHUB_BRANCH || 'main', workspaces: (env.PROJECTFLOW_WORKSPACES || 'work').split(',').map(s => s.trim()),
-    model: defaultChatModel(env), models: chatModels(env), features:{vision:{version:1,maxImages:2,maxBytes:900000}} };
+    model: defaultChatModel(env), models: chatModels(env), features:{notesEdit:{version:1,maxOperations:20,maxPageBytes:60000},vision:{version:1,maxImages:2,maxBytes:900000}} };
 }
 export function chatCallback(config) {
   const origins = JSON.stringify(config.origins).replace(/</g, '\\u003c');
