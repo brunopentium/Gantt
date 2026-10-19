@@ -21,3 +21,17 @@ html[data-app-view="notes"],html[data-app-view="notes"] body{height:100%;overflo
 html[data-app-view="notes"] #app{height:100dvh;min-height:0;overflow:hidden}
 
 .notes-results header{flex-wrap:wrap}.notes-results>button{overflow-wrap:anywhere}
+
+/* Tables grow naturally; controls only appear for the selected table. */
+.notes-table-content{table-layout:auto;width:max-content;max-width:none;background:#fff;line-height:1.4}
+.notes-table-cell{outline:none;user-select:text;font-weight:400;cursor:text}
+.notes-table-content th .notes-table-cell{font-weight:650}
+.notes-table-cell:focus{background:#f0faf8;box-shadow:inset 0 0 0 2px #087f83}
+.notes-table-actions{display:flex;gap:5px;align-items:center;overflow-x:auto;flex-shrink:0;padding:5px 12px;background:#edf6f4;border-bottom:1px solid #dbe7e4;white-space:nowrap}
+.notes-table-actions span,.notes-table-actions small{font-size:10px;color:#536779}.notes-table-actions button{flex-shrink:0}
+.notes-check-row{display:flex;align-items:flex-start;gap:8px;white-space:pre-wrap;cursor:pointer;min-height:1.4em}
+#notesPanel .notes-check-row input{appearance:none;-webkit-appearance:none;flex:0 0 1em;width:1em;height:1em;padding:0;margin:.2em 0 0;border:1.5px solid #111;background:#fff;border-radius:2px;position:relative;font-size:inherit;cursor:pointer}
+#notesPanel .notes-check-row input:checked{background:#111}
+#notesPanel .notes-check-row input:checked::after{content:'×';position:absolute;inset:0;display:grid;place-content:center;color:white;font:700 .95em/1 system-ui}
+.notes-check-row input:focus-visible{outline:2px solid #087f83;outline-offset:3px}.notes-check-label{min-width:0;overflow-wrap:anywhere}
+.notes-paper[data-tool=pan] .notes-highlighter{pointer-events:none}

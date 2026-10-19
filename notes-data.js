@@ -15,13 +15,14 @@ window.NotesData=(()=>{
     if(!['blank','grid','ruled'].includes(n.background)||!Array.isArray(n.objects)||n.objects.length>10000)throw Error('Página inválida.');
     const ids=new Set();
     for(const o of n.objects){
-     if(!o||typeof o.id!=='string'||ids.has(o.id)||!['text','image','pen','highlighter','line','arrow','rect','ellipse'].includes(o.type))throw Error('Objeto inválido.');ids.add(o.id);
+     if(!o||typeof o.id!=='string'||ids.has(o.id)||!['text','image','table','pen','highlighter','line','arrow','rect','ellipse'].includes(o.type))throw Error('Objeto inválido.');ids.add(o.id);
      for(const k of ['x','y','w','h','rotation'])if(!Number.isFinite(o[k])||Math.abs(o[k])>100000)throw Error('Posição inválida.');
      if(o.w<1||o.h<1)throw Error('Dimensão inválida.');
-     if(o.type==='text'&&(typeof o.text!=='string'||o.text.length>200000||!Number.isFinite(o.fontSize)||o.fontSize<10||o.fontSize>120))throw Error('Texto inválido.');
+     if(['text','table'].includes(o.type)&&((o.type==='text'&&(typeof o.text!=='string'||o.text.length>200000))||!Number.isFinite(o.fontSize)||o.fontSize<10||o.fontSize>120))throw Error('Texto inválido.');
+     if(o.type==='table'&&(!Array.isArray(o.cells)||!o.cells.length||o.cells.length>100||!Array.isArray(o.cells[0])||!o.cells[0].length||o.cells[0].length>30||o.cells.some(row=>!Array.isArray(row)||row.length!==o.cells[0].length||row.some(cell=>typeof cell!=='string'||cell.length>10000))||typeof o.header!=='boolean'||o.minWidth!=null&&(!Number.isFinite(o.minWidth)||o.minWidth<1||o.minWidth>100000)))throw Error('Tabela inválida: use até 100 linhas e 30 colunas.');
      if(typeof o.color!=='string'||!/^#[0-9a-f]{6}$/i.test(o.color))throw Error('Cor inválida.');
      if(o.type==='image'&&(!/^[a-f0-9]{64}$/.test(o.assetId)||!['image/png','image/jpeg','image/webp'].includes(o.mime)||typeof o.ocr!=='string'||typeof o.caption!=='string'))throw Error('Imagem inválida.');
-     if(!['text','image'].includes(o.type)&&(!Number.isFinite(o.stroke)||o.stroke<1||o.stroke>40||!Array.isArray(o.points)||o.points.length>50000||o.points.some(p=>!Array.isArray(p)||p.length!==2||p.some(v=>!Number.isFinite(v)||Math.abs(v)>100000)) ))throw Error('Desenho inválido.');
+     if(!['text','image','table'].includes(o.type)&&(!Number.isFinite(o.stroke)||o.stroke<1||o.stroke>40||!Array.isArray(o.points)||o.points.length>50000||o.points.some(p=>!Array.isArray(p)||p.length!==2||p.some(v=>!Number.isFinite(v)||Math.abs(v)>100000)) ))throw Error('Desenho inválido.');
     }
    }
   }

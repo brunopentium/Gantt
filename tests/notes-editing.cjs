@@ -1,0 +1,32 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
+(async()=>{const browser=await chromium.launch();try{for(const personal of [false,true]){
+ const context=await browser.newContext({viewport:{width:1400,height:1000}}),page=await context.newPage(),errors=[];page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));page.on('dialog',d=>d.accept());
+ await page.route('https://projectflow-integration.brunocesardesouza26.workers.dev/**',r=>r.fulfill({json:{enabled:false,workspaces:['work','personal'],models:[]}}));
+ await page.addInitScript(personal=>{if(window!==window.top)return;if(personal){localStorage.setItem('pf_workspace_active_v1','personal');localStorage.setItem('pf_personal_session_v1','a'.repeat(64))}const k=(personal?'pf_personal__':'')+'pf_notes_v1';if(!localStorage.getItem(k))localStorage.setItem(k,JSON.stringify({version:1,type:'notes',nodes:[{id:'b',title:'Caderno',kind:'notebook',parentId:null},{id:'p',title:'Página de teste',kind:'page',parentId:'b',background:'grid',objects:[{id:'text',type:'text',x:60,y:70,w:600,h:130,rotation:0,color:'#25364a',fontSize:20,bold:false,text:'☐ Revisar desenho\n☐ Validar amostra\nTexto livre preservado'}]}]}))},personal);
+ await page.goto(url);await page.locator('#tabNotes').click();await page.locator('#notesHideTree').click();
+ // A finished horizontal highlight must align with the live preview at all zoom levels.
+ for(const zoom of [1,.5,1.5]){
+  await page.locator('#notesZoomReset').click();const change=zoom<1?'#notesZoomOut':'#notesZoomIn';for(let n=0;n<Math.round(Math.abs(zoom-1)*10);n++)await page.locator(change).click();
+  await page.getByRole('button',{name:'Marca-texto',exact:true}).click();const paper=await page.locator('.notes-paper').boundingBox(),x=paper.x+85*zoom,y=paper.y+100*zoom;
+  await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+200*zoom,y,{steps:8});const live=await page.locator('.notes-preview polyline').evaluate(el=>{const p=el.points[0],m=el.getScreenCTM();return {x:m.a*p.x+m.c*p.y+m.e,y:m.b*p.x+m.d*p.y+m.f}});await page.mouse.up();
+  const stored=await page.locator('.notes-highlighter').last().locator('svg').evaluate(el=>{const p=el.querySelector('path').getPointAtLength(0),m=el.getScreenCTM();return {x:m.a*p.x+m.c*p.y+m.e,y:m.b*p.x+m.d*p.y+m.f}});
+  assert(Math.abs(live.x-stored.x)<1);assert(Math.abs(live.y-stored.y)<1,`Highlight moved vertically at zoom ${zoom}`);
+ }
+ await page.locator('#notesZoomReset').click();await page.getByRole('button',{name:'Navegar',exact:true}).click();
+ await page.getByRole('checkbox',{name:'Concluir Revisar desenho',exact:true}).click();assert(await page.getByRole('checkbox',{name:'Reabrir Revisar desenho',exact:true}).isChecked());
+ assert.equal(await page.locator('.notes-check-row.is-done .notes-check-label').evaluate(e=>getComputedStyle(e).textDecorationLine),'line-through');assert((await page.evaluate(()=>NotesData.snapshot().nodes[1].objects[0].text)).startsWith('☒ Revisar desenho'));
+ await page.getByRole('checkbox',{name:'Reabrir Revisar desenho',exact:true}).click();assert(await page.getByRole('checkbox',{name:'Concluir Revisar desenho',exact:true}).isVisible());await page.getByRole('checkbox',{name:'Concluir Validar amostra',exact:true}).click();
+ // Tables are created via the insertion dialog, cells edited in place and dimensions grow.
+ await page.getByRole('button',{name:'Inserir tabela',exact:true}).click();await page.locator('.notes-dialog [name=rows]').fill('2');await page.locator('.notes-dialog [name=cols]').fill('2');await page.locator('.notes-dialog [type=submit]').click();
+ await page.locator('#notesEditObject').click();await page.locator('.notes-dialog [name="y"]').fill('300');await page.locator('.notes-dialog [type=submit]').click();
+ const cell=(r,c)=>page.getByRole('textbox',{name:`Tabela: linha ${r}, coluna ${c}`,exact:true});
+ await cell(2,1).fill('Referência ABC-123');const before=await page.locator('.notes-table').boundingBox();await cell(2,2).fill('Descrição extensa da peça e das condições do ensaio.\n'.repeat(10));const after=await page.locator('.notes-table').boundingBox();assert(after.height>before.height+60,'Table must grow vertically with content');
+ await page.getByRole('button',{name:'+ Linha',exact:true}).click();assert.equal(await page.locator('.notes-table tr').count(),3);await cell(3,1).fill('Linha nova');await page.getByRole('button',{name:'+ Coluna',exact:true}).click();assert.equal(await page.locator('.notes-table tr').first().locator('th,td').count(),3);await cell(3,3).fill('Última coluna');
+ await page.locator('#notesSearch').fill('ABC-123');await page.locator('#notesSearchButton').click();assert(await page.locator('.notes-results').getByText(/Referência ABC-123/).isVisible());await page.locator('[data-result]').click();
+ await page.locator('.notes-table-cell[data-row="2"][data-col="2"]').click();await page.getByRole('button',{name:'Remover coluna',exact:true}).click();assert.equal(await page.locator('.notes-table tr').first().locator('th,td').count(),2);await page.getByRole('button',{name:'Desfazer',exact:true}).click();assert.equal(await page.locator('.notes-table tr').first().locator('th,td').count(),3);
+ const snapshot=await page.evaluate(()=>WorkspaceBackup.snapshot());assert.equal(snapshot.notes.nodes[1].objects.find(o=>o.type==='table').cells[2][2],'Última coluna');
+ await page.reload();await page.locator('#tabNotes').click();assert.equal(await cell(2,1).innerText(),'Referência ABC-123');await page.getByRole('button',{name:'Navegar',exact:true}).click();assert(await page.getByRole('checkbox',{name:'Reabrir Validar amostra',exact:true}).isChecked());
+ await page.setViewportSize({width:390,height:844});await page.locator('#notesFocus').click();assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth),390);await page.getByRole('checkbox',{name:'Reabrir Validar amostra',exact:true}).click();assert(await page.getByRole('checkbox',{name:'Concluir Validar amostra',exact:true}).isVisible());
+ assert.deepEqual(errors,[]);await context.close();
+ }console.log('PASS: exact highlighter/preview alignment at 50/100/150%, legacy checklist toggle/strike/reopen, growing editable tables, row/column add/remove/undo, search, backup/reload, mobile and both workspaces.');}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});

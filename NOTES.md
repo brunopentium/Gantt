@@ -4,7 +4,8 @@ A guia Notas fica depois de Cronogramas. Pastas contêm pastas/cadernos; caderno
 
 ## Uso pela interface
 
-- Texto: clique em Texto ou dê dois cliques num local vazio. O texto continua editável e pesquisável. Selecione-o para alterar cor, tamanho ou negrito. Lista acrescenta marcadores de verificação em texto.
+- Texto: clique em Texto ou dê dois cliques num local vazio. O texto continua editável e pesquisável. Selecione-o para alterar cor, tamanho ou negrito. Lista acrescenta marcadores de verificação. No modo Navegar, clique no quadradinho para concluir: ele fica preto com X e o texto recebe um risco. Clique novamente para reabrir; listas antigas com ☐ também funcionam. No modo Selecionar, o conteúdo continua editável como texto.
+- Tabela: escolha o número de linhas/colunas e se deseja cabeçalho. Edite as células diretamente no modo Selecionar; a tabela cresce com o conteúdo. Ao selecioná-la, use + Linha/+ Coluna ou Remover linha/coluna, relativos à última célula ativa. Até 100 linhas e 30 colunas; o conteúdo também aparece na pesquisa, no contexto do assistente, na impressão e no backup.
 - Imagem: use Imagem, arraste um arquivo ou cole uma captura com Ctrl+V. PNG, JPEG e WebP são aceitos. Imagens são normalizadas para até 1800 pixels no maior lado e até 900 KB; anexos maiores que 25 MB são recusados antes do processamento.
 - Lápis, marca-texto, reta, seta, retângulo e círculo: escolha a ferramenta e arraste. Borracha remove o objeto tocado. Desfazer/refazer funciona durante a sessão.
 - Selecionar: escolha um objeto; arraste o controle de mover ou redimensionar. Detalhes permite editar texto, posição, tamanho, rotação, descrição/transcrição da imagem e camada. Duplicar cria outro objeto.
@@ -31,3 +32,5 @@ Evolução prevista: OCR automático, revisão do texto reconhecido e agrupament
 
 `tests/notes.cjs`: hierarquia, texto e desenho, imagens coladas, pesquisa, backup, recuperação, persistência e celular nos dois perfis.
 `tests/notes-cloud.cjs`: API GitHub interceptada com dados sintéticos, uploads imutáveis, revisões, carregamento num dispositivo novo, conflitos e caminhos isolados.
+
+`tests/notes-editing.cjs`: alinhamento entre traço e desenho final com zoom, tabelas expansíveis, listas interativas, undo, pesquisa, persistência e ambos os ambientes.
