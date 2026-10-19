@@ -2,6 +2,12 @@
 
 O frontend e o código do Worker são publicados separadamente. Esta entrega está pronta para implantação, mas a leitura visual só é ativada após o serviço anunciar sua capacidade em `/chat/config`. Não basta publicar o repositório no GitHub.
 
+## Publicação pelo GitHub conectado
+
+O Worker `projectflow-integration` acompanha `brunopentium/Gantt`, branch `main`, com publicações automáticas habilitadas. A pasta de trabalho é `integration`, o comando de build é `npm ci` e o comando de publicação é `npx wrangler deploy --config=wrangler.production.toml`.
+
+A configuração de produção usa `keep_vars = true` e não declara `[vars]`, preservando as variáveis e os segredos já cadastrados no painel. Um novo commit na branch de produção dispara o build. Confirme o sucesso na Cloudflare e a capacidade anunciada em `/chat/config` antes de considerar a análise visual ativada.
+
 ## Caminho usando o pacote compilado
 
 O pacote [projectflow-vision-worker.zip](https://orgoffice.pages.dev/downloads/projectflow-vision-worker.zip) contém o Worker compilado, configuração mínima e instruções. Ele não contém tokens nem outros segredos. Requer Node.js 22 ou superior e acesso à conta Cloudflare que já hospeda `projectflow-integration`.
