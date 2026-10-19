@@ -1,0 +1,8 @@
+# Dashboard-managed variables and secrets must survive code deployments.
+# Keep environment defaults in wrangler.toml for local development.
+name = "projectflow-integration"
+main = "src/worker.mjs"
+compatibility_date = "2026-10-16"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+keep_vars = true
