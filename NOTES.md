@@ -83,3 +83,11 @@ Em **Selecionar**, clique e arraste o corpo de uma imagem, texto ou tabela (incl
 O menu **Camadas** oferece **Avançar uma camada**, **Recuar uma camada**, **Trazer para frente** e **Enviar para trás**. Vale também para seleções múltiplas, preservando sua ordem interna. A ordem é guardada com a página e respeitada pelas capturas, impressão e backups; **Desfazer/Refazer** também restaura as camadas.
 
 `tests/notes-drag-layers.cjs` verifica arraste pelo corpo/borda, edição de texto/células, grupos, quatro operações de camadas, desfazer/refazer, backup/reabertura e toque real nos dois ambientes.
+
+## Cabeçalho compacto e navegação ajustável
+
+Na guia Notas, os controles comuns de salvamento/recuperação ficam junto às guias, antes de Pessoal. Ao sair de Notas, retornam à posição original. O cabeçalho aproveita a linha do título para as ferramentas, com uma linha complementar no desktop; telas menores acomodam os controles em mais linhas, sem rolagem horizontal de ferramentas. Avisos fixos de ajuda/salvamento deixam de ocupar a folha; o status de Notas fica em **Salvar e backup** e os erros de edição continuam aparecendo.
+
+A navegação começa em 142 pixels (cerca de 30% menor). Arraste sua borda direita para escolher de 80 a 440 pixels; o limite também respeita a largura da tela. A largura é conservada neste navegador e neste ambiente, inclusive ao recolher/reabrir a lateral. O separador aceita setas para ajustar, Home para reduzir e End para ampliar.
+
+`tests/notes-compact-layout.cjs` verifica disposição compacta, criação de restauração, controles únicos e retorno às demais guias, largura por arraste/teclado, persistência e celular em Trabalho/Pessoal.
