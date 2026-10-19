@@ -13,6 +13,7 @@ window.NotesData=(()=>{
    map.set(n.id,n);
    if(n.kind==='page'){
     if(!['blank','grid','ruled'].includes(n.background)||!Array.isArray(n.objects)||n.objects.length>10000)throw Error('Página inválida.');
+    if(n.paperColor!==undefined&&!['white','cream','yellow'].includes(n.paperColor))throw Error('Cor do papel inválida.');
     const ids=new Set();
     for(const o of n.objects){
      if(!o||typeof o.id!=='string'||ids.has(o.id)||!['text','image','table','pen','highlighter','line','arrow','rect','ellipse'].includes(o.type))throw Error('Objeto inválido.');ids.add(o.id);
@@ -62,7 +63,8 @@ window.NotesData=(()=>{
   const array=new Uint8Array(await blob.arrayBuffer());let binary='';for(let i=0;i<array.length;i+=16384)binary+=String.fromCharCode(...array.subarray(i,i+16384));
   const record={id:await digest(array),mime:blob.type,name:file.name||'Imagem colada',base64:btoa(binary)};await storeAsset(record);return {record,width:canvas.width,height:canvas.height};
  }
+ function paperStyle(n){const color={white:'#ffffff',cream:'#fff8e7',yellow:'#fff2b3'}[n.paperColor||'white']||'#ffffff';const image=n.background==='grid'?'linear-gradient(#cfd8e3 1px,transparent 1px),linear-gradient(90deg,#cfd8e3 1px,transparent 1px)':n.background==='ruled'?'linear-gradient(to bottom,transparent 0px,transparent 27px,#b4c3d3 27px,#b4c3d3 28px)':'none';return `background-color:${color};background-image:${image};background-size:${n.background==='grid'?'24px 24px':'100% 28px'};print-color-adjust:exact;-webkit-print-color-adjust:exact;`}
  function imageRefs(raw=snapshot()){const refs=new Map();for(const n of raw.nodes)for(const o of n.objects||[])if(o.type==='image')refs.set(o.assetId,o);return [...refs.values()]}
  async function resolveAsset(o){let a=await asset(o.assetId);if(!a&&window.NotesCloud?.asset)a=await window.NotesCloud.asset(o);if(!a)throw Error('Imagem indisponível neste navegador. Conecte as Notas ao GitHub ou restaure o backup ZIP.');return a}
- return {empty,validate,snapshot,commit,restoreData,hasLocalData:()=>hasLocal&&data.nodes.length>0,flush:()=>{},id,asset,storeAsset,imageFile,imageRefs,resolveAsset,bytes};
+ return {empty,validate,paperStyle,snapshot,commit,restoreData,hasLocalData:()=>hasLocal&&data.nodes.length>0,flush:()=>{},id,asset,storeAsset,imageFile,imageRefs,resolveAsset,bytes};
 })();

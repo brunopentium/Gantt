@@ -118,10 +118,11 @@ window.MyDayChat=(()=>{
   function noteSources(pack){
     if(!pack)return;const section=node('details','md-chat-note-sources');section.setAttribute('aria-label','Fontes de Notas');section.open=!!pack.result.ambiguity.length||!pack.result.items.length;
     section.append(node('summary','',(pack.visual?'Imagens consultadas · ':'Notas consultadas · ')+pack.result.items.length+(pack.visual?' imagem(ns)':' trecho(s)')),node('p','',pack.result.notice));
+    const offeredPages=new Set();
     for(const [i,item] of pack.result.items.entries()){
       const row=node('div','md-chat-note-source');row.append(node('span','','['+pack.label(i)+'] '+item.path),node('small','',item.visual?item.kind:item.kind+' · trecho '+(item.start+1)+'–'+item.end+' de '+item.length));
       const visit=node('button','','Abrir origem');visit.type='button';visit.onclick=()=>visitNote(item);
-      const read=node('button','','Aprofundar nesta página');read.type='button';read.onclick=()=>{if(!useNotes({scopeId:item.nodeId}))return;find('mdChatInput').value='Aprofunde esta página de Notas.';find('mdChatInput').focus()};row.append(visit,read);section.append(row);
+      const read=node('button','','Aprofundar nesta página');read.type='button';read.onclick=()=>{if(!useNotes({scopeId:item.nodeId}))return;find('mdChatInput').value='Aprofunde esta página de Notas.';find('mdChatInput').focus()};row.append(visit,read);if(!pack.visual&&!offeredPages.has(item.nodeId)){offeredPages.add(item.nodeId);const visual=node('button','','Analisar página com imagens');visual.type='button';visual.onclick=async()=>{if(busy||!workspaceActive)return;visual.disabled=true;status('Preparando a página encontrada, incluindo imagens e anotações…');try{await window.Notes.captureNode(item.nodeId,'page');status('Captura pronta. Confira a prévia e clique em Enviar para analisar.')}catch(e){status(e.message,true)}finally{visual.disabled=false}};row.append(visual)}section.append(row);
     }
     for(const place of pack.result.ambiguity){const choose=node('button','',place.path);choose.type='button';choose.onclick=()=>{if(useNotes({scopeId:place.id})){find('mdChatInput').value=pack.question;find('mdChatInput').focus()}};section.append(choose)}
     if(pack.result.nextOffset!==null){const more=node('button','','Próximos trechos');more.type='button';more.onclick=()=>{if(!useNotes({scopeId:pack.result.scopeId}))return;notesPrevious=pack.result.session;find('mdChatInput').value='Mostre os próximos resultados desta busca nas Notas.';find('mdChatInput').focus()};section.append(more)}
