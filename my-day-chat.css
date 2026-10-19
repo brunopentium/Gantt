@@ -12,3 +12,16 @@
 .md-chat-assistant .md-chat-text{white-space:normal}.md-chat-text p{margin:0 0 14px}.md-chat-text ul,.md-chat-text ol{margin:8px 0 18px;padding-left:22px}.md-chat-text li{margin:0 0 12px;padding-left:2px}.md-chat-text li:last-child{margin-bottom:0}.md-chat-text li>ul,.md-chat-text li>ol{margin-top:10px;margin-bottom:0}.md-chat-text .md-chat-group{font-weight:700;margin-top:20px}.md-chat-text code{font:12px ui-monospace,monospace;background:#edf2f7;padding:1px 4px;border-radius:4px;overflow-wrap:anywhere}.md-chat-text>:first-child{margin-top:0}.md-chat-text>:last-child{margin-bottom:0}
 
 .md-chat-connection{flex-wrap:wrap}.md-chat #mdChatService{font-size:11px;color:var(--chat-teal);text-decoration:underline;padding:5px 0}.md-chat #mdChatRetry{white-space:normal}
+
+.md-chat-notes{padding:8px 20px;border-bottom:1px solid var(--chat-border);font-size:12px;flex-shrink:0}
+.md-chat-notes summary{cursor:pointer;color:var(--chat-teal);font-weight:650}.md-chat-notes>div{display:grid;gap:7px;margin-top:8px;max-height:24dvh;overflow:auto}
+.md-chat-notes label{display:flex;gap:7px;align-items:center}.md-chat-notes select{width:100%;min-width:0;max-width:100%;font:inherit;color:inherit;background:white;border:1px solid var(--chat-border);border-radius:6px;padding:6px}
+.md-chat-notes small{color:var(--chat-muted);overflow-wrap:anywhere}.md-chat .md-chat-notes button{font-size:11px;padding:4px 8px;min-height:30px;justify-self:start}
+.md-chat-note-sources{background:#f1f8f7;border:1px solid #cde3df;border-radius:9px;padding:10px;margin:-8px 0 22px;font-size:11px;overflow-wrap:anywhere}
+.md-chat-note-sources p{color:var(--chat-muted);margin:5px 0 8px}.md-chat-note-source{border-top:1px solid #d9e9e5;padding:8px 0;display:flex;flex-wrap:wrap;gap:5px}.md-chat-note-source>span,.md-chat-note-source>small{flex:1 1 100%}.md-chat-note-source>small{color:var(--chat-muted)}
+.md-chat .md-chat-note-sources button{font-size:11px;min-height:32px;white-space:normal;padding:5px 8px;text-align:left}
+@media(max-width:600px){.md-chat-notes{padding:7px 16px}.md-chat .md-chat-note-sources button{min-height:40px}.md-chat-header{padding-top:10px;padding-bottom:10px}}
+
+.md-chat-note-sources summary{cursor:pointer;color:var(--chat-teal);font-weight:650}.md-chat-note-sources:not([open]){padding:8px 10px}
+
+.md-chat .md-chat-citation{display:inline;border:0;background:transparent;color:var(--chat-teal);text-decoration:underline;font:inherit;padding:0 2px;min-height:0;cursor:pointer}
