@@ -1,0 +1,17 @@
+const {chromium}=require('playwright'),assert=require('node:assert/strict');
+const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
+(async()=>{const browser=await chromium.launch();try{for(const personal of [false,true]){
+ const context=await browser.newContext({viewport:{width:1400,height:1000}}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(personal=>{if(window!==window.top)return;if(personal){localStorage.setItem('pf_workspace_active_v1','personal');localStorage.setItem('pf_personal_session_v1','a'.repeat(64))}},personal);
+ await page.route('https://projectflow-integration.brunocesardesouza26.workers.dev/**',r=>r.fulfill({json:{enabled:false,models:[]}}));await page.goto(url);
+ await page.evaluate(()=>{NotesData.commit({version:1,type:'notes',nodes:[{id:'b',kind:'notebook',title:'Caderno',parentId:null},{id:'p',kind:'page',title:'Nota',parentId:'b',background:'blank',objects:[{id:'t',type:'text',x:40,y:40,w:280,h:80,rotation:0,color:'#25364a',fontSize:20,bold:false,text:'Nota para teste de espaço'}]}]});MyDayChat.open()});
+ const drawer=page.locator('#mdChatNoteTools'),summary=drawer.locator(':scope>summary');assert.equal(await drawer.evaluate(e=>e.open),false);assert(await page.locator('#mdChatModel').isVisible());assert(!await page.locator('#mdChatCapturePage').isVisible());const closedHeight=await page.locator('.md-chat-scroll').evaluate(e=>e.clientHeight);
+ await summary.focus();await page.keyboard.press('Enter');assert(await drawer.evaluate(e=>e.open));assert(await page.locator('#mdChatCapturePage').isVisible());assert(closedHeight>(await page.locator('.md-chat-scroll').evaluate(e=>e.clientHeight))+50);
+ await page.locator('#mdChatNotes>summary').click();await page.locator('#mdChatNotesEnabled').check();await page.locator('#mdChatNotesScope').selectOption('p');await summary.click();assert((await summary.innerText()).includes('Busca ativa'));assert(!await page.locator('#mdChatNotesScope').isVisible());
+ // Explicit capture keeps the outer drawer folded, with a visible attachment count.
+ await page.evaluate(()=>Notes.captureNode('p','page'));assert.equal(await drawer.evaluate(e=>e.open),false);assert((await summary.innerText()).includes('1 imagem'));assert.equal(await page.evaluate(()=>NotesVision.count()),1);
+ await page.locator('#mdChatClose').click();await page.evaluate(()=>MyDayChat.open());assert.equal(await drawer.evaluate(e=>e.open),false);
+ await summary.click();assert.equal(await page.locator('#mdChatNotesScope').inputValue(),'p');assert(await page.locator('#mdChatNotesEnabled').isChecked());assert(await page.getByRole('button',{name:'Ampliar seleção I1',exact:true}).isVisible());
+ await page.setViewportSize({width:390,height:844});assert(await page.locator('#mdChatPanel').evaluate(e=>e.scrollWidth<=e.clientWidth+1));assert((await page.locator('.md-chat-scroll').evaluate(e=>e.clientHeight))>100);assert((await page.locator('#mdChatSend').boundingBox()).y<844);await summary.click();assert((await page.locator('.md-chat-scroll').evaluate(e=>e.clientHeight))>250);
+ assert.deepEqual(errors,[]);await context.close();
+ }console.log('PASS: note drawer starts folded, keyboard/mouse toggle frees response space, capture does not reopen it, active search/attachment indicator, preserved choices, work/personal and phone layout.');}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
