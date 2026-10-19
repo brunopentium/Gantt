@@ -54,3 +54,9 @@ html[data-app-view="notes"] #app{height:100dvh;min-height:0;overflow:hidden}
 .notes-ocr-dialog form>header,.notes-ocr-dialog form>footer{flex-shrink:0;background:white}
 
 .notes-selection-box{position:absolute;border:1px dashed #087f83;pointer-events:none;z-index:6}.notes-selection-box button{pointer-events:auto}.notes-selection-info{font-size:10px;color:#087f83}.notes-object.is-selected{outline:1px dashed #087f83!important}
+
+/* Dragging works on the object body; Navigate keeps native touch scrolling. */
+.notes-paper[data-tool=select] .notes-object{touch-action:none;cursor:move}
+.notes-paper[data-tool=select] .notes-object [contenteditable]{cursor:text}
+#notesPanel[data-dragging=true],#notesPanel[data-dragging=true] *{cursor:grabbing!important;user-select:none!important}
+.notes-layers .notes-save-menu{min-width:175px}

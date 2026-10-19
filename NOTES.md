@@ -75,3 +75,11 @@ O assistente é o mesmo em todas as guias. A seção **Notas e imagens** começa
 `tests/notes-paper.cjs`, `tests/chat-note-drawer.cjs` e `tests/notes-edits.cjs`: fundos/papel, impressão, opções recolhidas, prévia, aplicação, desfazer, recuperação, falhas e conflitos.
 
 `npm test` executa todas as suítes independentes em processos isolados, com duas em paralelo por padrão; `TEST_CONCURRENCY=1` força execução sequencial. `npm run test:integration` verifica o serviço. Os testes não usam dados reais do usuário.
+
+## Movimento direto e camadas
+
+Em **Selecionar**, clique e arraste o corpo de uma imagem, texto ou tabela (incluindo suas células e bordas) para mover. Um clique sem arrastar continua permitindo editar textos e células. Grupos são movidos juntos; **Navegar** continua permitindo rolar com um dedo no celular. O puxador de movimento permanece como alternativa. Para abrir a leitura/transcrição de uma imagem, selecione-a e use **Ler texto da imagem**, ou clique duas vezes nela.
+
+O menu **Camadas** oferece **Avançar uma camada**, **Recuar uma camada**, **Trazer para frente** e **Enviar para trás**. Vale também para seleções múltiplas, preservando sua ordem interna. A ordem é guardada com a página e respeitada pelas capturas, impressão e backups; **Desfazer/Refazer** também restaura as camadas.
+
+`tests/notes-drag-layers.cjs` verifica arraste pelo corpo/borda, edição de texto/células, grupos, quatro operações de camadas, desfazer/refazer, backup/reabertura e toque real nos dois ambientes.
