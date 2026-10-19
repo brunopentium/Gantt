@@ -1,4 +1,4 @@
-# Notas — primeira entrega
+# Notas
 
 A guia Notas fica depois de Cronogramas. Pastas contêm pastas/cadernos; cadernos contêm páginas e páginas podem conter subpáginas. Selecione o caderno para criar páginas irmãs; selecione uma página para criar uma subpágina. A árvore pode ser recolhida e o modo foco aumenta a área útil. A busca fica na lateral e também pode ser aberta pelo menu no modo foco. Salvar e backup fica no cabeçalho, junto de Assistente e Modo foco; as ferramentas se distribuem em linhas compactas sem rolagem horizontal.
 
@@ -14,9 +14,15 @@ A guia Notas fica depois de Cronogramas. Pastas contêm pastas/cadernos; caderno
 
 ## Pesquisa de imagens e assistente
 
-Nesta entrega a busca inclui texto digitado, títulos, descrições e transcrições manuais das imagens. **Não há OCR automático nem integração com um serviço de IA.** Em Detalhes da imagem pode-se registrar uma transcrição para pesquisa. Imagens podem ser ampliadas para interpretação visual por um assistente que tenha essa capacidade no navegador. O botão Assistente prepara o texto da página na conversa existente, e os resultados da pesquisa também podem ser levados ao chat. Nada é enviado automaticamente: a mensagem fica para revisão e envio pelo usuário. Imagens binárias não são anexadas ao chat nesta etapa. Todos os controles principais têm nomes acessíveis. O assistente pode pesquisar e editar pelas mesmas telas; não precisa acessar APIs, código ou armazenamento interno.
+A busca inclui texto digitado, tabelas, títulos, descrições e transcrições das imagens. Selecione uma imagem e use **Ler texto da imagem** (ou abra a imagem) para reconhecer seu texto em português, inglês ou ambos. O resultado fica em um rascunho ao lado da imagem: corrija e clique em Salvar para torná-lo pesquisável. Cancelar, falhas no download e leituras vazias preservam a transcrição anterior. Fechar durante a leitura encerra o worker, inclusive durante os downloads. Uma nova leitura solicita confirmação quando existe texto no rascunho. Se o conteúdo mudar por restauração enquanto a revisão estiver aberta, o salvamento pede que a imagem seja reaberta para preservar a alteração mais recente.
 
-Evolução prevista: OCR automático, revisão do texto reconhecido e agrupamento/seleção de múltiplos objetos. Serviços externos de OCR/IA dependem de escolha explícita, incluindo custo e tratamento dos dados.
+O reconhecimento usa Tesseract.js 6.0.1 / Tesseract.js-core 6.0.0 (Apache-2.0). O motor e os idiomas são baixados sob demanda, de `cdn.jsdelivr.net` e `tessdata.projectnaptha.com`; a primeira leitura depende de conexão a esses endereços e pode demorar. A imagem é processada no próprio dispositivo, sem upload para serviço de OCR nem consumo de créditos de IA. Os idiomas usam cache no IndexedDB; a disponibilidade offline do aplicativo inteiro não é garantida. Uma única imagem é processada de cada vez, com limite de três minutos e descarte do worker ao concluir. O texto reconhecido é limitado a 200 mil caracteres. A confiança mostrada é uma estimativa; escrita à mão e imagens pequenas/pouco nítidas podem precisar de transcrição manual. OCR identifica texto, não o significado visual de diagramas ou fotos.
+
+A transcrição salva segue os mesmos backups, restaurações e salvamento automático das Notas, isolada entre Trabalho e Pessoal. Não há novo índice externo nem duplicação de imagens. Quando o texto reconhecido é salvo sem edição, guardamos motor, idiomas, confiança e data da revisão; alterações manuais no texto removem essa indicação.
+
+O botão Assistente prepara o texto da página na conversa existente, e os resultados da pesquisa também podem ser levados ao chat, incluindo as transcrições salvas. Nada é enviado automaticamente: a mensagem fica para revisão e envio pelo usuário. Imagens binárias não são anexadas ao chat nesta etapa. Todos os controles principais têm nomes acessíveis. O assistente pode pesquisar e editar pelas mesmas telas; não precisa acessar código ou armazenamento interno.
+
+Próximas etapas: pesquisa contextual diretamente na conversa, interpretação visual de imagens por modelos compatíveis e agrupamento/seleção de múltiplos objetos. A leitura visual por IA precisa de integração adicional; ela ainda não está incluída neste OCR local.
 
 ## Persistência e backup
 
@@ -36,3 +42,5 @@ Evolução prevista: OCR automático, revisão do texto reconhecido e agrupament
 `tests/notes-editing.cjs`: alinhamento entre traço e desenho final com zoom, tabelas expansíveis, listas interativas, undo, pesquisa, persistência e ambos os ambientes.
 
 `tests/notes-ink.cjs`: todas as ferramentas de desenho mantêm a mesma geometria da prévia ao soltar, sobre texto e imagem, com rolagem, zoom e toque real no celular.
+
+`tests/notes-ocr.cjs`: revisão, salvar/cancelar, falhas e resultados vazios, concorrência com restauração, busca por pasta, contexto do assistente, backup, celular e isolamento. Também verifica cancelamento/timeout/retry do worker. `OCR_NETWORK=1` acrescenta uma leitura real em português e inglês com os downloads públicos.

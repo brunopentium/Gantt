@@ -41,3 +41,14 @@ html[data-app-view="notes"] #app{height:100dvh;min-height:0;overflow:hidden}
 .notes-page-bar strong{min-width:0;flex-shrink:1}
 @media(max-width:1100px){#notesPanel .notes-tools button span{display:none}#notesPanel .notes-tools button{min-width:28px;justify-content:center;padding:3px;font-size:16px}.notes-tools label{font-size:9px;gap:3px;margin-left:1px}}
 @media(max-width:720px){.notes-header-actions{flex-wrap:wrap;justify-content:flex-end;flex:1 1 100%}.notes-header{gap:4px;padding:5px 8px}.notes-tools{padding:4px 6px}.notes-tools label{font-size:0;gap:0;margin:0}#notesPanel .notes-tools label select{width:36px;font-size:11px;padding:4px 2px}#notesPanel .notes-tools input[type=color]{width:26px;height:28px}.notes-page-bar{padding:4px 6px}.notes-page-bar strong{flex:1 1 100%;max-width:none}.notes-results{top:74px}.notes-table-actions{padding:4px 6px}.notes-table-actions small{white-space:normal}}
+
+/* Image transcription: source and editable draft stay together while reviewing. */
+.notes-ocr-dialog{width:min(1040px,96vw)}
+.notes-ocr-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;min-width:0}
+.notes-ocr-layout .notes-image-view{padding:0;min-width:0;max-height:60dvh;overflow:auto;background:#f4f7fb;border-radius:8px}
+.notes-ocr-editor{display:grid;gap:10px;min-width:0}.notes-ocr-editor textarea{resize:vertical;min-height:180px;max-height:45dvh}
+.notes-ocr-editor p{margin:0;overflow-wrap:anywhere}.notes-ocr-editor [role=status]{color:#087f83;min-height:2.5em}
+@media(max-width:720px){.notes-ocr-layout{grid-template-columns:minmax(0,1fr)}.notes-ocr-layout .notes-image-view{max-height:28dvh}.notes-ocr-dialog .notes-fields{padding:12px}.notes-ocr-dialog h2{font-size:15px;overflow-wrap:anywhere}}
+.notes-ocr-dialog form{display:flex;flex-direction:column;max-height:calc(90dvh - 2px);min-height:0}
+.notes-ocr-dialog form>.notes-fields{overflow:auto;min-height:0}
+.notes-ocr-dialog form>header,.notes-ocr-dialog form>footer{flex-shrink:0;background:white}
