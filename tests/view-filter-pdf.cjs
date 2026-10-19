@@ -72,7 +72,8 @@ const fs=require('node:fs');
   html=await printGroup('/tmp/group-filter-folded.pdf');assert(!html.includes('ALPHA LEAF')&&!html.includes('BETA LEAF'));assert(html.includes('ALPHA SIBLING')&&html.includes('ALPHA STANDALONE'));
   assert((await report.locator('[data-print-task="a:nested"]').textContent()).includes('▸'));assert((await report.locator('[data-print-task="group:b"]').textContent()).includes('▸'));
   // A collapsed summary retains its summary bar even without any visible child row.
-  assert(await report.locator('[data-print-task="a:nested"] rect[fill="#687386"]').count()>0);
+  const summaryColor=await page.evaluate(()=>projects.find(p=>p.id==='a').tasks.find(t=>t.id==='nested').color);
+  assert(await report.locator(`[data-print-task="a:nested"] rect[height="4"][fill="${summaryColor}"]`).count()>0);
   await page.fill('#sgSearch','LEAF');html=await printGroup('/tmp/group-filter-search.pdf');assert(html.includes('ALPHA LEAF')&&!html.includes('ALPHA SIBLING')&&!html.includes('BETA LEAF'));
   await page.fill('#sgSearch','');await page.click('#sgExpandAll');await page.selectOption('#sgFilter','done');html=await printGroup('/tmp/group-filter-done.pdf');assert(html.includes('ALPHA SIBLING')&&html.includes('BETA LEAF'));assert(!html.includes('ALPHA STANDALONE'));
   await page.selectOption('#sgFilter','all');await page.click('#sgCollapseAll');html=await printGroup('/tmp/group-filter-collapsed.pdf');assert.equal(await report.locator('[data-print-task]').count(),1);assert(await report.locator('[data-print-task="group:g"] rect[fill="#687386"]').count()>0);

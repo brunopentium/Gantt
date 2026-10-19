@@ -9,6 +9,7 @@ Descreva a mudança, revise o antes/depois e clique em **Aplicar nas Notas**. De
 - Texto e listas de verificação; tabelas; título, tipo de fundo e cor do papel.
 - Adição de texto, tabelas e formas; movimento e redimensionamento de objetos.
 - Correção de descrição/transcrição de imagens, sem trocar os arquivos originais.
+- Agrupamento/desagrupamento de objetos da mesma página, preservando os membros dos grupos selecionados.
 - Remoção de objetos com prévia e criação de subpáginas dentro da página selecionada.
 
 A edição fica limitada a uma página existente e às subpáginas criadas por aquela proposta. Não cria pastas/cadernos, não apaga páginas/cadernos e não edita pixels de imagens. O contexto leva textos, tabelas, descrições, OCR e geometria; imagens visuais continuam no fluxo explícito de análise. Para aproveitar uma análise visual, faça-a antes e depois descreva a alteração desejada no modo de edição.

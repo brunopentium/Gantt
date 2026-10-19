@@ -135,7 +135,7 @@ window.MyDayChat=(()=>{
   async function send(event){
     event.preventDefault();if(busy||blockedSync||!config?.enabled||!config.models?.some(m=>m.id===selectedModel)||!workspaceAllowed())return;
     if(!logged()){controls();status('Sua sessão expirou. Entre novamente para continuar.',true);return;}
-    const visual=window.NotesVision?.count()>0;if(notesEditTarget&&visual){status('Envie ou remova as imagens antes de preparar a edição da nota.',true);return}if(visual&&!window.NotesVision.available(config,selectedModel)){status('O envio visual ainda não está disponível para este serviço/modelo. Remova a seleção para continuar com perguntas de texto.',true);return}
+    const visual=window.NotesVision?.count()>0;if(notesEditTarget&&visual){status('Remova as imagens para editar a nota ou clique em Voltar à consulta para analisá-las.',true);return}if(visual&&!window.NotesVision.available(config,selectedModel)){status('O envio visual ainda não está disponível para este serviço/modelo. Remova a seleção para continuar com perguntas de texto.',true);return}
     const field=find('mdChatInput'),text=field.value.trim();if(!text)return;
     showDraft(null);append('user',text);history.push({role:'user',content:text});field.value='';busy=true;controls();status('Consultando seus dados salvos…');
     try{

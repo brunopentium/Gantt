@@ -17,6 +17,7 @@ window.NotesData=(()=>{
     const ids=new Set();
     for(const o of n.objects){
      if(!o||typeof o.id!=='string'||ids.has(o.id)||!['text','image','table','pen','highlighter','line','arrow','rect','ellipse'].includes(o.type))throw Error('Objeto inválido.');ids.add(o.id);
+     if(o.groupId!==undefined&&(typeof o.groupId!=='string'||!o.groupId||o.groupId.length>200))throw Error('Grupo de objetos inválido.');
      for(const k of ['x','y','w','h','rotation'])if(!Number.isFinite(o[k])||Math.abs(o[k])>100000)throw Error('Posição inválida.');
      if(o.w<1||o.h<1)throw Error('Dimensão inválida.');
      if(['text','table'].includes(o.type)&&((o.type==='text'&&(typeof o.text!=='string'||o.text.length>200000))||!Number.isFinite(o.fontSize)||o.fontSize<10||o.fontSize>120))throw Error('Texto inválido.');

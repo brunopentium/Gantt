@@ -31,6 +31,11 @@ test('free-model proposals preserve zero-price limits and never retry or execute
  let calls=0;await assert.rejects(chatNotes(env,principal,{...input,model:'openrouter/free'},{fetcher:async(url,options)=>{calls++;assert.deepEqual(JSON.parse(options.body).provider.max_price,{prompt:0,completion:0,request:0});return Response.json({error:{}},{status:402})}}),{code:'model_unavailable'});assert.equal(calls,1);
  await assert.rejects(chatNotes(env,principal,input,{fetcher:async()=>Response.json({choices:[{message:{tool_calls:[{function:{name:'update_task'}}]}}]})}),{code:'model_response'});
 });
+test('group proposals preserve members and geometry, reject foreign IDs and invalidate reviewed OCR metadata on correction',()=>{
+ let sequence=0;const grouped=core.plan(page,[{type:'group_objects',ids:['text','table']}],()=>`group-${++sequence}`).page;assert(grouped.objects[0].groupId);assert.equal(grouped.objects[0].groupId,grouped.objects[1].groupId);assert.equal(grouped.objects[0].x,page.objects[0].x);
+ const ungrouped=core.plan(grouped,[{type:'ungroup_objects',ids:['text']}],()=>`group-${++sequence}`).page;assert(ungrouped.objects.every(o=>!o.groupId));assert.throws(()=>core.plan(page,[{type:'group_objects',ids:['text','foreign']}],()=>`group-${++sequence}`));
+ const original={...page,objects:[{...page.objects[0],id:'image',type:'image',caption:'Imagem',ocr:'Original',ocrInfo:{engine:'tesseract.js@6.0.1'}}]};const corrected=core.plan(original,[{type:'update_image_text',id:'image',ocr:'Revisado'}],()=>`group-${++sequence}`).page;assert.equal(corrected.objects[0].ocr,'Revisado');assert.equal(corrected.objects[0].ocrInfo,undefined);assert(original.objects[0].ocrInfo);
+});
 test('Worker routes Notes proposals through auth/origin/rate limits, preserves normal body limit, and never instantiates Store',async()=>{
  const config=httpConfig({PUBLIC_URL:'https://integration.example',OAUTH_ISSUER:'https://issuer.example/',OAUTH_JWKS_URL:'https://issuer.example/jwks',OAUTH_SUBJECTS:'bruno'});let stores=0;
  const handler=createWorkerHandler({config,env,storeFactory:()=>{stores++;throw Error('No Store for local Notes proposals')},authenticate:async value=>{if(value!=='Bearer synthetic')throw new IntegrationError('unauthorized','Login',401);return {...principal,subject:'notes-test'}},notesHandler:(e,p,v)=>chatNotes(e,p,v,{fetcher:responder()})});

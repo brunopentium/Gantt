@@ -1,8 +1,16 @@
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765/';
-const password=process.env.PERSONAL_TEST_PASSWORD;
-if(!password)throw Error('Set PERSONAL_TEST_PASSWORD to test password verification; never commit the password.');
+// Exercise real PBKDF2 against a synthetic verifier, without requiring a user's secret.
+const password=process.env.PERSONAL_TEST_PASSWORD||'synthetic-workspace-test-only';
+let profileFixture;
+if(!process.env.PERSONAL_TEST_PASSWORD){
+ const fs=require('node:fs'),crypto=require('node:crypto');
+ const source=fs.readFileSync(require('node:path').join(__dirname,'../workspace-profile.js'),'utf8');
+ const salt=source.match(/SALT='([a-f0-9]+)'/)[1];
+ const verifier=crypto.pbkdf2Sync(password,Buffer.from(salt,'hex'),210000,32,'sha256').toString('hex');
+ profileFixture=source.replace(/VERIFIER='[a-f0-9]+'/,'VERIFIER='+JSON.stringify(verifier));
+}
 const day=new Date().toISOString().slice(0,10),repo='test-owner/private-workspaces';
 const task=(title)=>({id:'t',title,date:day,deadline:day,status:'Em Andamento',project:'Projeto',priority:3,difficulty:2,notes:'',tags:[],subtasks:[],recurrence:{frequency:'Nenhuma'}});
 const gantt={version:1,activeProjectId:'s',projects:[{id:'s',title:'WORK SCHEDULE',tasks:[{id:'t',name:'WORK GANTT',start:day,end:day,dur:1,unit:'bd',pct:0,pred:'',indent:0,mile:false}]}]};
@@ -12,7 +20,9 @@ const encode=data=>Buffer.from(JSON.stringify(data)).toString('base64');
 (async()=>{
  const browser=await chromium.launch({headless:true}),errors=[],writes=[],requests=[];
  const remote=new Map(Object.entries({'backups/cronogramas.json':gantt,'backups/planos-de-acao.json':plans,'backups/todo.json':todo}).map(([path,data])=>[path,{sha:'work-'+path,content:encode(data)}]));
- async function network(context){await context.route('https://api.github.com/repos/**',async route=>{
+ async function network(context){
+  if(profileFixture)await context.route('**/workspace-profile.js*',route=>route.fulfill({contentType:'application/javascript',body:profileFixture}));
+  await context.route('https://api.github.com/repos/**',async route=>{
   const request=route.request(),u=new URL(request.url());assert(u.pathname.startsWith('/repos/'+repo));assert.equal(request.headers().authorization,'Bearer synthetic-token');
   const path=u.pathname.split('/contents/')[1];requests.push({method:request.method(),path});
   if(u.pathname.endsWith('/commits'))return route.fulfill({json:[]});

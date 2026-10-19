@@ -8,7 +8,7 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
  // A finished horizontal highlight must align with the live preview at all zoom levels.
  for(const zoom of [1,.5,1.5]){
   await page.locator('#notesZoomReset').click();const change=zoom<1?'#notesZoomOut':'#notesZoomIn';for(let n=0;n<Math.round(Math.abs(zoom-1)*10);n++)await page.locator(change).click();
-  await page.getByRole('button',{name:'Marca-texto',exact:true}).click();const paper=await page.locator('.notes-paper').boundingBox(),x=paper.x+85*zoom,y=paper.y+100*zoom;
+  await page.getByRole('button',{name:'Marca-texto',exact:true}).click();await page.locator('.notes-viewport').evaluate(e=>e.scrollTo(0,0));const paper=await page.locator('.notes-paper').boundingBox(),x=paper.x+85*zoom,y=paper.y+100*zoom;
   await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+200*zoom,y,{steps:8});const live=await page.locator('.notes-preview path').evaluate(el=>{const p=el.getPointAtLength(0),m=el.getScreenCTM();return {x:m.a*p.x+m.c*p.y+m.e,y:m.b*p.x+m.d*p.y+m.f}});await page.mouse.up();
   const stored=await page.locator('.notes-highlighter').last().locator('svg').evaluate(el=>{const p=el.querySelector('path').getPointAtLength(0),m=el.getScreenCTM();return {x:m.a*p.x+m.c*p.y+m.e,y:m.b*p.x+m.d*p.y+m.f}});
   assert(Math.abs(live.x-stored.x)<1);assert(Math.abs(live.y-stored.y)<1,`Highlight moved vertically at zoom ${zoom}`);
