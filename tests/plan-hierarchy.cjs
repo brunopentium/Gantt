@@ -8,7 +8,7 @@ const assert=require('node:assert/strict');
   await page.route('https://script.google.com/**',r=>r.abort());
   await page.goto('http://127.0.0.1:8765');
   assert.equal(await page.evaluate(()=>document.documentElement.dataset.appView),'my-day');
-  assert.deepEqual(await page.locator('#appTabs [role=tab]:visible').allTextContents(),['☀ Meu dia','Tarefas','Planos de ação','Cronogramas']);
+  assert.deepEqual(await page.locator('#appTabs [role=tab]:visible').allTextContents(),['☀ Meu dia','Tarefas','Planos de ação','Cronogramas','Notas']);
   await page.evaluate(()=>{
    const a=(title,status='pending')=>({id:'same-id',title,owner:'Bruno',start:'2026-10-05',end:'2026-10-30',status,notes:'',link:null});
    ActionPlans.load([

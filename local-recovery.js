@@ -69,7 +69,7 @@ window.LocalRecovery=(()=>{
   }
   async function download(id){
     const data=await get(id);if(!data)throw new Error('Esta cópia não está mais disponível.');
-    downloadJSON(data,'projectflow-restauracao-'+data.exportedAt.replace(/[:.]/g,'-')+'.json');return true;
+    await window.NotesArchive.exportData(data,'projectflow-restauracao-'+data.exportedAt.replace(/[:.]/g,'-'));return true;
   }
   async function checkpoint(name){
     if(name===undefined)name=prompt('Nome do ponto de restauração:',new Date().toLocaleString('pt-BR'));
@@ -97,7 +97,7 @@ window.LocalRecovery=(()=>{
     if(message){status.textContent=message;status.style.color=isError?'#b42318':'#11644a'}
     try{
       const items=await list();if(!root.isConnected)return;
-      panel.innerHTML=items.length?items.map(item=>`<article class="lr-record"><div><strong>${esc(item.name||'Cópia de segurança')}</strong><time>${esc(new Date(item.createdAt).toLocaleString('pt-BR'))}</time><p>${esc(item.reason)} · ${esc(scopeLabel(item.scope))}</p><small>${item.counts.projects} cronogramas · ${item.counts.plans} planos · ${item.counts.tasks} tarefas Task</small></div><div class="lr-record-actions"><button type="button" data-lr-restore="${esc(item.id)}">Restaurar</button><button type="button" data-lr-download="${esc(item.id)}">Baixar JSON</button></div></article>`).join(''):'<p class="lr-empty">Nenhuma cópia interna ainda. Crie um ponto de restauração ou continue usando o aplicativo: uma cópia será guardada antes de substituir dados.</p>';
+      panel.innerHTML=items.length?items.map(item=>`<article class="lr-record"><div><strong>${esc(item.name||'Cópia de segurança')}</strong><time>${esc(new Date(item.createdAt).toLocaleString('pt-BR'))}</time><p>${esc(item.reason)} · ${esc(scopeLabel(item.scope))}</p><small>${item.counts.projects} cronogramas · ${item.counts.plans} planos · ${item.counts.tasks} tarefas Task</small></div><div class="lr-record-actions"><button type="button" data-lr-restore="${esc(item.id)}">Restaurar</button><button type="button" data-lr-download="${esc(item.id)}">Baixar backup</button></div></article>`).join(''):'<p class="lr-empty">Nenhuma cópia interna ainda. Crie um ponto de restauração ou continue usando o aplicativo: uma cópia será guardada antes de substituir dados.</p>';
     }catch(error){if(root.isConnected){panel.textContent='Histórico indisponível.';status.textContent=error.message;status.style.color='#b42318'}}
   }
   async function open(){
@@ -112,7 +112,7 @@ window.LocalRecovery=(()=>{
       #localRecoveryOverlay .lr-create{background:#11644a;color:white;border-color:#11644a;margin:10px 0}#localRecoveryOverlay .lr-close{font-size:22px;line-height:1}
       #localRecoveryOverlay .lr-status{min-height:24px;margin:6px 0}#localRecoveryOverlay .lr-record{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 0;border-top:1px solid #e2e8f0;overflow-wrap:anywhere}#localRecoveryOverlay time{display:block;color:#536275;font-size:12px;margin-top:3px}#localRecoveryOverlay small{color:#536275}#localRecoveryOverlay .lr-record-actions{display:flex;gap:8px;flex-shrink:0}#localRecoveryOverlay .lr-empty{padding:15px 0}
       @media(max-width:600px){#localRecoveryOverlay{padding:8px}#localRecoveryOverlay .lr-dialog{padding:16px}#localRecoveryOverlay .lr-record{display:block}#localRecoveryOverlay .lr-record-actions{margin-top:12px}#localRecoveryOverlay .lr-record-actions button{flex:1}}
-    </style><section class="lr-dialog" role="dialog" aria-modal="true" aria-labelledby="localRecoveryTitle"><div class="lr-header"><h2 id="localRecoveryTitle">Histórico de recuperação</h2><button type="button" class="lr-close" aria-label="Fechar">×</button></div><p class="lr-help">Cópias internas das três guias, guardadas neste navegador. As versões salvas no GitHub continuam no Histórico de cada guia.</p><p class="lr-help">Até 30 cópias. Os 10 pontos nomeados mais recentes têm prioridade.</p><button type="button" class="lr-create">Criar ponto de restauração</button><div class="lr-status" role="status" aria-live="polite"></div><div class="lr-list">Carregando…</div></section>`;
+    </style><section class="lr-dialog" role="dialog" aria-modal="true" aria-labelledby="localRecoveryTitle"><div class="lr-header"><h2 id="localRecoveryTitle">Histórico de recuperação</h2><button type="button" class="lr-close" aria-label="Fechar">×</button></div><p class="lr-help">Cópias internas de todas as guias, guardadas neste navegador. As versões salvas no GitHub continuam no Histórico de cada guia.</p><p class="lr-help">Até 30 cópias. Os 10 pontos nomeados mais recentes têm prioridade.</p><button type="button" class="lr-create">Criar ponto de restauração</button><div class="lr-status" role="status" aria-live="polite"></div><div class="lr-list">Carregando…</div></section>`;
     modal=root;document.body.appendChild(root);
     root.querySelector('.lr-close').onclick=close;
     root.addEventListener('click',async event=>{
@@ -124,7 +124,7 @@ window.LocalRecovery=(()=>{
       let message='',error=false;
       try{
         if(button.classList.contains('lr-create')){const saved=await checkpoint();if(saved)message='Ponto de restauração criado.'}
-        else if(button.dataset.lrRestore){if(await restore(id))message='Dados restaurados nas três guias. A versão anterior continua neste histórico.'}
+        else if(button.dataset.lrRestore){if(await restore(id))message='Dados restaurados nas guias. A versão anterior continua neste histórico.'}
         else await download(id);
       }catch(failure){message=failure.message;error=true}
       finally{controls.forEach(control=>control.disabled=false)}

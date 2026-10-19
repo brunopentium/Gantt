@@ -4,7 +4,7 @@ window.WorkspaceBackup=(()=>{
   function init(adapter){api=adapter}
   function snapshot(){
     api.flush();window.NativeTodo.flush();
-    return {version:1,type:'projectflow-backup',exportedAt:new Date().toISOString(),workspace:window.WorkspaceProfile.mode,...api.snapshot(),actionPlans:window.ActionPlans.exportData(),todo:window.NativeTodo.snapshot()};
+    return {version:1,type:'projectflow-backup',exportedAt:new Date().toISOString(),workspace:window.WorkspaceProfile.mode,...api.snapshot(),actionPlans:window.ActionPlans.exportData(),todo:window.NativeTodo.snapshot(),notes:window.NotesData.snapshot()};
   }
   function validate(data){
     if(data?.workspace&&data.workspace!==window.WorkspaceProfile.mode)throw new Error('Este backup pertence ao outro ambiente. Abra o ambiente correto para restaurar.');
@@ -12,6 +12,7 @@ window.WorkspaceBackup=(()=>{
     window.ScheduleGroups.validate(data.projects);
     window.ActionPlans.validate(data.actionPlans);
     window.NativeTodo.validate(data.todo);
+    if(data.notes)window.NotesData.validate(data.notes);
     for(const project of data.projects){
       if(!project||typeof project.title!=='string'||!Array.isArray(project.tasks))throw new Error('Cronograma inválido.');
       const ids=new Set();
@@ -29,15 +30,15 @@ window.WorkspaceBackup=(()=>{
       project.tasks.forEach((_,i)=>visit(i));
     }
   }
-  function exportAll(){downloadJSON(snapshot(),'projectflow-backup-geral-'+new Date().toISOString().slice(0,10)+'.json')}
+  async function exportAll(){try{await window.NotesArchive.exportData(snapshot(),'projectflow-backup-geral-'+new Date().toISOString().slice(0,10))}catch(e){alert('Backup não exportado: '+e.message)}}
   function content(data){
     const copy=JSON.parse(JSON.stringify(data));delete copy.exportedAt;
     for(const project of copy.projects)delete project.updatedAt;
     return JSON.stringify(copy);
   }
-  async function restore(raw,{reason='Antes de restaurar o backup geral'}={}){
+  async function restore(raw,{reason='Antes de restaurar o backup geral',assets=[]}={}){
     const data=JSON.parse(JSON.stringify(raw));validate(data);
-    if(!confirm('Restaurar cronogramas, planos de ação e Task deste backup? Uma cópia interna dos dados atuais será guardada no Histórico de recuperação antes.'))return false;
+    if(!confirm('Restaurar cronogramas, planos de ação, Tarefas'+(data.notes?' e Notas':'')+' deste backup? Uma cópia interna dos dados atuais será guardada no Histórico de recuperação antes.'))return false;
     const autosave=window.WorkspaceAutosave;
     if(autosave)await autosave.suspend();
     try{
@@ -45,18 +46,18 @@ window.WorkspaceBackup=(()=>{
       const id=await window.LocalRecovery.capture({reason,scope:'all'}),previous=await window.LocalRecovery.get(id);
       if(!previous)throw new Error('A cópia de segurança não está disponível. A restauração foi cancelada.');
       if(content(previous)!==content(snapshot()))throw new Error('Os dados foram alterados enquanto a cópia de segurança era guardada. A restauração foi cancelada; tente novamente.');
-      try{api.restore(data);window.NativeTodo.restoreData(data.todo)}
+      try{for(const a of assets)await window.NotesData.storeAsset(a);api.restore(data);window.NativeTodo.restoreData(data.todo);if(data.notes)window.NotesData.restoreData(data.notes)}
       catch(error){
         // Validation runs before mutation; a persistence failure still has a full safety copy.
-        try{api.restore(previous);window.NativeTodo.restoreData(previous.todo)}catch{}
+        try{api.restore(previous);window.NativeTodo.restoreData(previous.todo);if(previous.notes)window.NotesData.restoreData(previous.notes)}catch{}
         throw new Error('Não foi possível concluir a restauração. Os dados anteriores estão no Histórico de recuperação. '+error.message);
       }
       return true;
     }finally{if(autosave)autosave.resume()}
   }
   function importFile(){
-    const input=document.createElement('input');input.type='file';input.accept='.json';
-    input.onchange=async()=>{try{if(input.files[0])await restore(JSON.parse(await input.files[0].text()))}catch(error){alert('Backup não restaurado: '+error.message)}};input.click();
+    const input=document.createElement('input');input.type='file';input.accept='.json,.zip';
+    input.onchange=async()=>{try{if(input.files[0]){const parsed=await window.NotesArchive.readFile(input.files[0]);await restore(parsed.data,{assets:parsed.assets})}}catch(error){alert('Backup não restaurado: '+error.message)}};input.click();
   }
   return {init,snapshot,validate,exportAll,restore,importFile};
 })();

@@ -161,13 +161,14 @@ input{font-family:inherit}
 <link rel="stylesheet" href="schedule-groups.css?v=20261007-task-folding">
 <link rel="stylesheet" href="gantt-mobile.css?v=20261011-mobile-zoom">
 <link rel="stylesheet" href="todo-native.css?v=20261014-task-phone">
+<link rel="stylesheet" href="notes.css?v=20261019-notes">
 <link rel="stylesheet" href="my-day.css?v=20261014-compact-remove">
 <link rel="stylesheet" href="my-day-chat.css?v=20261016-chat-models">
 <link rel="stylesheet" href="workspace-autosave.css?v=20261008-auto-save">
 </head>
 <body>
 <div id="app">
-<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabMyDay" aria-controls="myDayPanel" class="act" role="tab" aria-selected="true">☀ Meu dia</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">Tarefas</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button><button id="tabTodo" aria-controls="todoPanel" role="tab" aria-selected="false" hidden>✅ Todo</button><span class="workspace-profile-spacer"></span><span id="personalWorkspaceBadge" hidden>Pessoal</span><button type="button" id="openPersonal">Pessoal</button><button type="button" id="exitPersonal" hidden>Sair</button></nav>
+<nav id="appTabs" role="tablist" aria-label="Visões do projeto"><button id="tabMyDay" aria-controls="myDayPanel" class="act" role="tab" aria-selected="true">☀ Meu dia</button><button id="tabTodoNative" aria-controls="todoNativePanel" role="tab" aria-selected="false">Tarefas</button><button id="tabActions" aria-controls="actionPanel" role="tab" aria-selected="false">Planos de ação</button><button id="tabGantt" aria-controls="main" role="tab" aria-selected="false">Cronogramas</button><button id="tabNotes" aria-controls="notesPanel" role="tab" aria-selected="false">Notas</button><button id="tabTodo" aria-controls="todoPanel" role="tab" aria-selected="false" hidden>✅ Todo</button><span class="workspace-profile-spacer"></span><span id="personalWorkspaceBadge" hidden>Pessoal</span><button type="button" id="openPersonal">Pessoal</button><button type="button" id="exitPersonal" hidden>Sair</button></nav>
 <div class="workspace-save-bar" aria-label="Salvamento e recuperação"><label><input id="autosaveToggle" type="checkbox" checked> Salvar automaticamente</label><span id="autosaveStatus" role="status" aria-live="polite">Abrindo dados…</span><button id="autosaveResolve" type="button" hidden>Resolver sincronização</button><button id="autosaveCheckpoint" type="button">Criar ponto de restauração</button><button id="autosaveRecovery" type="button">Restaurações</button></div>
 <div id="toolbar">
   <input type="text" id="ptitle" value="New Project" spellcheck="false">
@@ -245,23 +246,28 @@ input{font-family:inherit}
 <section id="todoNativePanel" hidden aria-label="Tarefas">
   <iframe id="todoNativeFrame" title="Tarefas — TaskMaster integrado" data-src="todo-native/index.html?v=20261016-chat-sync"></iframe>
 </section>
+<section id="notesPanel" hidden role="tabpanel" aria-labelledby="tabNotes"></section>
 <section id="myDayPanel" hidden role="tabpanel" aria-labelledby="tabMyDay"></section>
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
-<script src="action-plans.js?v=20261014-personal"></script>
+<script src="action-plans.js?v=20261019-notes"></script>
 <script src="schedule-groups.js?v=20261008-english-navigation"></script>
 <script src="plan-exports.js?v=20261009-participant-owners"></script>
-<script src="plan-cloud.js?v=20261016-chat-sync"></script>
-<script src="github-backup.js?v=20261016-chat-sync"></script>
+<script src="plan-cloud.js?v=20261019-notes"></script>
+<script src="github-backup.js?v=20261019-notes"></script>
 <script src="gantt-print.js?v=20261016-chat-structure"></script>
 <script src="plan-print.js?v=20261008-english-navigation"></script>
 <script src="gantt-mobile.js?v=20261011-mobile-zoom"></script>
 <script src="todo-native.js?v=20261016-chat-sync"></script>
-<script src="todo-cloud.js?v=20261016-chat-sync"></script>
-<script src="workspace-backup.js?v=20261014-personal"></script>
-<script src="local-recovery.js?v=20261014-personal"></script>
-<script src="workspace-autosave.js?v=20261014-personal"></script>
+<script src="todo-cloud.js?v=20261019-notes"></script>
+<script src="notes-data.js?v=20261019-notes"></script>
+<script src="notes-archive.js?v=20261019-notes"></script>
+<script src="notes.js?v=20261019-notes"></script>
+<script src="notes-cloud.js?v=20261019-notes"></script>
+<script src="workspace-backup.js?v=20261019-notes"></script>
+<script src="local-recovery.js?v=20261019-notes"></script>
+<script src="workspace-autosave.js?v=20261019-notes"></script>
 <script src="my-day-data.js?v=20261014-schedule-inclusion"></script>
 <script src="my-day.js?v=20261016-chat"></script>
 <script src="chat-format.js?v=20261016-chat-models"></script>
@@ -1453,7 +1459,7 @@ try{const stored=JSON.parse(localStorage.getItem(window.WorkspaceProfile.key('pf
   if(JSON.parse(localStorage.getItem(window.WorkspaceProfile.key('pf_github_action_plans_v1'))||'{}').repo)legacyPlansMayLoad=false;
 }catch{}
 window.PlanCloud.init({snapshot:()=>({version:1,type:'action-plans',actionPlans:window.ActionPlans.exportData()}),restore:(d,applyDates)=>window.ActionPlans.restoreData(d.actionPlans,applyDates),flush:()=>{commitEdit();save()},localBackup:()=>window.ActionPlans.backup()});
-window.NativeTodo.init();window.TodoCloud.init();
+window.NativeTodo.init();window.TodoCloud.init();window.Notes.init();window.NotesCloud.init();
 window.WorkspaceBackup.init({flush:()=>{commitEdit();save()},snapshot:()=>JSON.parse(JSON.stringify({activeProjectId,projects})),restore:d=>{
   projects=d.projects.map(normalizeProject);
   activeProjectId=projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:projects[0].id;
@@ -1470,6 +1476,7 @@ window.TodoCloud.waitForConnection(Promise.resolve(window.GanttBackup.init({
   },
   localBackup:downloadAllProjects
 })).then(async()=>{planScopeInitialized=true;await window.PlanCloud.start()}));
+window.NotesCloud.waitForConnection(window.TodoCloud.start());
 function calculateSchedule(p){
   const previous=T,previousCP=cpOn;
   try{
@@ -1574,7 +1581,7 @@ window.MyDay.init(window.MyDayData,{
   },
   status:source=>document.getElementById({todo:'ntCloudStatus',action:'apCloudStatus',gantt:'cloudBackupStatus'}[source])?.textContent||''
 });
-window.WorkspaceAutosave.init({gantt:window.GanttBackup,action:window.PlanCloud,todo:window.TodoCloud});
+window.WorkspaceAutosave.init({gantt:window.GanttBackup,action:window.PlanCloud,todo:window.TodoCloud,notes:window.NotesCloud});
 window.MyDayChat.init();
 window.AppNavigation.init();
 // Meu dia is always the first view, including when the legacy Todo is enabled.

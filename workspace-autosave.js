@@ -2,7 +2,7 @@
 window.WorkspaceAutosave=(()=>{
   'use strict';
   const KEY=window.WorkspaceProfile.key('pf_autosave_v1'),IDLE=20000,RETRY=60000;
-  const labels={gantt:'Cronogramas',action:'Planos de ação',todo:'Task'};
+  const labels={gantt:'Cronogramas',action:'Planos de ação',todo:'Tarefas',notes:'Notas'};
   let adapters={},enabled=true,initialized=false,timer=null,running=null,paused=0,lastEdit=0,retryAt=0,refreshQueued=false,hasDraft=false;
   const fingerprints=new Map();
   function states(){return Object.entries(adapters).map(([source,adapter])=>({source,...adapter.state()}))}
@@ -90,7 +90,7 @@ window.WorkspaceAutosave=(()=>{
     document.getElementById('autosaveToggle').onchange=e=>setEnabled(e.target.checked);
     document.getElementById('autosaveRecovery').onclick=e=>recoveryAction(e,()=>window.LocalRecovery.open());
     document.getElementById('autosaveCheckpoint').onclick=e=>recoveryAction(e,()=>window.LocalRecovery.checkpoint());
-    document.getElementById('autosaveResolve').onclick=e=>document.getElementById({gantt:'btnCloudBackup',action:'apCloudSettings',todo:'ntCloudSettings'}[e.currentTarget.dataset.source])?.onclick?.();
+    document.getElementById('autosaveResolve').onclick=e=>document.getElementById({gantt:'btnCloudBackup',action:'apCloudSettings',todo:'ntCloudSettings',notes:'notesCloudSettings'}[e.currentTarget.dataset.source])?.onclick?.();
     window.addEventListener('projectflow:datachange',queueRefresh);
     window.addEventListener('projectflow:cloudstate',queueRefresh);
     document.addEventListener('input',event=>{if(event.target.closest?.('#app')&&hasDraft){lastEdit=Date.now();retryAt=0;schedule()}});

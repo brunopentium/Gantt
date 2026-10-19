@@ -17,7 +17,7 @@ window.GanttBackup = (() => {
     if(credentials()&&content()!==lastContent)status(content()===covered?'Linked dates saved in action plans':'Local changes pending');else emit();
   }
   function guard(silent=false){
-    if(busy||window.PlanCloud?.state().busy||window.TodoCloud?.state().busy){status('Please wait for the current operation');return false}
+    if(busy||window.NotesCloud?.state().busy||window.PlanCloud?.state().busy||window.TodoCloud?.state().busy){status('Please wait for the current operation');return false}
     if(!credentials()){if(!silent)settings();return false}
     return true;
   }

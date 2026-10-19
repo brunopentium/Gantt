@@ -40,7 +40,7 @@ window.TodoCloud=(()=>{
   const decode=file=>JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(file.content.replace(/\s/g,'')),c=>c.charCodeAt(0))));
   function validate(data){try{if(data?.version!==1||data.type!=='todo')throw new Error('Arquivo do Todo inválido.');window.NativeTodo.validate(data)}catch(error){throw failure(error.message)}}
   function guard(silent=false){
-    state();if(busy||window.GanttBackup?.state().busy||window.PlanCloud?.state().busy){status('Aguarde a operação em andamento');return false}
+    state();if(busy||window.NotesCloud?.state().busy||window.GanttBackup?.state().busy||window.PlanCloud?.state().busy){status('Aguarde a operação em andamento');return false}
     const c=connection();if(!c.repo||!c.token||!c.enabled||meta.enabled===false){if(!silent)settings();return false}return true;
   }
   const lock=value=>document.getElementById('app').inert=value;

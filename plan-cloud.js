@@ -37,7 +37,7 @@ window.PlanCloud=(()=>{
   const encode=text=>btoa(Array.from(new TextEncoder().encode(text),b=>String.fromCharCode(b)).join(''));
   const decode=file=>JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(file.content.replace(/\s/g,'')),c=>c.charCodeAt(0))));
   function validate(d){try{if(d?.version!==1||d.type!=='action-plans')throw new Error('Invalid action-plan file.');window.ActionPlans.validate(d.actionPlans)}catch(error){throw failure(error.message)}}
-  function guard(silent=false){state();if(busy||window.GanttBackup?.state().busy||window.TodoCloud?.state().busy){status('Please wait for the current operation');return false}const c=connection();if(!c.repo||!c.token||!c.enabled||meta.enabled===false){if(!silent)settings();return false}return true}
+  function guard(silent=false){state();if(busy||window.NotesCloud?.state().busy||window.GanttBackup?.state().busy||window.TodoCloud?.state().busy){status('Please wait for the current operation');return false}const c=connection();if(!c.repo||!c.token||!c.enabled||meta.enabled===false){if(!silent)settings();return false}return true}
   function lock(v){document.getElementById('app').inert=v}
   async function latest(prompt=false,silent=!prompt,applyLinkedDates=true){
     if(!guard(silent))return {ok:false,pending:true};begin();if(prompt)lock(true);status('Loading the latest action-plan version…');

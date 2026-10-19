@@ -316,8 +316,9 @@ window.ActionPlans=(()=>{
   function switchView(value){
     if(value==='todo'&&window.WorkspaceProfile.personal)return;
     api.flush();
-    const next=value==='todo'?'todo':value==='native-todo'?'native-todo':value==='my-day'?'my-day':value?'actions':'gantt';
+    const next=value==='notes'?'notes':value==='todo'?'todo':value==='native-todo'?'native-todo':value==='my-day'?'my-day':value?'actions':'gantt';
     if(next!=='my-day')window.MyDay?.hide();
+    if(next!=='notes')window.Notes?.hide();
     shown=next==='actions';
     document.documentElement.dataset.theme=shown?(planTheme||api.getTheme()):api.getTheme();
     document.documentElement.dataset.appView=next;
@@ -326,11 +327,12 @@ window.ActionPlans=(()=>{
     document.getElementById('todoPanel').hidden=next!=='todo';
     document.getElementById('todoNativePanel').hidden=next!=='native-todo';
     document.getElementById('todoNativeToolbar').hidden=next!=='native-todo';
+    document.getElementById('notesPanel').hidden=next!=='notes';
     document.getElementById('myDayPanel').hidden=next!=='my-day';
-    for(const [name,on]of [['tabGantt',next==='gantt'],['tabActions',shown],['tabTodo',next==='todo'],['tabTodoNative',next==='native-todo'],['tabMyDay',next==='my-day']]){
+    for(const [name,on]of [['tabNotes',next==='notes'],['tabGantt',next==='gantt'],['tabActions',shown],['tabTodo',next==='todo'],['tabTodoNative',next==='native-todo'],['tabMyDay',next==='my-day']]){
       const b=document.getElementById(name);b.classList.toggle('act',on);b.setAttribute('aria-selected',on);
     }
-    if(next==='todo'||next==='native-todo'){
+    if(next==='notes'){window.Notes.show()}else if(next==='todo'||next==='native-todo'){
       const frame=document.getElementById(next==='todo'?'todoFrame':'todoNativeFrame');
       if(!frame.getAttribute('src'))frame.src=frame.dataset.src;
       if(next==='native-todo')window.TodoCloud.start();
@@ -352,6 +354,7 @@ window.ActionPlans=(()=>{
     document.getElementById('tabGantt').onclick=()=>switchView(false);document.getElementById('tabActions').onclick=()=>switchView(true);
     document.getElementById('tabTodo').onclick=()=>switchView('todo');
     document.getElementById('tabTodoNative').onclick=()=>switchView('native-todo');
+    document.getElementById('tabNotes').onclick=()=>switchView('notes');
     document.getElementById('tabMyDay').onclick=()=>switchView('my-day');
     document.getElementById('btnActionFromTask').onclick=()=>{const link=api.selectedTask();if(link)fromTask(link.projectId,link.taskId);else alert('Select a schedule row to create a linked action. For independent actions, open Action plans.')};
     document.addEventListener('click',e=>{const picker=document.querySelector('.ap-tree-picker[open]');if(picker&&!picker.contains(e.target))picker.open=false});
