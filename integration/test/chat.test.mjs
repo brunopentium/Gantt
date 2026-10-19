@@ -219,7 +219,7 @@ test('OAuth proxy fixes client and callback, verifies PKCE input and allowlisted
   assert.equal(result.id_token,undefined);assert.equal(result.refresh_token,undefined);
   await assert.rejects(exchangeChatCode(env,config,{code:'code',verifier:'short'},async()=>{}),{code:'invalid_input'});
   const publicConfig=JSON.stringify(chatConfig(env,config));assert(!publicConfig.includes(env.GITHUB_TOKEN));assert(!publicConfig.includes(env.OPENROUTER_API_KEY));
-  const callback=chatCallback(config);assert.match(callback.headers.get('Content-Security-Policy'),/frame-ancestors 'none'/);
+  const callback=chatCallback(config);assert.match(callback.headers.get('Content-Security-Policy'),/frame-ancestors https:\/\/app.example/);
   assert.match(await callback.text(),/https:\/\/app.example/);
 });
 test('Worker chat routes preserve CORS and authentication boundaries',async()=>{

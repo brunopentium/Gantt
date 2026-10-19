@@ -192,3 +192,7 @@ A guia **Notas** oferece pastas, cadernos, páginas/subpáginas, textos, listas 
 O assistente geral consulta as áreas existentes, pesquisa Notas por texto/OCR, analisa capturas completas ou parciais de páginas e prepara edições de Notas com antes/depois, aplicação explícita, recuperação e desfazer. As opções de Notas/imagens ficam numa seção recolhível. A aplicação local segue o mesmo salvamento automático e isolamento de ambiente. Consulte [o fluxo de edição de Notas](integration/NOTES-EDITS.md) para limites e recuperação.
 
 `npm test` executa todas as suítes do aplicativo com dados sintéticos; `npm run test:integration` executa as verificações do serviço. O reconhecedor OCR baixa motor/idiomas na primeira utilização; a IA exige conexão e modelo disponível. Não há garantia de funcionamento integral offline.
+
+### Entrar automaticamente no assistente
+
+O app restaura a sessão do assistente ao abrir, sem abrir a conversa ou uma janela de login. Quando necessário, tenta reconectar em segundo plano usando a sessão já autorizada no provedor. Nenhum pedido à IA é enviado nessa etapa. Se o navegador bloquear o login silencioso ou o provedor exigir nova autenticação, **Entrar** continua disponível. Ao clicar em **Sair** no assistente, a conexão automática fica suspensa até você entrar novamente. A sessão é separada entre Trabalho/Pessoal e não acompanha os backups.

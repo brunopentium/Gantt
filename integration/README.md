@@ -132,7 +132,7 @@ Para CLI remota, configure `PROJECTFLOW_URL` (origem do serviço) e `PROJECTFLOW
 
 ## Chat OpenRouter no Meu Dia
 
-O botão **Conversar com assistente** abre um painel lateral (tela inteira no celular). Enter quebra a linha e Shift + Enter envia. Usa login Auth0 com PKCE, usuário autorizado e os escopos existentes. O token de acesso fica somente na memória da aba. Nenhuma chave OpenRouter é enviada ao navegador.
+O botão **Conversar com assistente** abre um painel lateral (tela inteira no celular). Enter quebra a linha e Shift + Enter envia. Usa login Auth0 com PKCE, usuário autorizado e os escopos existentes. A sessão de acesso é conservada neste navegador até expirar, separada por ambiente e excluída dos backups. Nenhuma chave OpenRouter é enviada ao navegador.
 
 - Worker: configurar o segredo `OPENROUTER_API_KEY` em **Settings → Variables and Secrets → Add → Secret**. `OPENROUTER_MODEL` define o padrão inicial (`openai/gpt-6-luna`). O seletor do chat oferece modelos pagos e gratuitos compatíveis com ferramentas, listados em `src/chat-models.mjs` e conferidos no catálogo da OpenRouter em 16/10/2026. A escolha fica no navegador até o usuário mudar, inclusive após recarregar a página; não é sincronizada entre dispositivos. Se a opção salva sair da lista, o envio fica bloqueado até outra escolha, sem troca automática. Modelos gratuitos usam limite de preço zero e podem ter limites de capacidade/disponibilidade.
 - As respostas recebem instruções permanentes para separar grupos e itens com detalhes por linhas em branco. O cliente renderiza parágrafos, títulos, listas, negrito e código inline sem interpretar HTML do modelo. O histórico enviado continua como texto original.
@@ -179,7 +179,7 @@ O fundo de linha usa o campo nativo `fmt[activityId + '_row'].bg`. `set_schedule
 
 ### Falha antes de carregar os modelos do chat
 
-A configuração pública vem de `GET /chat/config`, antes do login e de qualquer chamada ao modelo. Uma falha de rede nessa etapa não significa que uma alteração de dados foi enviada. A interface distingue essa falha, oferece **Tentar reconectar** e um link **Verificar conexão**, e repete somente essa leitura ao reabrir o assistente ou receber o evento de retorno da conexão. Esses mecanismos nunca repetem `/chat`, `/chat/token` ou `/chat/apply` automaticamente.
+A configuração pública vem de `GET /chat/config`, antes do login e de qualquer chamada ao modelo. Uma falha de rede nessa etapa não significa que uma alteração de dados foi enviada. A interface distingue essa falha, oferece **Tentar reconectar** e um link **Verificar conexão**, e repete somente essa leitura ao reabrir o assistente ou receber o evento de retorno da conexão. Esses mecanismos nunca repetem `/chat` ou `/chat/apply` automaticamente. Após recuperar a configuração, a reconexão silenciosa pode obter um código OAuth novo e trocá-lo em `/chat/token`; não reutiliza códigos falhos nem reenvia pedidos à IA.
 
 O teste `tests/chat-connection.cjs` simula indisponibilidade inicial e recuperação por botão, reabertura e evento de rede, sem credenciais ou gravações. Se a falha persistir num dispositivo específico, verificar a resposta de `/chat/config` naquele navegador/rede. Uma resposta normal fora desse dispositivo não comprova que a rede local consegue alcançar o serviço. A configuração pública retornar modelos também não é uma validação de inferência/autenticação na conta do usuário.
 
@@ -192,3 +192,9 @@ Essas são referências locais fornecidas pelo aplicativo, não novas ferramenta
 ## Análise visual de imagens das Notas
 
 `POST /chat/vision` oferece interpretação multimodal somente leitura. O contrato, os limites e a ativação estão em [VISION-DEPLOY.md](VISION-DEPLOY.md). `/chat/config` anuncia a capacidade para que frontends novos não enviem imagens a versões antigas. Não há ferramenta visual nova no MCP/API nem edição de Notas por essa rota. O catálogo fixo de modelos inclui a flag `vision`, verificada em 19/10/2026. Os formatos aceitos são PNG, JPEG e WebP; o serviço recebe bytes explícitos, sem buscar URLs externas ou anexos privados automaticamente.
+
+### Reconexão automática do assistente
+
+O navegador conserva o access token até sua expiração (com margem de um minuto), separado por ambiente e vinculado a servidor, emissor, cliente e audiência. O token é uma credencial local; não entra nos backups. Não são guardados refresh tokens, ID tokens nem chaves do modelo. Em cada abertura, uma sessão válida é restaurada sem janela. Sem uma sessão válida, o cliente tenta SSO com PKCE e `prompt=none` em um iframe oculto, sem enviar consultas à IA nem modificar dados.
+
+O callback aceita enquadramento apenas pelas origens de `ALLOWED_ORIGINS`. A resposta é aceita apenas do iframe esperado, na origem do serviço e com o estado aleatório correto. Falha/timeout de SSO não abre popup nem repete pedidos de IA. Navegadores que bloqueiam cookies de terceiros, sessões expiradas do provedor ou exigências de autenticação interativa podem exigir **Entrar**. **Sair** limpa a sessão e suspende a reconexão automática neste ambiente até a próxima entrada explícita. A mudança de ambiente interrompe conexões em andamento.

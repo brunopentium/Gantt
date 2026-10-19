@@ -5,14 +5,14 @@ export function chatConfig(env, config) {
   return { enabled: !!env.OPENROUTER_API_KEY && !!env.CHAT_CLIENT_ID, clientId: env.CHAT_CLIENT_ID || '', issuer: config.issuer,
     audience: config.audience, redirectUri: config.publicUrl + '/chat/callback', repository: env.GITHUB_REPOSITORY,
     branch: env.GITHUB_BRANCH || 'main', workspaces: (env.PROJECTFLOW_WORKSPACES || 'work').split(',').map(s => s.trim()),
-    model: defaultChatModel(env), models: chatModels(env), features:{notesEdit:{version:1,groups:true,maxOperations:20,maxPageBytes:60000},vision:{version:1,maxImages:2,maxBytes:900000}} };
+    model: defaultChatModel(env), models: chatModels(env), features:{session:{version:1,silent:true},notesEdit:{version:1,groups:true,maxOperations:20,maxPageBytes:60000},vision:{version:1,maxImages:2,maxBytes:900000}} };
 }
 export function chatCallback(config) {
   const origins = JSON.stringify(config.origins).replace(/</g, '\\u003c');
-  const script = `const q=new URLSearchParams(location.search);history.replaceState(null,'','/chat/callback');const data={type:'projectflow-chat-auth',code:q.get('code'),state:q.get('state'),error:q.has('error')?'Não foi possível concluir o login.':null};if(window.opener){for(const origin of ${origins})window.opener.postMessage(data,origin);document.getElementById('status').textContent='Login recebido. Volte ao ProjectFlow.';}else{document.getElementById('status').textContent='Volte ao ProjectFlow e abra o login pelo botão Entrar.';}`;
+  const script = `const q=new URLSearchParams(location.search);history.replaceState(null,'','/chat/callback');const data={type:'projectflow-chat-auth',code:q.get('code'),state:q.get('state'),error:q.has('error')?'Não foi possível concluir o login.':null};const target=window.opener||(window.parent!==window?window.parent:null);if(target){for(const origin of ${origins})target.postMessage(data,origin);document.getElementById('status').textContent='Login recebido. Volte ao ProjectFlow.';}else{document.getElementById('status').textContent='Volte ao ProjectFlow e abra o login pelo botão Entrar.';}`;
   return new Response(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ProjectFlow · Login</title><p id="status">Concluindo login…</p><script>${script}</script></html>`, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer',
-      'Content-Security-Policy': "default-src 'none'; script-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'", 'X-Content-Type-Options': 'nosniff' }
+      'Content-Security-Policy': `default-src 'none'; script-src 'unsafe-inline'; base-uri 'none'; frame-ancestors ${config.origins.join(' ')}`, 'X-Content-Type-Options': 'nosniff' }
   });
 }
 export async function exchangeChatCode(env, config, body, authenticate, fetcher = (url, options) => fetch(url, options)) {
