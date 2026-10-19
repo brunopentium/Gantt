@@ -1,6 +1,6 @@
 # Notas — primeira entrega
 
-A guia Notas fica depois de Cronogramas. Pastas contêm pastas/cadernos; cadernos contêm páginas e páginas podem conter subpáginas. Selecione o caderno para criar páginas irmãs; selecione uma página para criar uma subpágina. A árvore pode ser recolhida e o modo foco aumenta a área útil.
+A guia Notas fica depois de Cronogramas. Pastas contêm pastas/cadernos; cadernos contêm páginas e páginas podem conter subpáginas. Selecione o caderno para criar páginas irmãs; selecione uma página para criar uma subpágina. A árvore pode ser recolhida e o modo foco aumenta a área útil. A busca fica na lateral e também pode ser aberta pelo menu no modo foco. Salvar e backup fica no cabeçalho, junto de Assistente e Modo foco; as ferramentas se distribuem em linhas compactas sem rolagem horizontal.
 
 ## Uso pela interface
 
@@ -10,7 +10,7 @@ A guia Notas fica depois de Cronogramas. Pastas contêm pastas/cadernos; caderno
 - Lápis, marca-texto, reta, seta, retângulo e círculo: escolha a ferramenta e arraste. Borracha remove o objeto tocado. Desfazer/refazer funciona durante a sessão.
 - Selecionar: escolha um objeto; arraste o controle de mover ou redimensionar. Detalhes permite editar texto, posição, tamanho, rotação, descrição/transcrição da imagem e camada. Duplicar cria outro objeto.
 - Navegar permite rolar com o dedo sem desenhar. Zoom varia de 20% a 300%; Ajustar à tela mostra a largura da página. A área cresce quando objetos são movidos para mais longe.
-- Pesquisa: digite e pressione Enter/Buscar. Restrinja a qualquer pasta, caderno ou página pelo seletor. Resultados apresentam caminho e trecho. Abra imagens pela própria página para inspecioná-las ampliadas.
+- Pesquisa: use o campo Buscar nas notas no menu lateral. Digite e pressione Enter/Buscar. Restrinja a qualquer pasta, caderno ou página pelo seletor. Resultados apresentam caminho e trecho. Abra imagens pela própria página para inspecioná-las ampliadas.
 
 ## Pesquisa de imagens e assistente
 

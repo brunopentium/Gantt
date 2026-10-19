@@ -26,13 +26,14 @@ const url=process.env.GANTT_TEST_URL||'http://127.0.0.1:8765';
  await page.locator('#notesAssistant').click();assert((await page.locator('#mdChatInput').inputValue()).includes('Código da peça ABC-123'));assert((await page.locator('#mdChatInput').inputValue()).includes('Teste pesquisável'));await page.locator('#mdChatClose').click();
  const assetId=await page.evaluate(()=>NotesData.snapshot().nodes.find(n=>n.kind==='page').objects.find(o=>o.type==='image').assetId);
  assert(!JSON.stringify(await page.evaluate(()=>NotesData.snapshot())).includes('base64'));
+ if(!await page.locator('#notesSearch').isVisible())await page.locator('#notesShowTree').click();
  await page.locator('#notesSearch').fill('ABC-123');await page.locator('#notesSearchButton').click();assert(await page.locator('.notes-results').getByText('Código da peça ABC-123').isVisible());await page.locator('[data-result]').click();
  // Portable backup includes image bytes and rejects corruption; legacy JSON keeps current Notes.
  const zip=await page.evaluate(async()=>{const backup=WorkspaceBackup.snapshot();const original=NotesArchive.download;let blob;NotesArchive.download=()=>{};const files=[['backup.json',new TextEncoder().encode(JSON.stringify(backup))]];for(const o of NotesData.imageRefs()){const a=await NotesData.resolveAsset(o);files.push(['assets/'+a.id+'.json',new TextEncoder().encode(JSON.stringify(a))])}blob=NotesArchive.zip(files);const parsed=await NotesArchive.readFile(new File([blob],'backup.zip'));const legacy=JSON.parse(JSON.stringify(backup));delete legacy.notes;await WorkspaceBackup.restore(legacy);return {nodes:parsed.data.notes.nodes.length,assets:parsed.assets.length,size:blob.size,bytes:[...new Uint8Array(await blob.arrayBuffer())],stillPresent:NotesData.snapshot().nodes.length}});
  assert.equal(zip.nodes,3);assert.equal(zip.assets,1);assert.equal(zip.stillPresent,3);
  const freshContext=await browser.newContext(),fresh=await freshContext.newPage();fresh.on('dialog',d=>d.accept());
  if(personal)await fresh.addInitScript(()=>{localStorage.setItem('pf_workspace_active_v1','personal');localStorage.setItem('pf_personal_session_v1','c'.repeat(64))});
- await fresh.goto(url);await fresh.locator('#tabNotes').click();await fresh.locator('.notes-search summary').click();
+ await fresh.goto(url);await fresh.locator('#tabNotes').click();await fresh.locator('#notesSaveMenu summary').click();
  const [chooser]=await Promise.all([fresh.waitForEvent('filechooser'),fresh.locator('#notesRestore').click()]);
  await chooser.setFiles({name:'portable.zip',mimeType:'application/zip',buffer:Buffer.from(zip.bytes)});
  await fresh.waitForFunction(()=>NotesData.snapshot().nodes.length===3&&document.querySelector('img[data-asset]')?.naturalWidth>0);
