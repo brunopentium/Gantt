@@ -23,7 +23,7 @@ window.NotesCapture=(()=>{
   const included=mode==='visible'?node.objects.filter(o=>o.x+o.w>=area.left&&o.x<=area.left+area.width&&o.y+o.h>=area.top&&o.y<=area.top+area.height):node.objects;
   for(const o of included.filter(o=>o.type==='image')){const record=await NotesData.resolveAsset(o),img=paper.querySelector(`[data-object="${CSS.escape(o.id)}"] img`);if(img){img.src='data:'+record.mime+';base64,'+record.base64;await img.decode()}}
   if(document.fonts?.ready)await document.fonts.ready;const render=await engine();if(!paper.isConnected)throw Error('A página mudou durante a captura. Tente novamente.');
-  const canvas=await render(paper,{logging:false,backgroundColor:'#ffffff',scale,x:area.left,y:area.top,width:area.width,height:area.height,useCORS:false,allowTaint:false,imageTimeout:15000,onclone:(cloned,copy)=>{
+  const canvas=await render(paper,{logging:false,backgroundColor:'#ffffff',scale,x:area.left,y:area.top,width:area.width,height:area.height,useCORS:false,allowTaint:false,ignoreElements:el=>el.tagName==='IFRAME',imageTimeout:15000,onclone:(cloned,copy)=>{
    copy.style.transform='none';copy.querySelector('.notes-preview')?.remove();copy.querySelectorAll('.notes-move,.notes-resize').forEach(el=>el.remove());copy.querySelectorAll('.notes-object').forEach(el=>{el.classList.remove('is-selected');el.style.setProperty('outline','none','important')});copy.querySelectorAll('.notes-image-state').forEach(el=>el.remove());
    let parent=copy.parentElement;while(parent){parent.style.overflow='visible';parent.scrollLeft=0;parent.scrollTop=0;parent=parent.parentElement}
   }});

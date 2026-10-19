@@ -35,3 +35,5 @@
 
 .md-chat .md-chat-vision-preview{padding:0;border:0;background:transparent;min-height:0;width:70px;height:60px}.notes-vision-preview{width:min(1050px,96vw)}.notes-vision-preview .notes-image-view{max-height:72dvh;overflow:auto}.notes-vision-preview h2{font-size:15px;overflow-wrap:anywhere}.notes-vision-preview header{flex-wrap:wrap}
 @media(max-width:600px){.md-chat .md-chat-vision-preview{width:56px;height:50px}}
+
+.md-chat-note-capture{padding:7px 20px;border-bottom:1px solid var(--chat-border);font-size:12px;flex-shrink:0;display:grid;gap:5px;min-width:0}.md-chat-note-capture label{display:grid;gap:4px;font-weight:650}.md-chat-note-capture select{min-width:0;width:100%;max-width:100%;font-size:12px}.md-chat-note-capture>div{display:flex;gap:6px;flex-wrap:wrap}.md-chat .md-chat-note-capture button{font-size:11px;padding:5px 8px;min-height:30px}.md-chat-note-capture small{color:var(--chat-muted);overflow-wrap:anywhere}.md-chat-note-capture small:empty{display:none}@media(max-width:600px){.md-chat-note-capture{padding:7px 16px}.md-chat .md-chat-note-capture button{min-height:38px}}

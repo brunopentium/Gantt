@@ -1,7 +1,7 @@
 /* Explicit, temporary selection of existing Notes images. Never added to backups/history. */
 window.NotesVision=(()=>{
  'use strict';
- let selection=[],active=true,panel,config,busy=false,dialog,previewDialog,previewSequence=0,sequence=0;
+ let selection=[],active=true,panel,config,busy=false,dialog,previewDialog,previewSequence=0,sequence=0,capturing=false;
  const element=(tag,text)=>{const el=document.createElement(tag);if(text!==undefined)el.textContent=text;return el};
  const notify=()=>window.dispatchEvent(new Event('projectflow:visionchange'));
  function images(){const data=NotesData.snapshot(),locations=new Map(NotesSearch.scopes(data).map(n=>[n.id,n.path]));return data.nodes.flatMap(p=>(p.objects||[]).filter(o=>o.type==='image').map(o=>({nodeId:p.id,objectId:o.id,assetId:o.assetId,caption:o.caption,path:locations.get(p.id),mime:o.mime,ocr:o.ocr})));}
@@ -27,8 +27,19 @@ window.NotesVision=(()=>{
   input.oninput=render;fields.append(notice,input,list,feedback);const footer=element('footer'),done=element('button','Voltar à conversa');done.type='button';done.onclick=()=>dialog.close();footer.append(done);dialog.append(header,fields,footer);render();dialog.showModal();input.focus();Promise.resolve().then(()=>window.NotesCloud?.start()).then(()=>{if(dialog.open&&active)render()}).catch(e=>{if(dialog.open)feedback.textContent=e.message});
  }
  async function preview(item){if(!active||busy)return;if(!previewDialog){previewDialog=element('dialog');previewDialog.className='notes-dialog notes-vision-preview';previewDialog.addEventListener('close',()=>{previewSequence++;previewDialog.replaceChildren()});document.body.append(previewDialog)}const target=previewDialog,id=++previewSequence;target.replaceChildren();const header=element('header'),title=element('h2',item.caption),close=element('button','×'),size=element('button','Tamanho real'),download=element('button','Baixar'),view=element('div');close.type=size.type=download.type='button';download.disabled=true;close.setAttribute('aria-label','Fechar prévia');close.onclick=()=>target.close();header.append(title,size,download,close);view.className='notes-image-view';view.textContent='Carregando prévia…';target.append(header,view);target.showModal();try{const record=item.capture?item.capture.record:await NotesData.resolveAsset(item);if(!active||!target.open||id!==previewSequence)return;const img=element('img');img.alt=item.caption;img.src='data:'+record.mime+';base64,'+record.base64;view.replaceChildren(img);download.disabled=false;download.onclick=()=>{const url=URL.createObjectURL(new Blob([NotesData.bytes(record.base64)],{type:record.mime})),link=element('a');link.href=url;link.download='nota-captura.'+(record.mime==='image/jpeg'?'jpg':record.mime==='image/webp'?'webp':'png');document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)};size.onclick=()=>{const real=size.textContent==='Tamanho real';img.style.maxWidth=real?'none':'100%';size.textContent=real?'Ajustar à tela':'Tamanho real'}}catch(e){view.textContent=e.message}}
+ function captureControls(parent){
+  let box=document.getElementById('mdChatNoteCapture');
+  if(!box){box=element('div');box.id='mdChatNoteCapture';box.className='md-chat-note-capture';const label=element('label','Analisar visualmente uma nota'),select=element('select'),actions=element('div'),feedback=element('small');select.id='mdChatCapturePage';select.setAttribute('aria-label','Página para análise visual');label.append(select);feedback.id='mdChatCaptureStatus';feedback.setAttribute('role','status');
+   for(const [mode,title] of [['page','Capturar nota inteira'],['visible','Capturar área visível']]){const button=element('button',title);button.type='button';button.dataset.noteCapture=mode;button.onclick=async()=>{if(capturing||busy||!active)return;capturing=true;feedback.textContent='Preparando somente a folha da nota, sem menus ou botões…';captureControls(parent);try{await window.Notes.captureNode(select.value,mode);feedback.textContent='Captura adicionada. Confira a prévia abaixo antes de enviar.'}catch(e){feedback.textContent=e.message}finally{capturing=false;captureControls(parent)}};actions.append(button)}
+   box.append(label,actions,feedback);parent.before(box);
+  }
+  const select=box.querySelector('select'),pages=NotesSearch.scopes().filter(n=>n.kind==='page'),chosen=select.value||window.Notes?.currentPageId?.();select.replaceChildren();for(const p of pages){const option=element('option',p.path);option.value=p.id;select.append(option)}if(pages.some(p=>p.id===chosen))select.value=chosen;
+  if(!pages.length){const option=element('option','Nenhuma página de Notas disponível');option.value='';select.append(option)}
+  function update(){select.disabled=busy||capturing||!active||!pages.length;box.querySelectorAll('button').forEach(b=>b.disabled=busy||capturing||!active||!pages.length||selection.length>=2)}
+  update();
+ }
  function render(parent,state){
-  panel=parent;config=state.config;busy=state.busy;const model=state.model;if(!panel)return;
+  panel=parent;config=state.config;busy=state.busy;const model=state.model;if(!panel)return;captureControls(panel);
   if(!panel.dataset.bound){panel.dataset.bound='true';const summary=element('summary','Imagens das Notas · IA'),body=element('div'),chooseButton=element('button','Selecionar imagens'),list=element('div'),hint=element('small');
    chooseButton.type='button';chooseButton.id='mdChatVisionChoose';chooseButton.onclick=choose;list.id='mdChatVisionList';hint.id='mdChatVisionHint';hint.setAttribute('role','status');body.append(chooseButton,list,hint);panel.append(summary,body);
   }
