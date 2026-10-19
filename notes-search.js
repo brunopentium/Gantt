@@ -41,8 +41,8 @@ window.NotesSearch=(()=>{
     const f={...source,text:source.text.normalize('NFC')};const value=normalize(f.text),hits=terms.filter(t=>value.includes(t)),score=hits.length*10+titleHits*5;
     if(terms.length&&!score)continue;
     // Windows around matches allow deep hits in long transcriptions without sending the entire page.
-    const starts=terms.length&&hits.length?[...new Set(hits.flatMap(t=>{const found=[];let at=value.indexOf(t);while(at>=0&&found.length<8){found.push(Math.max(0,at-220));at=value.indexOf(t,at+t.length)}return found}))].sort((a,b)=>a-b):Array.from({length:Math.max(1,Math.ceil(f.text.length/1000))},(_,i)=>i*1000);
-    const windows=[];for(const start of starts){if(windows.some(s=>Math.abs(s-start)<650))continue;windows.push(start)}
+    const starts=terms.length&&hits.length?[...new Set(hits.flatMap(t=>{const found=[];let at=value.indexOf(t);while(at>=0){const start=Math.max(0,at-220);found.push(start);at=value.indexOf(t,Math.max(at+t.length,start+1000))}return found}))].sort((a,b)=>a-b):Array.from({length:Math.max(1,Math.ceil(f.text.length/1000))},(_,i)=>i*1000);
+    const windows=[];for(const start of starts){if(windows.length&&start-windows[windows.length-1]<650)continue;windows.push(start)}
     for(const start of windows)candidates.push({nodeId:p.id,objectId:f.objectId,title:p.title,path,kind:f.kind,text:f.text.slice(start,start+1100),start,end:Math.min(f.text.length,start+1100),length:f.text.length,score});
    }
   }
