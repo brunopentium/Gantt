@@ -22,7 +22,8 @@ window.MyDayChat=(()=>{
     find('mdChatNotesEnabled').disabled=busy;find('mdChatNotesScope').disabled=busy;find('mdChatNotesReset').disabled=busy;
     find('mdChatRetry').hidden=!configFailed;find('mdChatRetry').disabled=busy||!!configRequest;find('mdChatService').hidden=!configFailed;
     find('mdChatLogin').hidden=logged();find('mdChatLogout').hidden=!logged();
-    find('mdChatSend').disabled=busy||!logged()||!config?.enabled||!config?.models?.some(m=>m.id===selectedModel)||!workspaceAllowed()||blockedSync;
+    const visual=window.NotesVision?.count()>0;window.NotesVision?.render(find('mdChatVision'),{config,busy,model:selectedModel});
+    find('mdChatSend').disabled=(visual&&!window.NotesVision.available(config,selectedModel))||busy||!logged()||!config?.enabled||!config?.models?.some(m=>m.id===selectedModel)||!workspaceAllowed()||blockedSync;
     find('mdChatInput').disabled=busy||blockedSync;
     find('mdChatModel').disabled=busy||!config?.models?.length;
     find('mdChatLogin').disabled=busy||!config?.clientId;
@@ -39,7 +40,7 @@ window.MyDayChat=(()=>{
     try{response=await fetch(SERVER+path,{method:body===undefined?'GET':'POST',credentials:'omit',redirect:'error',cache:'no-store',
       signal:AbortSignal.timeout(timeout),headers:{...(body===undefined?{}:{'Content-Type':'application/json'}),...(auth?{Authorization:'Bearer '+accessToken}:{})},
       ...(body===undefined?{}:{body:JSON.stringify(body)})});}
-    catch(error){if(path==='/chat/config')throw new Error((error.name==='TimeoutError'||error.name==='AbortError'?'O serviço do assistente demorou para responder.':'Não foi possível alcançar o serviço do assistente.')+' Os modelos ainda não foram carregados. Use Tentar reconectar; se persistir, abra Verificar conexão neste dispositivo.');throw new Error('A conexão não confirmou o resultado. Confira o estado atual antes de repetir uma alteração.');}
+    catch(error){if(path==='/chat/vision')throw new Error('Não foi possível receber a análise visual. Nenhum dado do aplicativo foi alterado; reenviar pode consumir novos créditos.');if(path==='/chat/config')throw new Error((error.name==='TimeoutError'||error.name==='AbortError'?'O serviço do assistente demorou para responder.':'Não foi possível alcançar o serviço do assistente.')+' Os modelos ainda não foram carregados. Use Tentar reconectar; se persistir, abra Verificar conexão neste dispositivo.');throw new Error('A conexão não confirmou o resultado. Confira o estado atual antes de repetir uma alteração.');}
     let data;try{data=await response.json()}catch{throw new Error('O servidor não retornou uma resposta válida.');}
     if(!response.ok){if(response.status===401){accessToken='';controls()}throw new Error(data.error?.message||'Não foi possível concluir o pedido.');}
     return data;
@@ -58,7 +59,7 @@ window.MyDayChat=(()=>{
     const select=find('mdChatModel');select.replaceChildren();
     if(!config.models?.length)config.models=[{id:config.model||'openai/gpt-6-luna',name:config.model||'GPT-6 Luna',free:false}];
     for(const free of [false,true]){const group=node('optgroup');group.label=free?'Gratuitos':'Pagos';
-      for(const model of config.models.filter(m=>m.free===free)){const option=node('option','',model.name);option.value=model.id;group.append(option);}
+      for(const model of config.models.filter(m=>m.free===free)){const option=node('option','',model.name);option.value=model.id;if(model.vision)option.textContent+=' · Imagens';group.append(option);}
       if(group.children.length)select.append(group);
     }
     if(!selectedModel)selectedModel=config.model||config.models[0].id;
@@ -88,6 +89,8 @@ window.MyDayChat=(()=>{
     select.value=notesScope;find('mdChatNotesEnabled').checked=notesEnabled;
   }
   function useNotes({scopeId=''}={}){open();if(busy)return false;notesEnabled=true;notesExplicit=true;notesScope=scopeId;notesPrevious=null;notesOptions();find('mdChatNotes').open=true;return true}
+  function attachNoteImage(nodeId,objectId){open();if(busy)return false;const added=window.NotesVision?.add(nodeId,objectId);if(added&&!find('mdChatInput').value.trim())find('mdChatInput').value='Analise esta imagem e explique os pontos principais.';controls();return !!added}
+  function attachNoteCapture(capture){open();if(busy)return false;const added=window.NotesVision?.addCapture(capture);if(added&&!find('mdChatInput').value.trim())find('mdChatInput').value='Analise esta página de Notas, considerando os textos, tabelas, imagens, setas e relações entre os elementos.';controls();return !!added}
   async function retrieveNotes(text){
     if(!notesExplicit&&/\b(notas|caderno|cadernos|pasta|pastas|anotações|anotacoes|página|pagina)\b/i.test(text))notesEnabled=true;
     if(!notesEnabled)return null;
@@ -108,15 +111,15 @@ window.MyDayChat=(()=>{
   function linkNoteReferences(pack){
     if(!pack)return;const messages=find('mdChatMessages').querySelectorAll('.md-chat-assistant'),message=messages[messages.length-1];if(!message)return;
     const references=new Map(pack.result.items.map((item,i)=>[pack.label(i),item]));
-    function walk(parent){for(const child of [...parent.childNodes]){if(child.nodeType!==3){if(child.nodeType===1)walk(child);continue}const text=child.textContent,matches=[...text.matchAll(/\[(N\d+\.\d+)\]/g)].filter(m=>references.has(m[1]));if(!matches.length)continue;
+    function walk(parent){for(const child of [...parent.childNodes]){if(child.nodeType!==3){if(child.nodeType===1)walk(child);continue}const text=child.textContent,matches=[...text.matchAll(/\[((?:N\d+\.\d+)|I[12])\]/g)].filter(m=>references.has(m[1]));if(!matches.length)continue;
       const fragment=document.createDocumentFragment();let at=0;for(const match of matches){fragment.append(document.createTextNode(text.slice(at,match.index)));const button=node('button','md-chat-citation',match[0]);button.type='button';button.setAttribute('aria-label','Abrir nota '+match[1]);button.onclick=()=>visitNote(references.get(match[1]));fragment.append(button);at=match.index+match[0].length}fragment.append(document.createTextNode(text.slice(at)));child.replaceWith(fragment);
     }}walk(message.querySelector('.md-chat-text'));
   }
   function noteSources(pack){
     if(!pack)return;const section=node('details','md-chat-note-sources');section.setAttribute('aria-label','Fontes de Notas');section.open=!!pack.result.ambiguity.length||!pack.result.items.length;
-    section.append(node('summary','','Notas consultadas · '+pack.result.items.length+' trecho(s)'),node('p','',pack.result.notice));
+    section.append(node('summary','',(pack.visual?'Imagens consultadas · ':'Notas consultadas · ')+pack.result.items.length+(pack.visual?' imagem(ns)':' trecho(s)')),node('p','',pack.result.notice));
     for(const [i,item] of pack.result.items.entries()){
-      const row=node('div','md-chat-note-source');row.append(node('span','','['+pack.label(i)+'] '+item.path),node('small','',item.kind+' · trecho '+(item.start+1)+'–'+item.end+' de '+item.length));
+      const row=node('div','md-chat-note-source');row.append(node('span','','['+pack.label(i)+'] '+item.path),node('small','',item.visual?item.kind:item.kind+' · trecho '+(item.start+1)+'–'+item.end+' de '+item.length));
       const visit=node('button','','Abrir origem');visit.type='button';visit.onclick=()=>visitNote(item);
       const read=node('button','','Aprofundar nesta página');read.type='button';read.onclick=()=>{if(!useNotes({scopeId:item.nodeId}))return;find('mdChatInput').value='Aprofunde esta página de Notas.';find('mdChatInput').focus()};row.append(visit,read);section.append(row);
     }
@@ -127,9 +130,11 @@ window.MyDayChat=(()=>{
   async function send(event){
     event.preventDefault();if(busy||blockedSync||!config?.enabled||!config.models?.some(m=>m.id===selectedModel)||!workspaceAllowed())return;
     if(!logged()){controls();status('Sua sessão expirou. Entre novamente para continuar.',true);return;}
+    const visual=window.NotesVision?.count()>0;if(visual&&!window.NotesVision.available(config,selectedModel)){status('O envio visual ainda não está disponível para este serviço/modelo. Remova a seleção para continuar com perguntas de texto.',true);return}
     const field=find('mdChatInput'),text=field.value.trim();if(!text)return;
     showDraft(null);append('user',text);history.push({role:'user',content:text});field.value='';busy=true;controls();status('Consultando seus dados salvos…');
     try{
+      if(visual){const images=await window.NotesVision.prepare();if(!workspaceActive)return;status('Analisando as imagens selecionadas…');const result=await request('/chat/vision',{workspace:WORKSPACE,model:selectedModel,prompt:text,images});if(!workspaceActive)return;if(result.workspace!==WORKSPACE||result.vision!==true||result.draft)throw new Error('O serviço não confirmou uma análise visual deste ambiente.');const sources={visual:true,label:i=>'I'+(i+1),result:{items:images.map(i=>({nodeId:i.nodeId,objectId:i.objectId,path:i.path,kind:i.caption,visual:true})),ambiguity:[],nextOffset:null,notice:'Somente estas imagens foram enviadas. A análise não modifica seus dados. Para outra pergunta visual, selecione as imagens novamente.'}};append('assistant',result.reply);linkNoteReferences(sources);noteSources(sources);history.push({role:'assistant',content:result.reply});history=history.slice(-14);window.NotesVision.clear();status('Análise visual concluída. Nenhum dado foi alterado.');return}
       const sources=await retrieveNotes(text);if(!workspaceActive)return;const messages=history.slice(sources?-14:-15).map(message=>({...message,content:message.content.slice(0,8000)}));if(sources)messages.splice(messages.length-1,0,{role:'user',content:sources.content});
       const result=await request('/chat',{workspace:WORKSPACE,day:window.MyDay.date(),model:selectedModel,messages});
       if(!workspaceActive)return;
@@ -213,11 +218,12 @@ window.MyDayChat=(()=>{
   function init(){
     if(dialog)return;
     dialog=node('dialog','md-chat');dialog.id='mdChatPanel';dialog.setAttribute('aria-labelledby','mdChatTitle');
-    dialog.innerHTML='<header class="md-chat-header"><div><h2 id="mdChatTitle">Assistente ProjectFlow</h2><p>Seu dia, organizado em uma conversa</p></div><button type="button" id="mdChatClose" aria-label="Fechar chat">×</button></header><div class="md-chat-connection"><span id="mdChatStatus" role="status">Conectando…</span><button type="button" id="mdChatRetry" hidden>Tentar reconectar</button><a id="mdChatService" href="'+SERVER+'/chat/config" target="_blank" rel="noopener noreferrer" hidden>Verificar conexão</a><button type="button" id="mdChatLogin">Entrar</button><button type="button" id="mdChatLogout" hidden>Sair</button></div><div class="md-chat-model"><label for="mdChatModel">Modelo</label><select id="mdChatModel" aria-describedby="mdChatModelHint"></select><small id="mdChatModelHint">Carregando modelos…</small></div><details id="mdChatNotes" class="md-chat-notes"><summary>Buscar nas Notas</summary><div><label><input type="checkbox" id="mdChatNotesEnabled"> Incluir Notas nesta conversa</label><select id="mdChatNotesScope" aria-label="Local da busca de Notas"></select><button type="button" id="mdChatNotesReset">Nova busca</button><small id="mdChatNotesHint">Pesquisa textual. Ao enviar, os trechos encontrados serão compartilhados com o modelo selecionado.</small></div></details><div class="md-chat-scroll"><div id="mdChatMessages" role="log" aria-label="Conversa"></div><section id="mdChatDraft" class="md-chat-draft" hidden><h3 id="mdChatDraftTitle"></h3><ul id="mdChatChanges"></ul><div class="md-chat-draft-actions"><button type="button" id="mdChatDiscard">Descartar</button><button type="button" id="mdChatApply">Aplicar alterações</button></div></section></div><button type="button" id="mdChatReload" hidden>Atualizar após salvamento</button><button type="button" id="mdChatConnect" hidden>Configurar GitHub de Tarefas</button><form id="mdChatForm" class="md-chat-composer"><label class="sr-only" for="mdChatInput">Seu pedido</label><textarea id="mdChatInput" rows="3" maxlength="8000" placeholder="Ex.: passe a tarefa da roda fônica para segunda-feira" required></textarea><button id="mdChatSend" type="submit">Enviar</button><small><span id="mdChatWorkspace"></span> · Enter quebra a linha · Shift + Enter envia</small></form>';
+    dialog.innerHTML='<header class="md-chat-header"><div><h2 id="mdChatTitle">Assistente ProjectFlow</h2><p>Seu dia, organizado em uma conversa</p></div><button type="button" id="mdChatClose" aria-label="Fechar chat">×</button></header><div class="md-chat-connection"><span id="mdChatStatus" role="status">Conectando…</span><button type="button" id="mdChatRetry" hidden>Tentar reconectar</button><a id="mdChatService" href="'+SERVER+'/chat/config" target="_blank" rel="noopener noreferrer" hidden>Verificar conexão</a><button type="button" id="mdChatLogin">Entrar</button><button type="button" id="mdChatLogout" hidden>Sair</button></div><div class="md-chat-model"><label for="mdChatModel">Modelo</label><select id="mdChatModel" aria-describedby="mdChatModelHint"></select><small id="mdChatModelHint">Carregando modelos…</small></div><details id="mdChatNotes" class="md-chat-notes"><summary>Buscar nas Notas</summary><div><label><input type="checkbox" id="mdChatNotesEnabled"> Incluir Notas nesta conversa</label><select id="mdChatNotesScope" aria-label="Local da busca de Notas"></select><button type="button" id="mdChatNotesReset">Nova busca</button><small id="mdChatNotesHint">Pesquisa textual. Ao enviar, os trechos encontrados serão compartilhados com o modelo selecionado.</small></div></details><details id="mdChatVision" class="md-chat-vision"></details><div class="md-chat-scroll"><div id="mdChatMessages" role="log" aria-label="Conversa"></div><section id="mdChatDraft" class="md-chat-draft" hidden><h3 id="mdChatDraftTitle"></h3><ul id="mdChatChanges"></ul><div class="md-chat-draft-actions"><button type="button" id="mdChatDiscard">Descartar</button><button type="button" id="mdChatApply">Aplicar alterações</button></div></section></div><button type="button" id="mdChatReload" hidden>Atualizar após salvamento</button><button type="button" id="mdChatConnect" hidden>Configurar GitHub de Tarefas</button><form id="mdChatForm" class="md-chat-composer"><label class="sr-only" for="mdChatInput">Seu pedido</label><textarea id="mdChatInput" rows="3" maxlength="8000" placeholder="Ex.: passe a tarefa da roda fônica para segunda-feira" required></textarea><button id="mdChatSend" type="submit">Enviar</button><small><span id="mdChatWorkspace"></span> · Enter quebra a linha · Shift + Enter envia</small></form>';
     document.body.append(dialog);find('mdChatRetry').onclick=loadConfig;find('mdChatClose').onclick=close;find('mdChatLogin').onclick=login;
+    window.addEventListener('projectflow:visionchange',()=>{if(dialog)controls()});
     find('mdChatNotesEnabled').onchange=e=>{notesEnabled=e.target.checked;notesExplicit=true;notesPrevious=null};find('mdChatNotesScope').onchange=e=>{notesScope=e.target.value;notesEnabled=true;notesExplicit=true;notesPrevious=null;notesOptions()};find('mdChatNotesReset').onclick=()=>{notesPrevious=null;find('mdChatNotesHint').textContent='Nova busca: escreva o assunto na sua próxima pergunta.'};notesOptions();
     window.addEventListener('projectflow:datachange',event=>{if(event.detail?.source==='notes'&&dialog.open&&!busy)notesOptions()});
-    find('mdChatLogout').onclick=()=>{notesEnabled=false;notesExplicit=false;notesPrevious=null;notesScope='';notesOptions();accessToken='';expires=0;showDraft(null);controls();status('Desconectado do chat.');};
+    find('mdChatLogout').onclick=()=>{window.NotesVision?.clear();notesEnabled=false;notesExplicit=false;notesPrevious=null;notesScope='';notesOptions();accessToken='';expires=0;showDraft(null);controls();status('Desconectado do chat.');};
     find('mdChatForm').onsubmit=send;find('mdChatInput').onkeydown=event=>{if(event.key==='Enter'&&event.shiftKey&&!event.isComposing){event.preventDefault();if(!event.repeat&&!find('mdChatSend').disabled)find('mdChatForm').requestSubmit();}};find('mdChatApply').onclick=apply;find('mdChatDiscard').onclick=()=>{showDraft(null);status('Proposta descartada.');};find('mdChatReload').onclick=reload;
     find('mdChatConnect').onclick=()=>{if(busy||!connectionArea)return;const area=connectionArea;close();document.getElementById({todo:'tabTodoNative',plans:'tabActions',schedules:'tabGantt'}[area])?.click();document.getElementById({todo:'ntCloudSettings',plans:'apCloudSettings',schedules:'btnCloudBackup'}[area])?.click();};
     dialog.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Escape'&&!event.defaultPrevented){event.preventDefault();close();}});window.addEventListener('message',receiveLogin);
@@ -228,5 +234,5 @@ window.MyDayChat=(()=>{
     loadConfig();
   }
   function open(){init();if(configFailed)loadConfig();lastFocus=document.activeElement;if(!dialog.open)dialog.show();document.body.classList.toggle('md-chat-open',true);controls();find(logged()?'mdChatInput':'mdChatLogin').focus();}
-  return {init,open,close,useNotes};
+  return {init,open,close,useNotes,attachNoteImage,attachNoteCapture};
 })();

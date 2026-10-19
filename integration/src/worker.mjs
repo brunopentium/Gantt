@@ -4,16 +4,17 @@ import { createMcpServer, safeError, scopeFor } from './mcp.mjs';
 import { IntegrationError, storeFromEnv } from './store.mjs';
 import { execute } from './domain.mjs';
 import { chat, applyChatDraft, chatRateLimit } from './chat.mjs';
+import { chatVision } from './chat-vision.mjs';
 import { chatConfig, chatCallback, exchangeChatCode } from './chat-http.mjs';
 
-async function boundedJson(request) {
+async function boundedJson(request, maxBytes=100000) {
   let size = 0;
   const chunks = [], reader = request.body?.getReader();
   if (!reader) throw new IntegrationError('invalid_input', 'Informe um corpo JSON.');
   while (true) {
     const { value, done } = await reader.read(); if (done) break;
     size += value.byteLength;
-    if (size > 100000) { await reader.cancel(); throw new IntegrationError('request_too_large', 'Corpo da requisição grande demais.', 413); }
+    if (size > maxBytes) { await reader.cancel(); throw new IntegrationError('request_too_large', 'Corpo da requisição grande demais.', 413); }
     chunks.push(value);
   }
   const bytes = new Uint8Array(size); let offset = 0;
@@ -21,7 +22,7 @@ async function boundedJson(request) {
   try { return JSON.parse(new TextDecoder().decode(bytes)); }
   catch { throw new IntegrationError('invalid_input', 'Corpo JSON inválido.'); }
 }
-export function createWorkerHandler({ config, storeFactory, authenticate = createAuthenticator(config), env = {} }) {
+export function createWorkerHandler({ config, storeFactory, authenticate = createAuthenticator(config), env = {}, visionHandler = chatVision }) {
   return async request => {
     const url = new URL(request.url), metadataUrl = `${config.publicUrl}/.well-known/oauth-protected-resource/mcp`;
     const headers = new Headers({ 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
@@ -44,7 +45,7 @@ export function createWorkerHandler({ config, storeFactory, authenticate = creat
         return json({ resource: `${config.publicUrl}/mcp`, authorization_servers: [config.issuer],
           scopes_supported: ['projectflow:read', 'projectflow:write'], bearer_methods_supported: ['header'] });
       }
-      if (!['/mcp', '/api', '/chat', '/chat/apply', '/chat/token'].includes(url.pathname)) throw new IntegrationError('not_found', 'Rota inexistente.', 404);
+      if (!['/mcp', '/api', '/chat', '/chat/apply', '/chat/token', '/chat/vision'].includes(url.pathname)) throw new IntegrationError('not_found', 'Rota inexistente.', 404);
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
       if (url.pathname === '/chat/token') {
         if (request.method !== 'POST' || !origin || !request.headers.get('content-type')?.startsWith('application/json')) throw new IntegrationError('invalid_input', 'Solicitação de login inválida.', 400);
@@ -55,11 +56,11 @@ export function createWorkerHandler({ config, storeFactory, authenticate = creat
       catch (error) { if (error.status === 401 || error.code === 'insufficient_scope') headers.set('WWW-Authenticate', challenge()); throw error; }
       if (request.method !== 'POST') return new Response(null, { status: 405, headers: { ...Object.fromEntries(headers), Allow: 'POST, OPTIONS' } });
       if (!request.headers.get('content-type')?.startsWith('application/json')) throw new IntegrationError('invalid_input', 'Use Content-Type: application/json.', 415);
-      const body = await boundedJson(request);
-      if (url.pathname === '/chat' || url.pathname === '/chat/apply') {
+      const body = await boundedJson(request,url.pathname==='/chat/vision'?2600000:100000);
+      if (url.pathname === '/chat' || url.pathname === '/chat/apply' || url.pathname === '/chat/vision') {
         if (!origin) throw new IntegrationError('origin_denied', 'Abra o chat pelo ProjectFlow.', 403);
         chatRateLimit(principal.subject);
-        return json(url.pathname === '/chat'
+        return json(url.pathname === '/chat/vision' ? await visionHandler(env,principal,body) : url.pathname === '/chat'
           ? await chat(env, principal, body, storeFactory())
           : await applyChatDraft(env, principal, body.token, storeFactory(), Date.now(), body.workspace));
       }
