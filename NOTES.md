@@ -34,3 +34,5 @@ Evolução prevista: OCR automático, revisão do texto reconhecido e agrupament
 `tests/notes-cloud.cjs`: API GitHub interceptada com dados sintéticos, uploads imutáveis, revisões, carregamento num dispositivo novo, conflitos e caminhos isolados.
 
 `tests/notes-editing.cjs`: alinhamento entre traço e desenho final com zoom, tabelas expansíveis, listas interativas, undo, pesquisa, persistência e ambos os ambientes.
+
+`tests/notes-ink.cjs`: todas as ferramentas de desenho mantêm a mesma geometria da prévia ao soltar, sobre texto e imagem, com rolagem, zoom e toque real no celular.
