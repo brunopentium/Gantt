@@ -30,3 +30,7 @@ Na pasta `integration`, execute `npm ci`, `npm test` e `npm run build:worker`. O
 A rota `/chat/vision` exige OAuth de leitura, origem autorizada e ambiente explícito. Aceita até duas imagens PNG/JPEG/WebP, 900 KB cada, pergunta até 8.000 caracteres e corpo total até 2.600.000 bytes. Não carrega dados pelo GitHub, não instancia Store e não oferece ferramentas nem proposta de alteração. URLs de imagens externas não são aceitas. O endpoint encaminha apenas a seleção enviada explicitamente ao modelo, preservando preço máximo zero em modelos gratuitos.
 
 Os testes usam imagens e credenciais sintéticas, com o provedor de IA interceptado. O bundle pode ser compilado sem autenticação Cloudflare; a implantação real exige uma sessão autenticada na conta existente.
+
+## Imagens do clipboard e extração revisável
+
+A configuração agora anuncia `features.vision.extract: true`. `/chat/vision` aceita `output: "text" | "table"` opcional; sem esse campo, o contrato anterior de análise permanece. No modo de extração, a resposta inclui `extraction: {kind:"text",text}` ou `{kind:"table",cells}`, estritamente validada antes do retorno. Limites: texto 12.000 caracteres; tabelas 30×15, 2.000 caracteres por célula, 30.000 no total. O limite de resposta do modelo fica em 6.000 tokens apenas nesse modo. Não há Store, ferramenta de alteração ou novo escopo OAuth. A inserção acontece somente no cliente após revisão explícita, usando a recuperação, o desfazer e o autosave de Notas existentes.

@@ -196,3 +196,9 @@ O assistente geral consulta as áreas existentes, pesquisa Notas por texto/OCR, 
 ### Entrar automaticamente no assistente
 
 O app restaura a sessão do assistente ao abrir, sem abrir a conversa ou uma janela de login. Quando necessário, tenta reconectar em segundo plano usando a sessão já autorizada no provedor. Nenhum pedido à IA é enviado nessa etapa. Se o navegador bloquear o login silencioso ou o provedor exigir nova autenticação, **Entrar** continua disponível. Ao clicar em **Sair** no assistente, a conexão automática fica suspensa até você entrar novamente. A sessão é separada entre Trabalho/Pessoal e não acompanha os backups.
+
+### Colar imagens e levar a extração para Notas
+
+No assistente, cole uma imagem com Ctrl+V ou use **Notas e imagens → Imagens → Anexar imagem**. Confira a prévia, escolha **Analisar imagem**, **Transcrever texto** ou **Extrair tabela** e envie com um modelo visual. A imagem não é enviada automaticamente nem vira um anexo permanente das Notas.
+
+A resposta de extração oferece **Revisar / inserir nas Notas**: corrija os campos, escolha a página (ou crie uma nova), insira como tabela/caixa de texto nativa e, se necessário, desfaça. **Copiar tabela** permite colar a tabela de volta na folha das Notas. O processo usa a conta/modelo existentes; o salvamento e a recuperação seguem a configuração normal do app. Veja limites, formatos e testes em [NOTES.md](NOTES.md).

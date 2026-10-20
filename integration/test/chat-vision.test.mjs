@@ -39,3 +39,9 @@ test('Worker authenticates visual requests, keeps larger bodies restricted to vi
  assert.equal((await post('/chat',{extra:'x'.repeat(100001)})).status,413);
  assert.equal((await post('/api',{extra:'x'.repeat(100001)})).status,413);assert.equal(stores,0);
 });
+test('image extraction returns bounded text or rectangular table proposals without executing tools or accessing a store',async()=>{
+ for(const output of ['text','table']){const extraction=output==='text'?{kind:'text',text:'Transcrição\n[ilegível]'}:{kind:'table',cells:[['Nome','Data'],['Ana','[ilegível]']]};const result=await chatVision(env,principal,{...input,output},{fetcher:async(url,opts)=>{const body=JSON.parse(opts.body);assert.equal(body.tools,undefined);assert.match(body.messages[0].content,/SOMENTE JSON/);return Response.json({choices:[{message:{content:JSON.stringify({reply:'Confira os trechos ilegíveis [I1].',extraction})}}]})}});assert.deepEqual(result.extraction,extraction);assert.equal(result.draft,null)}
+ for(const extraction of [{kind:'table',cells:[['A'],['B','C']]},{kind:'table',cells:Array.from({length:31},()=>['x'])},{kind:'table',cells:[Array(16).fill('x')]},{kind:'table',cells:[['x'.repeat(2001)]]},{kind:'table',cells:[['x']],operations:[{type:'remove_object',id:'any'}]}])await assert.rejects(chatVision(env,principal,{...input,output:'table'},{fetcher:async()=>Response.json({choices:[{message:{content:JSON.stringify({reply:'Proposta',extraction})}}]})}),{code:'model_response'});
+ await assert.rejects(chatVision(env,principal,{...input,output:'text'},{fetcher:async()=>Response.json({choices:[{message:{content:'invalid JSON'}}]})}),{code:'model_response'});
+ let calls=0;await assert.rejects(chatVision(env,principal,{...input,output:'execute'},{fetcher:async()=>{calls++;throw Error()}}),{code:'invalid_input'});assert.equal(calls,0);
+});

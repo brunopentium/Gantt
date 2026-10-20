@@ -124,14 +124,14 @@ function modelFailure(status, error) {
   // Never echo upstream text: it may contain credentials, prompts or task data.
   return new IntegrationError('model_unavailable', `${message} (OpenRouter HTTP ${status}.)`, 502);
 }
-export async function modelCall(env, model, messages, tools, fetcher) {
+export async function modelCall(env, model, messages, tools, fetcher, {maxTokens=2500}={}) {
   let response;
   try {
     response = await fetcher('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(55000),
       headers: { Authorization: 'Bearer ' + env.OPENROUTER_API_KEY, 'Content-Type': 'application/json', 'X-OpenRouter-Title': 'ProjectFlow Meu Dia' },
       body: JSON.stringify({ model: model.id, messages, ...(tools?.length ? {tools,tool_choice:'auto'} : {}),
-        max_tokens: 2500, ...(model.id.startsWith('openai/') ? { reasoning: { effort: 'low' } } : {}),
+        max_tokens: Math.max(2500,Math.min(8000,maxTokens)), ...(model.id.startsWith('openai/') ? { reasoning: { effort: 'low' } } : {}),
         provider: { require_parameters: true, ...(model.free ? { max_price: { prompt: 0, completion: 0, request: 0 } } : {}) } })
     });
   } catch { throw new IntegrationError('model_unavailable', 'A IA não respondeu a tempo. Nenhuma alteração foi aplicada.', 502); }

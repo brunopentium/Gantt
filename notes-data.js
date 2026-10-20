@@ -54,7 +54,7 @@ window.NotesData=(()=>{
   const b=bytes(record.base64);if(b.length>900000||await digest(b)!==record.id)throw Error('Anexo corrompido ou muito grande.');
   const db=await database();await new Promise((resolve,reject)=>{const tx=db.transaction('assets','readwrite');tx.objectStore('assets').put(record);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});return record;
  }
- async function imageFile(file){
+ async function imageFile(file,{persist=true}={}){
   if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size>25000000)throw Error('Use uma imagem PNG, JPEG ou WebP de até 25 MB.');
   const bitmap=await createImageBitmap(file),canvas=document.createElement('canvas');let scale=Math.min(1,1800/Math.max(bitmap.width,bitmap.height));
   canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
@@ -62,7 +62,7 @@ window.NotesData=(()=>{
   if(blob.size>850000)blob=await new Promise(r=>canvas.toBlob(r,'image/jpeg',.8));
   if(blob.size>900000)throw Error('Imagem muito detalhada. Reduza seu tamanho e tente novamente.');
   const array=new Uint8Array(await blob.arrayBuffer());let binary='';for(let i=0;i<array.length;i+=16384)binary+=String.fromCharCode(...array.subarray(i,i+16384));
-  const record={id:await digest(array),mime:blob.type,name:file.name||'Imagem colada',base64:btoa(binary)};await storeAsset(record);return {record,width:canvas.width,height:canvas.height};
+  const record={id:await digest(array),mime:blob.type,name:file.name||'Imagem colada',base64:btoa(binary)};if(persist)await storeAsset(record);return {record,width:canvas.width,height:canvas.height};
  }
  function paperStyle(n){const color={white:'#ffffff',cream:'#fff8e7',yellow:'#fff2b3'}[n.paperColor||'white']||'#ffffff';const image=n.background==='grid'?'linear-gradient(#cfd8e3 1px,transparent 1px),linear-gradient(90deg,#cfd8e3 1px,transparent 1px)':n.background==='ruled'?'linear-gradient(to bottom,transparent 0px,transparent 27px,#b4c3d3 27px,#b4c3d3 28px)':'none';return `background-color:${color};background-image:${image};background-size:${n.background==='grid'?'24px 24px':'100% 28px'};print-color-adjust:exact;-webkit-print-color-adjust:exact;`}
  function imageRefs(raw=snapshot()){const refs=new Map();for(const n of raw.nodes)for(const o of n.objects||[])if(o.type==='image')refs.set(o.assetId,o);return [...refs.values()]}
