@@ -3,7 +3,7 @@ window.NotesEdits=(()=>{
  'use strict';
  const workspace=WorkspaceProfile.personal?'personal':'work',clone=x=>JSON.parse(JSON.stringify(x)),fingerprint=x=>JSON.stringify(x),undoStack=[];
  let active=true;
- const objectFields=['id','type','x','y','w','h','rotation','color','text','fontSize','bold','cells','header','minWidth','caption','ocr','stroke','points','groupId'];
+ const objectFields=['id','type','x','y','w','h','rotation','color','text','fontSize','bold','cells','header','minWidth','caption','ocr','stroke','points','groupId','richText','richCells'];
  function pageFingerprint(page){if(!page)return '';const value=clone(page);for(const o of value.objects||[])if(o.type==='table'){delete o.w;delete o.h}return fingerprint(value)}
  function currentPage(id){if(!active)throw Error('Este ambiente foi fechado.');const p=NotesData.snapshot().nodes.find(n=>n.id===id&&n.kind==='page');if(!p)throw Error('A página selecionada não está disponível.');return p}
  function context(id){const p=currentPage(id);const value={id:p.id,kind:'page',title:p.title,parentId:p.parentId,background:p.background,...p.paperColor?{paperColor:p.paperColor}:{},objects:p.objects.map(o=>Object.fromEntries(objectFields.filter(k=>o[k]!==undefined).map(k=>[k,clone(o[k])])))};if(value.objects.length>200||new TextEncoder().encode(JSON.stringify(value)).length>60000)throw Error('Esta página é grande demais para edição assistida. Divida o conteúdo em subpáginas.');return value}

@@ -42,3 +42,10 @@ test('Worker routes Notes proposals through auth/origin/rate limits, preserves n
  const post=(value,headers={})=>handler(new Request(config.publicUrl+'/chat/notes',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer synthetic',Origin:config.publicUrl,...headers},body:JSON.stringify(value)}));
  assert.equal((await post(input,{Authorization:''})).status,401);assert.equal((await post(input,{Origin:'https://foreign.example'})).status,403);assert.equal((await post(input)).status,200);assert.equal((await post({...input,extra:'x'.repeat(100001)})).status,413);assert.equal(stores,0);
 });
+test('inline style runs survive assistant text and table edits and unsafe formatting is rejected',async()=>{
+ const rich=structuredClone(page);rich.objects[0].richText=[{start:0,end:8,bold:true,fontSize:32}];rich.objects[1].richCells=[[[],[]],[[{start:0,end:3,italic:true}],[]]];
+ const result=await chatNotes(env,principal,{...input,page:rich},{fetcher:responder(body=>assert(body.messages[1].content.includes('richText')))});assert.equal(result.notesEdit,true);
+ const plan=core.plan(rich,[{type:'update_text',id:'text',text:'Conteúdo original\nMais texto'},{type:'update_table',id:'table',cells:[['Novo','Novo'],['Teste','Status'],['EMC','Pendente']]}],()=>crypto.randomUUID());
+ assert.deepEqual(plan.page.objects[0].richText,rich.objects[0].richText);assert.deepEqual(plan.page.objects[1].richCells[2][0],rich.objects[1].richCells[1][0]);
+ for(const bad of [{start:0,end:9999,bold:true},{start:0,end:3,color:'red;position:fixed'},{start:0,end:3,href:'https://evil.example'}]){const value=structuredClone(rich);value.objects[0].richText=[bad];await assert.rejects(chatNotes(env,principal,{...input,page:value},{fetcher:async()=>{throw Error('must not call')}}),{code:'invalid_input'})}
+});

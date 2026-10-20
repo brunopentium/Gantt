@@ -91,3 +91,8 @@ html[data-app-view=notes] #autosaveStatus{flex:0 1 auto;min-width:0;max-width:17
 html[data-app-view=notes] #appTabs #openPersonal,html[data-app-view=notes] #appTabs #exitPersonal{margin-left:0}
 @media(max-width:720px){.notes-header>.notes-tools{flex-basis:100%;order:3}.notes-header-actions{flex:0 1 auto;flex-wrap:wrap}.notes-breadcrumb{flex:1;max-width:130px}.notes-sidebar{position:absolute}.notes-header .notes-tools{padding-top:3px}html[data-app-view=notes] #appTabs>.workspace-save-bar{order:10;flex:1 1 100%;justify-content:flex-end}html[data-app-view=notes] #autosaveStatus{flex-basis:auto}.notes-page-bar{gap:3px}}
 @media(min-width:721px) and (max-width:1350px){.notes-breadcrumb{flex-basis:95px}.notes-header .notes-tools label{font-size:0;gap:2px}#notesPanel .notes-tools select{font-size:11px}.notes-header-actions{gap:2px}#notesPanel .notes-header-actions button{padding:4px 5px;font-size:10px}}
+
+.notes-tree-order{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px}
+#notesPanel .notes-tree-order button{padding:4px 0;min-width:0;font-size:15px}
+#notesPanel .notes-tools button#notesItalic,#notesPanel .notes-tools button#notesUnderline{min-width:23px}
+@media(min-width:721px) and (max-width:1350px){.notes-breadcrumb{flex-basis:65px}.notes-header>.notes-tools{gap:1px}}
