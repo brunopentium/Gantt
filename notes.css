@@ -96,3 +96,9 @@ html[data-app-view=notes] #appTabs #openPersonal,html[data-app-view=notes] #appT
 #notesPanel .notes-tree-order button{padding:4px 0;min-width:0;font-size:15px}
 #notesPanel .notes-tools button#notesItalic,#notesPanel .notes-tools button#notesUnderline{min-width:23px}
 @media(min-width:721px) and (max-width:1350px){.notes-breadcrumb{flex-basis:65px}.notes-header>.notes-tools{gap:1px}}
+
+/* Table range selection stays distinct from native word selection. */
+.notes-table-cell.is-cell-selected{box-shadow:inset 0 0 0 2px #087f83;background-image:linear-gradient(#087f8322,#087f8322)}
+.notes-table-actions{flex-wrap:wrap;gap:4px}.notes-table-actions label{display:flex;align-items:center;gap:3px;font-size:11px}#notesPanel .notes-table-actions input[type=color]{width:30px;height:26px;padding:2px}
+.notes-auto-link{color:#1769c2!important;text-decoration:underline;cursor:pointer}.notes-auto-link span{color:inherit!important}
+.notes-office-preview{max-height:240px;overflow:auto}.notes-office-preview table{border-collapse:collapse}.notes-office-preview td{border:1px solid #b7c6d4;padding:6px;white-space:pre-wrap;max-width:180px;overflow-wrap:anywhere}
