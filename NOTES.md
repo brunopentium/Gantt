@@ -131,3 +131,9 @@ URLs HTTP/HTTPS, endereços www e e-mails nos textos/células aparecem azuis e s
 O preenchimento é armazenado em `cellColors`, paralelo a `cells`, validado como #RRGGBB ou vazio, e acompanha linhas/colunas, backups, sincronização, impressão, captura e propostas do assistente. A marcação temporária de seleção não aparece nas capturas. `notes-office.js` usa um documento inerte e extrai somente estrutura e estilos permitidos; scripts, eventos, imagens remotas e URLs de estilos não são inseridos.
 
 `tests/notes-office.cjs` cobre seleção por arraste, cores por letra/bloco, copiar/desfazer, colagem Excel com estilos em células e como nova tabela, opção textual do Word, mesclas, importação segura, cores ao inserir linha, backup/reabertura, impressão, links e celular em Trabalho/Pessoal. Os testes do núcleo e serviço verificam cores inválidas, URLs seguras e preservação de metadados nas propostas.
+
+### Seleção ao escolher cor
+
+O controle Cor conserva o trecho selecionado antes de abrir o seletor do navegador, inclusive ao clicar no rótulo. A escolha usa esse trecho mesmo se o seletor mover o foco ou limpar a seleção nativa; ao aplicar, a seleção é restaurada. Cancelar não altera dados, e voltar a editar/navegar encerra o alvo anterior. Atualizações de links não redesenham o editor enquanto a cor está sendo escolhida. Se o conteúdo mudar durante a escolha, a aplicação é bloqueada para evitar colorir o objeto inteiro.
+
+`tests/notes-color-picker.cjs` usa arraste real para selecionar palavras e cliques no controle/rótulo; substitui somente a abertura do seletor do sistema e simula a perda de foco/seleção desse seletor. Verifica cores independentes em caixas/células com links, cancelamento, nova posição do cursor, reabertura e celular em Trabalho/Pessoal.
