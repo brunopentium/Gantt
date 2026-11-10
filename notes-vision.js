@@ -35,7 +35,7 @@ window.NotesVision=(()=>{
    const edit=element('button','Editar esta nota');edit.type='button';edit.id='mdChatEditNote';edit.onclick=()=>window.MyDayChat.editNote(select.value);actions.append(edit);
    box.append(label,actions,feedback);parent.before(box);
   }
-  const select=box.querySelector('select'),pages=NotesSearch.scopes().filter(n=>n.kind==='page'),chosen=select.value||window.Notes?.currentPageId?.();select.replaceChildren();for(const p of pages){const option=element('option',p.path);option.value=p.id;select.append(option)}if(pages.some(p=>p.id===chosen))select.value=chosen;
+  let pages=[];try{pages=NotesSearch.scopes().filter(n=>n.kind==='page')}catch{}const select=box.querySelector('select'),chosen=select.value||window.Notes?.currentPageId?.();select.replaceChildren();for(const p of pages){const option=element('option',p.path);option.value=p.id;select.append(option)}if(pages.some(p=>p.id===chosen))select.value=chosen;
   if(!pages.length){const option=element('option','Nenhuma página de Notas disponível');option.value='';select.append(option)}
   function update(){select.disabled=busy||capturing||!active||!pages.length;box.querySelectorAll('button').forEach(b=>b.disabled=busy||capturing||!active||!pages.length||selection.length>=2||(b.id==='mdChatEditNote'&&config?.features?.notesEdit?.version!==1))}
   update();

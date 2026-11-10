@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-app-view="my-day">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ProjectFlow - Gantt Manager</title>
 <script src="workspace-profile.js?v=20261014-personal"></script>
+<script src="workspace-startup.js?v=20261110-startup"></script>
 <link rel="stylesheet" href="workspace-profile.css?v=20261014-personal">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#087f83">
@@ -251,11 +252,11 @@ input{font-family:inherit}
 <div id="statusbar"><span id="stL">Ready</span><span id="stR"></span></div>
 </div>
 
-<script src="action-plans.js?v=20261019-notes"></script>
+<script src="action-plans.js?v=20261110-startup"></script>
 <script src="schedule-groups.js?v=20261008-english-navigation"></script>
 <script src="plan-exports.js?v=20261009-participant-owners"></script>
 <script src="plan-cloud.js?v=20261019-notes"></script>
-<script src="github-backup.js?v=20261019-notes"></script>
+<script src="github-backup.js?v=20261110-startup"></script>
 <script src="gantt-print.js?v=20261016-chat-structure"></script>
 <script src="plan-print.js?v=20261008-english-navigation"></script>
 <script src="gantt-mobile.js?v=20261011-mobile-zoom"></script>
@@ -266,7 +267,7 @@ input{font-family:inherit}
 <script src="notes-archive.js?v=20261019-notes"></script>
 <script src="notes-search.js?v=20261019-paged-search"></script>
 <script src="notes-capture.js?v=20261020-office-tables"></script>
-<script src="notes-vision.js?v=20261020-image-extract"></script>
+<script src="notes-vision.js?v=20261110-startup"></script>
 <script src="notes-ocr.js?v=20261019-ocr"></script>
 <script src="integration/src/notes-edit-core.js?v=20261020-office-tables"></script>
 <script src="notes-transfer.js?v=20261020-image-extract"></script>
@@ -274,16 +275,16 @@ input{font-family:inherit}
 <script src="notes-touch.js?v=20261019-notes-complete"></script>
 <script src="notes-office.js?v=20261020-office-tables"></script>
 <script src="notes-inline.js?v=20261020-office-tables"></script>
-<script src="notes.js?v=20261020-color-selection"></script>
+<script src="notes.js?v=20261110-startup"></script>
 <script src="notes-cloud.js?v=20261019-notes"></script>
 <script src="workspace-backup.js?v=20261019-notes"></script>
 <script src="local-recovery.js?v=20261019-notes"></script>
-<script src="workspace-autosave.js?v=20261019-notes"></script>
+<script src="workspace-autosave.js?v=20261110-startup"></script>
 <script src="my-day-data.js?v=20261014-schedule-inclusion"></script>
 <script src="my-day.js?v=20261016-chat"></script>
 <script src="chat-format.js?v=20261016-chat-models"></script>
 <script src="chat-session.js?v=20261020-chat-session"></script>
-<script src="my-day-chat.js?v=20261020-image-extract"></script>
+<script src="my-day-chat.js?v=20261110-startup"></script>
 <script src="app-navigation.js?v=20261014-personal"></script>
 <script>
 // ========== STATE ==========
@@ -1275,7 +1276,7 @@ function normalizeProject(p){
 function allProjectData(){return {version:1,activeProjectId,projects,actionPlans:window.ActionPlans?.exportData()||[]}}
 function saveStore(){
   window.ActionPlans?.sync();
-  try{localStorage.setItem(STORE_KEY,JSON.stringify(allProjectData()))}catch(e){}
+  try{localStorage.setItem(STORE_KEY,JSON.stringify(allProjectData()))}catch(e){window.WorkspaceStartup?.report('Cronogramas e planos',e)}
   window.GanttBackup?.changed();
   window.PlanCloud?.changed();
   window.dispatchEvent(new CustomEvent('projectflow:datachange',{detail:{sources:['gantt','action']}}));
@@ -1471,7 +1472,9 @@ try{const stored=JSON.parse(localStorage.getItem(window.WorkspaceProfile.key('pf
   if(JSON.parse(localStorage.getItem(window.WorkspaceProfile.key('pf_github_action_plans_v1'))||'{}').repo)legacyPlansMayLoad=false;
 }catch{}
 window.PlanCloud.init({snapshot:()=>({version:1,type:'action-plans',actionPlans:window.ActionPlans.exportData()}),restore:(d,applyDates)=>window.ActionPlans.restoreData(d.actionPlans,applyDates),flush:()=>{commitEdit();save()},localBackup:()=>window.ActionPlans.backup()});
-window.NativeTodo.init();window.TodoCloud.init();window.Notes.init();window.NotesCloud.init();
+window.NativeTodo.init();window.TodoCloud.init();
+const notesOpened=window.WorkspaceStartup.run('Notas',()=>window.Notes.init());
+if(notesOpened.ok)window.WorkspaceStartup.run('Conexão de Notas',()=>window.NotesCloud.init());
 window.WorkspaceBackup.init({flush:()=>{commitEdit();save()},snapshot:()=>JSON.parse(JSON.stringify({activeProjectId,projects})),restore:d=>{
   projects=d.projects.map(normalizeProject);
   activeProjectId=projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:projects[0].id;
@@ -1594,10 +1597,11 @@ window.MyDay.init(window.MyDayData,{
   status:source=>document.getElementById({todo:'ntCloudStatus',action:'apCloudStatus',gantt:'cloudBackupStatus'}[source])?.textContent||''
 });
 window.WorkspaceAutosave.init({gantt:window.GanttBackup,action:window.PlanCloud,todo:window.TodoCloud,notes:window.NotesCloud});
-window.MyDayChat.init();
+window.WorkspaceStartup.run('Assistente',()=>window.MyDayChat.init());
 window.AppNavigation.init();
 // Meu dia is always the first view, including when the legacy Todo is enabled.
 document.getElementById('tabMyDay').click();
+window.WorkspaceStartup.finish();
 </script>
 <script src="pwa-install.js?v=20261011-pwa"></script>
 </body>
