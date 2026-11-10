@@ -24,7 +24,7 @@ window.GanttBackup = (() => {
   function lock(value){document.getElementById('app').inert=value}
   function failure(message){const error=new Error(message);error.cloudBlocked=true;return error}
   function failed(error){errorMessage=error.name==='AbortError'?'Connection timed out.':error.message;blocked=!!error.cloudBlocked||error.name==='SyntaxError';return {ok:false,pending:!blocked,blocked,error:errorMessage}}
-  function state(){const connected=!!credentials(),fingerprint=api?content():'';return {connected,repo:config.repo||'',ready,busy,fingerprint,savedFingerprint:lastContent,dirty:!!api&&fingerprint!==lastContent&&fingerprint!==covered,blocked,error:errorMessage}}
+  function state(){const connected=!!credentials(),fingerprint=api?content():'',invalid=api?.validationError?.()||'';return {connected,repo:config.repo||'',ready,busy,fingerprint,savedFingerprint:lastContent,dirty:!!api&&fingerprint!==lastContent&&fingerprint!==covered,blocked:blocked||!!invalid,error:invalid||errorMessage}}
   function begin(){operationConnection=signature();boundConnection=operationConnection;blocked=false;errorMessage='';busy=true}
   function finish(){operationConnection='';busy=false;emit()}
   async function capture(reason){if(!window.LocalRecovery)throw failure('Internal recovery is unavailable; local data was kept.');try{await window.LocalRecovery.capture({scope:'gantt',reason})}catch(error){throw failure('Internal recovery failed; local data was kept: '+error.message)}}
@@ -64,7 +64,7 @@ window.GanttBackup = (() => {
     begin();status('Saving to GitHub…');
     try{
       api.flush();await repository();if(!ready)throw failure('The connection changed; reconnect before saving.');
-      const snapshot=api.snapshot(), fingerprint=canonical(snapshot),exportedAt=new Date().toISOString();
+      const snapshot=api.snapshot(), fingerprint=canonical(snapshot),exportedAt=new Date().toISOString();checked(snapshot);
       const remote=await request(filePath(),{allowMissing:true});
       if((remote?.sha||null)!==(config.sha||null))
         throw failure('Different remote version. Load the latest version before saving; nothing was overwritten.');

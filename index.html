@@ -256,7 +256,7 @@ input{font-family:inherit}
 <script src="schedule-groups.js?v=20261008-english-navigation"></script>
 <script src="plan-exports.js?v=20261009-participant-owners"></script>
 <script src="plan-cloud.js?v=20261019-notes"></script>
-<script src="github-backup.js?v=20261110-startup"></script>
+<script src="github-backup.js?v=20261110-dependency-cycle"></script>
 <script src="gantt-print.js?v=20261016-chat-structure"></script>
 <script src="plan-print.js?v=20261008-english-navigation"></script>
 <script src="gantt-mobile.js?v=20261011-mobile-zoom"></script>
@@ -336,8 +336,45 @@ function visible(){let r=[],stk=[];for(let t of T){while(stk.length&&stk[stk.len
 function compWBS(){let c=[];for(let t of T){while(c.length>t.indent)c.pop();while(c.length<=t.indent)c.push(0);c[t.indent]++;while(c.length>t.indent+1)c.pop();t.wbs=c.join('.')}}
 function summaryDates(){for(let i=T.length-1;i>=0;i--){let t=T[i];if(!isSummary(t))continue;let ds=descendants(t),mn=null,mx=null,tp=0,cn=0;for(let c of ds){if(c.start&&(!mn||c.start<mn))mn=new Date(c.start);if(c.end&&(!mx||c.end>mx))mx=new Date(c.end);tp+=c.pct||0;cn++}if(mn)t.start=mn;if(mx)t.end=mx;if(cn)t.pct=Math.round(tp/cn);if(t.start&&t.end)t.dur=durBtw(t.start,t.end,t.unit)}}
 function parsePred(s){if(!s||!s.trim())return[];return s.split(/[;,]/).map(p=>{let m=p.trim().match(/^(\d+)\s*(FS|SS|FF|SF)?\s*([+-]\d+)?d?\s*$/i);if(!m)return null;return{n:+m[1],ty:(m[2]||'FS').toUpperCase(),lag:m[3]?+m[3]:0}}).filter(Boolean)}
+// Check dependencies before changing any dates. Explicit stacks also handle long chains.
+function scheduleDependencyOrder(tasks=T){
+  const dependencies=tasks.map(t=>parsePred(t.pred).map(p=>p.n-1).filter(i=>i>=0&&i<tasks.length));
+  const state=new Uint8Array(tasks.length),order=[],positions=new Map();
+  for(let root=0;root<tasks.length;root++){
+    if(state[root])continue;
+    const stack=[{index:root,next:0}];state[root]=1;positions.set(root,0);
+    while(stack.length){
+      const frame=stack[stack.length-1],links=dependencies[frame.index];
+      if(frame.next===links.length){state[frame.index]=2;order.push(frame.index);positions.delete(frame.index);stack.pop();continue}
+      const previous=links[frame.next++];
+      if(state[previous]===1)return {order:[],cycle:stack.slice(positions.get(previous)).map(f=>f.index).concat(previous)};
+      if(state[previous]===0){state[previous]=1;positions.set(previous,stack.length);stack.push({index:previous,next:0})}
+    }
+  }
+  return {order,cycle:[]};
+}
+function scheduleDependencyIssues(){
+  return projects.flatMap(p=>{const tasks=p.id===activeProjectId?T:p.tasks,cycle=scheduleDependencyOrder(tasks).cycle;return cycle.length?[{project:p,tasks,cycle}]:[]});
+}
+function scheduleValidationError(){const issue=scheduleDependencyIssues()[0];return issue?'Dependência circular no cronograma '+issue.project.title+' (linhas '+issue.cycle.map(i=>i+1).join(' → ')+'). Revise as predecessoras antes de salvar no GitHub.':''}
+function renderScheduleValidation(){
+  const issues=scheduleDependencyIssues();let notice=document.getElementById('scheduleDependencyNotice');
+  if(!issues.length){notice?.remove();return}
+  const signature=JSON.stringify(issues.map(i=>[i.project.id,i.project.title,i.cycle]));
+  if(notice?.dataset.signature===signature)return;
+  if(!notice){notice=document.createElement('section');notice.id='scheduleDependencyNotice';notice.setAttribute('role','alert');Object.assign(notice.style,{padding:'12px',background:'#fff4dd',color:'#613b0b',borderBottom:'1px solid #d8bb82',font:'14px system-ui',flexShrink:'0'});document.getElementById('appTabs').after(notice)}
+  notice.dataset.signature=signature;notice.replaceChildren();
+  for(const issue of issues){
+    const text=document.createElement('p');text.style.margin='0 0 8px';text.textContent='Dependência circular em “'+issue.project.title+'”: linhas '+issue.cycle.map(i=>i+1).join(' → ')+'. Datas e progresso salvos foram mantidos. O recálculo e o caminho crítico deste cronograma estão pausados até corrigir os vínculos.';notice.append(text);
+    for(const index of [...new Set(issue.cycle)].sort((a,b)=>a-b)){
+      const button=document.createElement('button');button.type='button';button.style.marginRight='8px';button.textContent='Revisar predecessoras da linha '+(index+1);
+      button.onclick=()=>{const task=issue.tasks[index];openMyDayTask(issue.project.id,task.id);const cell=document.querySelector('.tc[data-field="pred"][data-id="'+CSS.escape(task.id)+'"]');if(cell)openEditor(cell,task.id,'pred')};notice.append(button);
+    }
+  }
+}
 function schedule(){
-  let done=new Set(),mx=T.length*4,it=0;
+  const analysis=scheduleDependencyOrder();if(analysis.cycle.length)return false;
+  let done=new Set();
   function maxD(a,b){return !a||b>a?b:a}
   function one(i){
     if(done.has(i))return;
@@ -354,7 +391,7 @@ function schedule(){
     let startReq=null,endReq=null;
     for(let p of ps){
       let pt=T[p.n-1];if(!pt)continue;
-      if(!done.has(p.n-1))one(p.n-1);
+      // The validated order places every predecessor before its successors.
       let ref=null,isEnd=false;
       switch(p.ty){
         case'FS':ref=pt.end?new Date(pt.end):null;if(ref)ref.setDate(ref.getDate()+1);break;
@@ -382,12 +419,12 @@ function schedule(){
     }
     done.add(i);
   }
-  while(done.size<T.length&&it<mx){for(let i=0;i<T.length;i++)if(!done.has(i))one(i);it++}
-  summaryDates();
+  for(const i of analysis.order)one(i);
+  summaryDates();return true;
 }
 
 function criticalPath(){
-  let cp=new Set();if(!cpOn||!T.length)return cp;
+  let cp=new Set();if(!cpOn||!T.length||scheduleDependencyOrder().cycle.length)return cp;
   let work=T.map((t,i)=>({t,i,ls:null,le:null,succ:[]})).filter(x=>!isSummary(x.t)&&x.t.start&&x.t.end);
   if(!work.length)return cp;
   let byIdx=new Map(work.map(x=>[x.i,x]));
@@ -607,6 +644,7 @@ function renderGanttHeader(rng){
 }
 
 function renderStatus(){
+  renderScheduleValidation();
   document.getElementById('stL').textContent=`${T.length} tasks | ${sel.size} selected`;
   let mn=T.reduce((m,t)=>t.start&&(!m||t.start<m)?t.start:m,null);
   let mx=T.reduce((m,t)=>t.end&&(!m||t.end>m)?t.end:m,null);
@@ -695,14 +733,19 @@ function openEditor(cell,tid,field){
     if(ev.key==='Enter'){ev.preventDefault();ev.stopPropagation();commitEdit()}
     else if(ev.key==='Escape'){ev.preventDefault();ev.stopPropagation();closeEditor();render()}
   });
+  inp.addEventListener('input',()=>inp.setCustomValidity(''));
   inp.addEventListener('blur',function(){setTimeout(()=>{if(editing&&editing.inp===inp)commitEdit()},80)});
 }
 function commitEdit(){
   if(!editing)return;
   let{tid,field,inp}=editing, t=T.find(x=>x.id===tid);
   if(!t){closeEditor();return}
-  snap();
   let v=inp.value;
+  if(field==='pred'&&!scheduleDependencyOrder().cycle.length){
+    const candidate=T.map(task=>task===t?{...task,pred:v}:task),cycle=scheduleDependencyOrder(candidate).cycle;
+    if(cycle.length){inp.setCustomValidity('Este vínculo criaria uma dependência circular: '+cycle.map(i=>i+1).join(' → ')+'.');inp.reportValidity();inp.focus();return}
+  }
+  inp.setCustomValidity('');snap();
   switch(field){
     case'name':t.name=v||'Task';break;
     case'dur':let d=parseInt(v);if(!isNaN(d)&&d>=0){t.dur=d;t.mile=d===0;t.end=t.mile?new Date(t.start):endD(t.start,d,t.unit)}break;
@@ -1275,7 +1318,7 @@ function normalizeProject(p){
 }
 function allProjectData(){return {version:1,activeProjectId,projects,actionPlans:window.ActionPlans?.exportData()||[]}}
 function saveStore(){
-  window.ActionPlans?.sync();
+  window.ActionPlans?.sync();renderScheduleValidation();
   try{localStorage.setItem(STORE_KEY,JSON.stringify(allProjectData()))}catch(e){window.WorkspaceStartup?.report('Cronogramas e planos',e)}
   window.GanttBackup?.changed();
   window.PlanCloud?.changed();
@@ -1489,7 +1532,7 @@ window.TodoCloud.waitForConnection(Promise.resolve(window.GanttBackup.init({
     activeProjectId=projects.some(p=>p.id===d.activeProjectId)?d.activeProjectId:projects[0].id;
     loadProject(activeProjectId,true);saveStore();
   },
-  localBackup:downloadAllProjects
+  localBackup:downloadAllProjects,validationError:scheduleValidationError
 })).then(async()=>{planScopeInitialized=true;await window.PlanCloud.start()}));
 window.NotesCloud.waitForConnection(window.TodoCloud.start());
 function calculateSchedule(p){
