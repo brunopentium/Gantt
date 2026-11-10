@@ -332,7 +332,7 @@ window.ActionPlans=(()=>{
     for(const [name,on]of [['tabNotes',next==='notes'],['tabGantt',next==='gantt'],['tabActions',shown],['tabTodo',next==='todo'],['tabTodoNative',next==='native-todo'],['tabMyDay',next==='my-day']]){
       const b=document.getElementById(name);b.classList.toggle('act',on);b.setAttribute('aria-selected',on);
     }
-    if(next==='notes'){window.Notes.show()}else if(next==='todo'||next==='native-todo'){
+    if(next==='notes'){window.WorkspaceStartup?window.WorkspaceStartup.run('Notas',()=>window.Notes.show()):window.Notes.show()}else if(next==='todo'||next==='native-todo'){
       const frame=document.getElementById(next==='todo'?'todoFrame':'todoNativeFrame');
       if(!frame.getAttribute('src'))frame.src=frame.dataset.src;
       if(next==='native-todo')window.TodoCloud.start();
@@ -340,7 +340,7 @@ window.ActionPlans=(()=>{
   }
   function init(adapter){
     const savedFilter=localStorage.getItem(window.WorkspaceProfile.key('pf_action_plan_filter')),savedHide=localStorage.getItem(window.WorkspaceProfile.key('pf_action_plan_hide_statuses'));
-    statusFilter=Object.hasOwn(statusFilters,savedFilter)?savedFilter:'all';hideStatuses=savedHide===null?savedFilter==='hide_done_blocked':savedHide==='true';persistFilters();
+    statusFilter=Object.hasOwn(statusFilters,savedFilter)?savedFilter:'all';hideStatuses=savedHide===null?savedFilter==='hide_done_blocked':savedHide==='true';
     api=adapter;planTheme=localStorage.getItem(window.WorkspaceProfile.key('pf_action_plan_theme'));if(!['dark','light'].includes(planTheme))planTheme='light';
     document.getElementById('apBackup').onclick=backup;document.getElementById('apImport').onclick=importFile;document.getElementById('apUndo').onclick=undoPlan;document.getElementById('apTheme').onclick=()=>{planTheme=(planTheme||api.getTheme())==='dark'?'light':'dark';localStorage.setItem(window.WorkspaceProfile.key('pf_action_plan_theme'),planTheme);document.documentElement.dataset.theme=planTheme};
     document.getElementById('apExport').onclick=()=>{const p=current();if(p){sync();downloadJSON({version:1,type:'action-plans',actionPlans:exportBranch(p)},cleanFileName(p.title)+'.json')}else{notice='Create or select a plan to export.';refresh()}};

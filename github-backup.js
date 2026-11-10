@@ -213,7 +213,7 @@ window.GanttBackup = (() => {
       try{const previous=JSON.parse(config.fingerprint);if(Object.hasOwn(previous,'actionPlans')){delete previous.actionPlans;config.fingerprint=JSON.stringify(previous);persist()}}catch{}
     }
     for(const key of ['fingerprint','coveredFingerprint'])if(config[key])try{config[key]=canonical(JSON.parse(config[key]))}catch{}
-    persist();lastContent=config.fingerprint||'';covered=config.coveredFingerprint||'';startup=content();
+    lastContent=config.fingerprint||'';covered=config.coveredFingerprint||'';startup=content();
     document.getElementById('btnCloudBackup').onclick=settings;
     document.getElementById('btnCloudSave').onclick=()=>backup();
     document.getElementById('btnCloudHistory').onclick=history;

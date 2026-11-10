@@ -34,7 +34,7 @@ window.MyDayChat=(()=>{
     find('mdChatConnect').hidden=!connectionArea;find('mdChatConnect').disabled=busy;
     find('mdChatConnect').textContent='Configurar GitHub de '+(areaLabels[connectionArea]||'Tarefas');
     find('mdChatDraft').hidden=!pending;
-    find('mdChatNoteEdit').hidden=!notesEditTarget;find('mdChatNoteEditLabel').textContent='Propor alterações em: '+(window.NotesSearch?.scopes().find(n=>n.id===notesEditTarget)?.path||'Página indisponível');find('mdChatNoteEditExit').disabled=busy;find('mdChatUndoNotes').hidden=!window.NotesEdits?.canUndo();find('mdChatUndoNotes').disabled=busy||!workspaceActive;find('mdChatApply').textContent=pending?.kind==='notes-local'?'Aplicar nas Notas':'Aplicar alterações';find('mdChatInput').placeholder=notesEditTarget?'Ex.: acrescente uma lista de próximos passos nesta nota':'Ex.: passe a tarefa da roda fônica para segunda-feira';
+    find('mdChatNoteEdit').hidden=!notesEditTarget;find('mdChatNoteEditLabel').textContent='Propor alterações em: '+(notesEditTarget?window.NotesSearch?.scopes().find(n=>n.id===notesEditTarget)?.path||'Página indisponível':'');find('mdChatNoteEditExit').disabled=busy;find('mdChatUndoNotes').hidden=!window.NotesEdits?.canUndo();find('mdChatUndoNotes').disabled=busy||!workspaceActive;find('mdChatApply').textContent=pending?.kind==='notes-local'?'Aplicar nas Notas':'Aplicar alterações';find('mdChatInput').placeholder=notesEditTarget?'Ex.: acrescente uma lista de próximos passos nesta nota':'Ex.: passe a tarefa da roda fônica para segunda-feira';
   }
   async function request(path,body,{auth=true,timeout=120000}={}){
     if(auth&&!logged()){accessToken='';controls();throw new Error('Entre no chat para continuar.');}

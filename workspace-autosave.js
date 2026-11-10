@@ -5,15 +5,16 @@ window.WorkspaceAutosave=(()=>{
   const labels={gantt:'Cronogramas',action:'Planos de ação',todo:'Tarefas',notes:'Notas'};
   let adapters={},enabled=true,initialized=false,timer=null,running=null,paused=0,lastEdit=0,retryAt=0,refreshQueued=false,hasDraft=false;
   const fingerprints=new Map();
-  function states(){return Object.entries(adapters).map(([source,adapter])=>({source,...adapter.state()}))}
+  function states(){return Object.entries(adapters).map(([source,adapter])=>{try{return {source,...adapter.state()}}catch(error){window.WorkspaceStartup?.report(labels[source],error);return {source,connected:true,ready:false,busy:false,dirty:false,blocked:true,error:'Não foi possível ler os dados locais desta área.'}}})}
   function clear(){clearTimeout(timer);timer=null}
   function render(all=states()){
     const toggle=document.getElementById('autosaveToggle'),output=document.getElementById('autosaveStatus'),resolve=document.getElementById('autosaveResolve');
     if(toggle)toggle.checked=enabled;
     if(!output)return;
     const connected=all.filter(s=>s.connected),blocked=connected.filter(s=>s.blocked),pending=connected.filter(s=>s.dirty||!s.ready);
-    let text;
-    if(blocked.length)text='Sincronização precisa de atenção: '+blocked.map(s=>labels[s.source]).join(', ')+'. '+(blocked[0].error||'Abra a conexão do GitHub para resolver.');
+    let text;const startupIssue=window.WorkspaceStartup?.summary();
+    if(startupIssue)text='Atenção aos dados locais · veja o aviso de abertura acima';
+    else if(blocked.length)text='Sincronização precisa de atenção: '+blocked.map(s=>labels[s.source]).join(', ')+'. '+(blocked[0].error||'Abra a conexão do GitHub para resolver.');
     else if(running||connected.some(s=>s.busy))text='Sincronizando com o GitHub…';
     else if(!enabled)text=pending.length?'Salvo neste navegador · salvamento automático desligado':'Salvamento automático desligado';
     else if(!connected.length)text='Salvo neste navegador · conecte o GitHub para sincronizar';
@@ -22,7 +23,7 @@ window.WorkspaceAutosave=(()=>{
     else if(pending.length)text='Alterações pendentes · envio após 20 s sem editar';
     else text='Salvo no GitHub'+(connected.length<all.length?' · demais áreas apenas neste navegador':'');
     output.textContent=text;
-    output.dataset.state=blocked.length?'blocked':running?'saving':pending.length?'pending':connected.length?'saved':'local';
+    output.dataset.state=startupIssue||blocked.length?'blocked':running?'saving':pending.length?'pending':connected.length?'saved':'local';
     if(resolve){resolve.hidden=!blocked.length;resolve.dataset.source=blocked[0]?.source||''}
   }
   function refresh(){
